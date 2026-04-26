@@ -1,28 +1,45 @@
-# Entorno virtual
-venv/
-
-# Variables de entorno (contienen contraseñas)
-.env
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
 *.egg-info/
+dist/
+build/
+
+# Unit test / coverage reports
 .pytest_cache/
+.coverage
+
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+tempCodeRunnerFile.py
+.ruff_cache/
+
+# mypy / pytype
+.mypy_cache/
+.dmypy.json
+.pytype/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
 
 # dbt
 dbt_protectora/target/
 dbt_protectora/dbt_packages/
 dbt_protectora/logs/
 logs/
-
-# IDE
-.vscode/
-.idea/
-
-# Claude
-.claude/
-
-# OS
-.DS_Store
-Thumbs.db
