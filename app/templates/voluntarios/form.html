@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{% if voluntario %}Editar voluntario{% else %}Nuevo voluntario{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/voluntarios/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{% if voluntario %}Editar voluntario{% else %}Nuevo voluntario{% endif %}</h2>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-body p-4">
+    <form method="post" action="{% if voluntario %}/voluntarios/{{ voluntario.id }}/editar{% else %}/voluntarios/nuevo{% endif %}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" name="nombre" class="form-control" required
+            value="{{ voluntario.nombre if voluntario else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Apellido *</label>
+          <input type="text" name="apellido" class="form-control" required
+            value="{{ voluntario.apellido if voluntario else '' }}">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Email *</label>
+          <input type="email" name="email" class="form-control" required
+            value="{{ voluntario.email if voluntario else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" name="telefono" class="form-control"
+            value="{{ voluntario.telefono if voluntario and voluntario.telefono else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Perfil *</label>
+          <select name="perfil" class="form-select" required>
+            {% for p in perfiles %}
+            <option value="{{ p }}" {% if voluntario and voluntario.perfil.value == p %}selected{% endif %}>
+              {{ perfil_labels[p] }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha de alta *</label>
+          <input type="date" name="fecha_alta" class="form-control" required
+            value="{{ voluntario.fecha_alta.isoformat() if voluntario else hoy }}">
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="activo" id="activo"
+              {% if not voluntario or voluntario.activo %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="activo">Voluntario activo</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ppp" id="ppp"
+              {% if voluntario and voluntario.ppp %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="ppp">
+              <i class="bi bi-shield-fill-exclamation text-warning me-1"></i>Permiso para pasear PPP
+            </label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Notas</label>
+          <textarea name="notas" class="form-control" rows="3">{{ voluntario.notas if voluntario and voluntario.notas else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>{% if voluntario %}Guardar cambios{% else %}Crear voluntario{% endif %}
+        </button>
+        <a href="/voluntarios/" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

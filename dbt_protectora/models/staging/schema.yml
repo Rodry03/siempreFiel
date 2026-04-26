@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_perros
+    description: Perros activos en el sistema
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: nombre
+        tests: [not_null]
+      - name: sexo
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['macho', 'hembra']
+      - name: estado
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['activo', 'adoptado', 'fallecido']
+
+  - name: stg_vacunas
+    description: Historial de vacunaciones
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: perro_id
+        tests: [not_null]
+
+  - name: stg_ubicaciones
+    description: Historial de ubicaciones de cada perro
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: perro_id
+        tests: [not_null]
+      - name: tipo
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['refugio', 'acogida', 'residencia', 'adoptado']
+
+  - name: stg_voluntarios
+    description: Voluntarios de la protectora
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: email
+        tests: [unique, not_null]
+
+  - name: stg_turnos_voluntarios
+    description: Registro de turnos por voluntario
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: voluntario_id
+        tests: [not_null]
+      - name: franja
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['manana', 'tarde']
+      - name: estado
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['realizado', 'medio_turno', 'falta_justificada', 'falta_injustificada', 'no_apuntado']

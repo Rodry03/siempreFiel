@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Perros{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0"><i class="bi bi-emoji-smile me-2"></i>Perros</h2>
+  <a href="/perros/nuevo" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo perro</a>
+</div>
+
+<!-- Filtros -->
+<div class="mb-3">
+  <div class="btn-group">
+    <a href="/perros/?estado=activo" class="btn btn-sm {% if estado_filtro == 'activo' %}btn-primary{% else %}btn-outline-primary{% endif %}">Activos</a>
+    <a href="/perros/?estado=adoptado" class="btn btn-sm {% if estado_filtro == 'adoptado' %}btn-success{% else %}btn-outline-success{% endif %}">Adoptados</a>
+    <a href="/perros/?estado=fallecido" class="btn btn-sm {% if estado_filtro == 'fallecido' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Fallecidos</a>
+    <a href="/perros/?estado=todos" class="btn btn-sm {% if estado_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if perros_con_ubicacion %}
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nombre</th><th>Raza</th><th>Sexo</th><th>Chip</th>
+          <th>Esterilizado</th><th>Entrada</th><th>Días en sistema</th><th>Ubicación</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for perro, ubicacion, dias in perros_con_ubicacion %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="/perros/{{ perro.id }}" class="text-decoration-none">{{ perro.nombre }}</a>
+          </td>
+          <td>{{ perro.raza.nombre }}</td>
+          <td>
+            {% if perro.sexo.value == 'macho' %}
+              <span class="text-primary"><i class="bi bi-gender-male"></i> Macho</span>
+            {% else %}
+              <span class="text-danger"><i class="bi bi-gender-female"></i> Hembra</span>
+            {% endif %}
+          </td>
+          <td>{{ perro.num_chip or '—' }}</td>
+          <td>
+            {% if perro.esterilizado %}
+              <span class="badge bg-success">Sí</span>
+            {% else %}
+              <span class="badge bg-danger">No</span>
+            {% endif %}
+          </td>
+          <td>{{ perro.fecha_entrada }}</td>
+          <td><span class="badge bg-secondary">{{ dias }}d</span></td>
+          <td>
+            {% if ubicacion %}
+              <span class="badge badge-{{ ubicacion.tipo.value }} text-white">
+                {{ ubicacion_labels[ubicacion.tipo.value] }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="/perros/{{ perro.id }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted p-4 mb-0 text-center">No hay perros con este filtro. <a href="/perros/nuevo">Añadir el primero</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

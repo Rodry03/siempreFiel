@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}{{ voluntario.nombre }} {{ voluntario.apellido }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/voluntarios/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{{ voluntario.nombre }} {{ voluntario.apellido }}</h2>
+  <span class="badge bg-{{ perfil_colors[voluntario.perfil.value] }}">
+    {{ perfil_labels[voluntario.perfil.value] }}
+  </span>
+  {% if voluntario.activo %}
+    <span class="badge bg-success">Activo</span>
+  {% else %}
+    <span class="badge bg-secondary">Inactivo</span>
+  {% endif %}
+  <a href="/voluntarios/{{ voluntario.id }}/editar" class="btn btn-sm btn-outline-primary ms-auto">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Info general + saldo -->
+  <div class="col-md-4">
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-person me-2"></i>Datos del voluntario
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          <tr><th class="text-muted" style="width:40%">Email</th><td>{{ voluntario.email }}</td></tr>
+          <tr><th class="text-muted">Teléfono</th><td>{{ voluntario.telefono or '—' }}</td></tr>
+          <tr><th class="text-muted">Alta</th><td>{{ voluntario.fecha_alta }}</td></tr>
+          <tr><th class="text-muted">PPP</th><td>
+            {% if voluntario.ppp %}
+              <span class="badge bg-warning text-dark"><i class="bi bi-shield-fill-exclamation me-1"></i>Con permiso</span>
+            {% else %}
+              <span class="text-muted">Sin permiso</span>
+            {% endif %}
+          </td></tr>
+          {% if voluntario.notas %}
+          <tr><th class="text-muted">Notas</th><td>{{ voluntario.notas }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    {% if hace_turnos %}
+    <!-- Tarjeta saldo -->
+    <div class="card border-0
+      {% if saldo > 0 %}bg-success bg-opacity-10{% elif saldo < 0 %}bg-danger bg-opacity-10{% else %}bg-light{% endif %}">
+      <div class="card-body text-center py-4">
+        <div class="text-muted small mb-1">Saldo de turnos</div>
+        <div class="display-4 fw-bold
+          {% if saldo > 0 %}text-success{% elif saldo < 0 %}text-danger{% else %}text-secondary{% endif %}">
+          {% if saldo > 0 %}+{% endif %}{{ "%.1f"|format(saldo) }}
+        </div>
+        <div class="text-muted small mt-1">
+          {% if saldo > 0 %}Va adelantado{% elif saldo < 0 %}Debe {{ "%.1f"|format(saldo|abs) }} turno{% if saldo < -1 %}s{% endif %}{% else %}Al día{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Turnos -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-check me-2"></i>Turnos</span>
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formTurno">
+          <i class="bi bi-plus-lg me-1"></i>Registrar turno
+        </button>
+      </div>
+      <div class="card-body">
+
+        <!-- Formulario nuevo turno -->
+        <div class="collapse mb-3" id="formTurno">
+          <form method="post" action="/voluntarios/{{ voluntario.id }}/turno" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Fecha *</label>
+                <input type="date" name="fecha" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Franja *</label>
+                <select name="franja" class="form-select form-select-sm" required>
+                  {% for f in franjas %}
+                  <option value="{{ f }}">{{ franja_labels[f] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Estado *</label>
+                <select name="estado" class="form-select form-select-sm" required>
+                  {% for e in estados %}
+                  <option value="{{ e }}">{{ estado_labels[e] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success mt-2">
+              <i class="bi bi-check-lg me-1"></i>Guardar turno
+            </button>
+          </form>
+          <hr>
+        </div>
+
+        {% if voluntario.turnos %}
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Fecha</th><th>Franja</th><th>Estado</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for t in voluntario.turnos %}
+            <tr>
+              <td>{{ t.fecha }}</td>
+              <td>{{ franja_labels[t.franja.value] }}</td>
+              <td>
+                <span class="badge bg-{{ estado_colors[t.estado.value] }}">
+                  {{ estado_labels[t.estado.value] }}
+                </span>
+              </td>
+              <td class="text-muted small">{{ t.notas or '' }}</td>
+              <td>
+                <form method="post" action="/voluntarios/{{ voluntario.id }}/turno/{{ t.id }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar este turno?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-3">Sin turnos registrados aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

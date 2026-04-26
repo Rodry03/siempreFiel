@@ -1,0 +1,28 @@
+# Entorno virtual
+venv/
+
+# Variables de entorno (contienen contraseñas)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# dbt
+dbt_protectora/target/
+dbt_protectora/dbt_packages/
+dbt_protectora/logs/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

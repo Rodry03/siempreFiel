@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}{{ perro.nombre }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{{ perro.nombre }}</h2>
+  <span class="badge {% if perro.estado.value == 'activo' %}bg-primary{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
+    {{ perro.estado.value | capitalize }}
+  </span>
+  <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary ms-auto">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Info general -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-info-circle me-2"></i>Datos generales
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          <tr><th class="text-muted" style="width:40%">Raza</th><td>{{ perro.raza.nombre }}</td></tr>
+          <tr><th class="text-muted">Sexo</th><td>
+            {% if perro.sexo.value == 'macho' %}<span class="text-primary"><i class="bi bi-gender-male"></i> Macho</span>
+            {% else %}<span class="text-danger"><i class="bi bi-gender-female"></i> Hembra</span>{% endif %}
+          </td></tr>
+          <tr><th class="text-muted">Nacimiento</th><td>{{ perro.fecha_nacimiento or '—' }}</td></tr>
+          <tr><th class="text-muted">Color</th><td>{{ perro.color or '—' }}</td></tr>
+          <tr><th class="text-muted">Chip</th><td>{{ perro.num_chip or '—' }}</td></tr>
+          <tr><th class="text-muted">Entrada</th><td>{{ perro.fecha_entrada }}</td></tr>
+          <tr><th class="text-muted">Esterilizado</th><td>
+            {% if perro.esterilizado %}<span class="badge bg-success">Sí</span>
+            {% else %}<span class="badge bg-danger">No</span>{% endif %}
+          </td></tr>
+          {% if perro.notas %}
+          <tr><th class="text-muted">Notas</th><td>{{ perro.notas }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ubicación actual + cambio -->
+  <div class="col-md-7">
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-geo-alt me-2"></i>Ubicación actual</span>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#formUbicacion">
+          <i class="bi bi-arrow-left-right me-1"></i>Cambiar
+        </button>
+      </div>
+      <div class="card-body">
+        {% if ubicacion_actual %}
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <span class="badge badge-{{ ubicacion_actual.tipo.value }} text-white fs-6 px-3 py-2">
+            {{ ubicacion_labels[ubicacion_actual.tipo.value] }}
+          </span>
+          <span class="text-muted small">desde {{ ubicacion_actual.fecha_inicio }}</span>
+        </div>
+        {% if ubicacion_actual.nombre_contacto %}
+        <p class="mb-0 text-muted small">
+          <i class="bi bi-person me-1"></i>{{ ubicacion_actual.nombre_contacto }}
+          {% if ubicacion_actual.telefono_contacto %} · {{ ubicacion_actual.telefono_contacto }}{% endif %}
+        </p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted mb-0">Sin ubicación registrada.</p>
+        {% endif %}
+
+        <!-- Formulario cambio ubicación -->
+        <div class="collapse mt-3" id="formUbicacion">
+          <hr>
+          <form method="post" action="/perros/{{ perro.id }}/ubicacion">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Nueva ubicación</label>
+                <select name="tipo" class="form-select form-select-sm">
+                  {% for t in tipos_ubicacion %}
+                  <option value="{{ t }}">{{ ubicacion_labels[t] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Fecha inicio</label>
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Nombre contacto</label>
+                <input type="text" name="nombre_contacto" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Teléfono contacto</label>
+                <input type="text" name="telefono_contacto" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary mt-2">Confirmar cambio</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial ubicaciones -->
+    {% if perro.ubicaciones | length > 1 %}
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-clock-history me-2"></i>Historial de ubicaciones
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Contacto</th></tr></thead>
+          <tbody>
+            {% for u in perro.ubicaciones %}
+            <tr>
+              <td><span class="badge badge-{{ u.tipo.value }} text-white">{{ ubicacion_labels[u.tipo.value] }}</span></td>
+              <td>{{ u.fecha_inicio }}</td>
+              <td>{{ u.fecha_fin or 'Actual' }}</td>
+              <td>{{ u.nombre_contacto or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Vacunas -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-syringe me-2"></i>Vacunas</span>
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formVacuna">
+          <i class="bi bi-plus-lg me-1"></i>Añadir vacuna
+        </button>
+      </div>
+      <div class="card-body">
+        <!-- Formulario nueva vacuna -->
+        <div class="collapse mb-3" id="formVacuna">
+          <form method="post" action="/perros/{{ perro.id }}/vacuna" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Tipo de vacuna *</label>
+                <input type="text" name="tipo" class="form-control form-control-sm" required
+                  placeholder="Ej: Rabia, Parvovirus…">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Fecha administración *</label>
+                <input type="date" name="fecha_administracion" id="fecha_administracion" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Próxima dosis</label>
+                <input type="date" name="fecha_proxima" id="fecha_proxima" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Veterinario</label>
+                <input type="text" name="veterinario" class="form-control form-control-sm">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success mt-2">
+              <i class="bi bi-check-lg me-1"></i>Registrar vacuna
+            </button>
+          </form>
+          <hr>
+        </div>
+
+        {% if vacunas %}
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Vacuna</th><th>Administrada</th><th>Próxima dosis</th><th>Veterinario</th><th>Notas</th></tr>
+          </thead>
+          <tbody>
+            {% for v in vacunas %}
+            <tr>
+              <td class="fw-semibold">{{ v.tipo }}</td>
+              <td>{{ v.fecha_administracion }}</td>
+              <td>
+                {% if v.fecha_proxima %}
+                  <span class="badge bg-info text-dark">{{ v.fecha_proxima }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ v.veterinario or '—' }}</td>
+              <td class="text-muted small">{{ v.notas or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">Sin vacunas registradas aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('fecha_administracion').addEventListener('change', function () {
+    if (!this.value) return;
+    const d = new Date(this.value);
+    d.setFullYear(d.getFullYear() + 1);
+    document.getElementById('fecha_proxima').value = d.toISOString().split('T')[0];
+  });
+</script>
+{% endblock %}

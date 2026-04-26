@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: mart_vacunas_proximas
+    description: Vacunas que vencen en los próximos 30 días para perros activos
+    columns:
+      - name: perro_id
+        tests: [not_null]
+      - name: dias_restantes
+        tests: [not_null]
+
+  - name: mart_perros_no_esterilizados
+    description: Perros activos pendientes de esterilizar
+    columns:
+      - name: id
+        tests: [unique, not_null]
+
+  - name: mart_tiempo_en_refugio
+    description: Top 20 perros con más tiempo en el sistema
+    columns:
+      - name: id
+        tests: [not_null]
+      - name: dias_en_sistema
+        tests: [not_null]
+
+  - name: mart_saldo_turnos
+    description: Saldo de turnos por voluntario (positivo = adelantado, negativo = debe)
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: saldo
+        tests: [not_null]

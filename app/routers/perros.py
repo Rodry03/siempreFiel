@@ -1,0 +1,200 @@
+from datetime import date
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+from typing import Optional
+from app.database import get_db
+from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
+from app.templates_config import templates
+
+router = APIRouter(prefix="/perros")
+
+UBICACION_LABELS = {
+    "refugio": "Refugio",
+    "acogida": "Casa de acogida",
+    "residencia": "Residencia canina",
+    "adoptado": "Adoptado",
+}
+
+
+def _ubicacion_actual(perro: Perro) -> Optional[Ubicacion]:
+    return next((u for u in perro.ubicaciones if u.fecha_fin is None), None)
+
+
+@router.get("/")
+def listar_perros(request: Request, estado: str = "todos", db: Session = Depends(get_db)):
+    query = db.query(Perro)
+    if estado != "todos":
+        try:
+            query = query.filter(Perro.estado == EstadoPerro(estado))
+        except ValueError:
+            pass
+    perros = query.order_by(Perro.nombre).all()
+    hoy = date.today()
+    perros_con_ubicacion = [(p, _ubicacion_actual(p), (hoy - p.fecha_entrada).days) for p in perros]
+    return templates.TemplateResponse(request, "perros/list.html", {
+        "perros_con_ubicacion": perros_con_ubicacion,
+        "estado_filtro": estado,
+        "ubicacion_labels": UBICACION_LABELS,
+    })
+
+
+@router.get("/nuevo")
+def form_nuevo_perro(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(request, "perros/form.html", {
+        "perro": None,
+        "sexos": [s.value for s in Sexo],
+        "razas": db.query(Raza).order_by(Raza.nombre).all(),
+        "hoy": date.today().isoformat(),
+    })
+
+
+@router.post("/nuevo")
+def crear_perro(
+    request: Request,
+    nombre: str = Form(...),
+    raza_id: int = Form(...),
+    sexo: str = Form(...),
+    esterilizado: Optional[str] = Form(None),
+    fecha_entrada: date = Form(...),
+    estado: str = Form("activo"),
+    fecha_nacimiento: Optional[date] = Form(None),
+    num_chip: Optional[str] = Form(None),
+    color: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    perro = Perro(
+        nombre=nombre,
+        raza_id=raza_id,
+        sexo=Sexo(sexo),
+        esterilizado=esterilizado == "on",
+        fecha_entrada=fecha_entrada,
+        estado=EstadoPerro(estado),
+        fecha_nacimiento=fecha_nacimiento,
+        num_chip=num_chip or None,
+        color=color or None,
+        notas=notas or None,
+    )
+    db.add(perro)
+    db.flush()
+    db.add(Ubicacion(perro_id=perro.id, tipo=TipoUbicacion.refugio, fecha_inicio=fecha_entrada))
+    db.commit()
+    return RedirectResponse(f"/perros/{perro.id}", status_code=303)
+
+
+@router.get("/{perro_id}")
+def detalle_perro(request: Request, perro_id: int, db: Session = Depends(get_db)):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if not perro:
+        return RedirectResponse("/perros/", status_code=303)
+    vacunas = sorted(perro.vacunas, key=lambda v: v.fecha_administracion, reverse=True)
+    return templates.TemplateResponse(request, "perros/detail.html", {
+        "perro": perro,
+        "vacunas": vacunas,
+        "ubicacion_actual": _ubicacion_actual(perro),
+        "ubicacion_labels": UBICACION_LABELS,
+        "hoy": date.today().isoformat(),
+        "tipos_ubicacion": [t.value for t in TipoUbicacion],
+    })
+
+
+@router.get("/{perro_id}/editar")
+def form_editar_perro(request: Request, perro_id: int, db: Session = Depends(get_db)):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if not perro:
+        return RedirectResponse("/perros/", status_code=303)
+    return templates.TemplateResponse(request, "perros/form.html", {
+        "perro": perro,
+        "sexos": [s.value for s in Sexo],
+        "razas": db.query(Raza).order_by(Raza.nombre).all(),
+        "hoy": date.today().isoformat(),
+    })
+
+
+@router.post("/{perro_id}/editar")
+def editar_perro(
+    perro_id: int,
+    nombre: str = Form(...),
+    raza_id: int = Form(...),
+    sexo: str = Form(...),
+    esterilizado: Optional[str] = Form(None),
+    fecha_entrada: date = Form(...),
+    estado: str = Form("activo"),
+    fecha_nacimiento: Optional[date] = Form(None),
+    num_chip: Optional[str] = Form(None),
+    color: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if not perro:
+        return RedirectResponse("/perros/", status_code=303)
+    perro.nombre = nombre
+    perro.raza_id = raza_id
+    perro.sexo = Sexo(sexo)
+    perro.esterilizado = esterilizado == "on"
+    perro.fecha_entrada = fecha_entrada
+    perro.estado = EstadoPerro(estado)
+    perro.fecha_nacimiento = fecha_nacimiento
+    perro.num_chip = num_chip or None
+    perro.color = color or None
+    perro.notas = notas or None
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/vacuna")
+def agregar_vacuna(
+    perro_id: int,
+    tipo: str = Form(...),
+    fecha_administracion: date = Form(...),
+    fecha_proxima: Optional[date] = Form(None),
+    veterinario: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    vacuna = Vacuna(
+        perro_id=perro_id,
+        tipo=tipo,
+        fecha_administracion=fecha_administracion,
+        fecha_proxima=fecha_proxima,
+        veterinario=veterinario or None,
+        notas=notas or None,
+    )
+    db.add(vacuna)
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/ubicacion")
+def cambiar_ubicacion(
+    perro_id: int,
+    tipo: str = Form(...),
+    fecha_inicio: date = Form(...),
+    nombre_contacto: Optional[str] = Form(None),
+    telefono_contacto: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    ubicacion_actual = db.query(Ubicacion).filter(
+        Ubicacion.perro_id == perro_id,
+        Ubicacion.fecha_fin.is_(None)
+    ).first()
+    if ubicacion_actual:
+        ubicacion_actual.fecha_fin = fecha_inicio
+
+    db.add(Ubicacion(
+        perro_id=perro_id,
+        tipo=TipoUbicacion(tipo),
+        fecha_inicio=fecha_inicio,
+        nombre_contacto=nombre_contacto or None,
+        telefono_contacto=telefono_contacto or None,
+        notas=notas or None,
+    ))
+    if tipo == "adoptado":
+        perro = db.query(Perro).filter(Perro.id == perro_id).first()
+        if perro:
+            perro.estado = EstadoPerro.adoptado
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)

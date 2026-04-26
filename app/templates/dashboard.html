@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0">Dashboard</h2>
+  <span class="text-muted small"><i class="bi bi-info-circle"></i> Los datos analíticos requieren ejecutar <code>dbt run</code></span>
+</div>
+
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card border-primary p-3">
+      <div class="text-muted small">Perros activos</div>
+      <div class="fs-2 fw-bold text-primary">{{ total_activos }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card border-warning p-3">
+      <div class="text-muted small">Vacunas próximas / vencidas</div>
+      <div class="fs-2 fw-bold text-warning">{{ vacunas_proximas | length }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card border-danger p-3">
+      <div class="text-muted small">Sin esterilizar</div>
+      <div class="fs-2 fw-bold text-danger">{{ no_esterilizados | length }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Vacunas próximas -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-syringe text-warning me-2"></i>Vacunas próximas o vencidas
+      </div>
+      <div class="card-body p-0">
+        {% if vacunas_proximas %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr>
+            <th>Perro</th><th>Vacuna</th><th>Fecha</th><th>Días restantes</th>
+          </tr></thead>
+          <tbody>
+            {% for v in vacunas_proximas %}
+            <tr>
+              <td><a href="/perros/{{ v.perro_id }}" class="text-decoration-none fw-semibold">{{ v.nombre }}</a></td>
+              <td>{{ v.vacuna }}</td>
+              <td>{{ v.fecha_proxima }}</td>
+              <td>
+                {% if v.dias_restantes < 0 %}
+                  <span class="badge bg-danger">Vencida hace {{ v.dias_restantes | abs }}d</span>
+                {% elif v.dias_restantes <= 7 %}
+                  <span class="badge bg-warning text-dark">{{ v.dias_restantes }}d</span>
+                {% else %}
+                  <span class="badge bg-success">{{ v.dias_restantes }}d</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">
+          {% if total_activos == 0 %}Sin datos aún.{% else %}Ejecuta <code>dbt run</code> para ver este panel.{% endif %}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Sin esterilizar -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-exclamation-triangle text-danger me-2"></i>Pendientes de esterilizar
+      </div>
+      <div class="card-body p-0">
+        {% if no_esterilizados %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr>
+            <th>Nombre</th><th>Raza</th><th>Sexo</th><th>Ubicación</th>
+          </tr></thead>
+          <tbody>
+            {% for p in no_esterilizados %}
+            <tr>
+              <td><a href="/perros/{{ p.id }}" class="text-decoration-none fw-semibold">{{ p.nombre }}</a></td>
+              <td>{{ p.raza }}</td>
+              <td>{{ p.sexo }}</td>
+              <td><span class="badge badge-{{ p.ubicacion_actual }} text-white">{{ p.ubicacion_actual }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">
+          {% if total_activos == 0 %}Sin datos aún.{% else %}Ejecuta <code>dbt run</code> para ver este panel.{% endif %}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top voluntarios -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-trophy text-warning me-2"></i>Voluntarios con más antigüedad (top 10)
+      </div>
+      <div class="card-body p-0">
+        {% if voluntarios_top %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr>
+            <th>#</th><th>Nombre</th><th>Perfil</th><th>Alta</th><th>Días</th>
+          </tr></thead>
+          <tbody>
+            {% for i, entry in enumerate(voluntarios_top) %}
+            <tr>
+              <td class="text-muted">{{ i + 1 }}</td>
+              <td class="fw-semibold">{{ entry.voluntario.nombre }} {{ entry.voluntario.apellido }}</td>
+              <td>
+                {% set colors = {"directiva": "danger", "veterano": "warning", "voluntario": "success"} %}
+                <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">
+                  {{ entry.voluntario.perfil.value | capitalize }}
+                </span>
+              </td>
+              <td>{{ entry.voluntario.fecha_alta }}</td>
+              <td><span class="badge bg-secondary">{{ entry.dias }}d</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">Sin voluntarios activos registrados.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top deudores de turnos -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-exclamation-circle text-danger me-2"></i>Voluntarios con más turnos pendientes (top 10)
+      </div>
+      <div class="card-body p-0">
+        {% if top_deudores %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr>
+            <th>#</th><th>Nombre</th><th>Perfil</th><th>Saldo</th>
+          </tr></thead>
+          <tbody>
+            {% for i, entry in enumerate(top_deudores) %}
+            {% set debe = entry.saldo | abs %}
+            <tr {% if debe > 10 %}class="table-danger"{% endif %}>
+              <td class="text-muted">{{ i + 1 }}</td>
+              <td class="fw-semibold">
+                <a href="/voluntarios/{{ entry.voluntario.id }}" class="text-decoration-none
+                  {% if debe > 10 %}text-danger{% else %}text-dark{% endif %}">
+                  {{ entry.voluntario.nombre }} {{ entry.voluntario.apellido }}
+                </a>
+              </td>
+              <td>
+                {% set colors = {"directiva": "danger", "veterano": "warning", "voluntario": "success"} %}
+                <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">
+                  {{ entry.voluntario.perfil.value | capitalize }}
+                </span>
+              </td>
+              <td>
+                <span class="badge {% if debe > 10 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                  {{ "%.1f"|format(entry.saldo) }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">Ningún voluntario tiene turnos pendientes.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Más tiempo en el sistema -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-clock-history text-primary me-2"></i>Más tiempo en el sistema (top 20)
+      </div>
+      <div class="card-body p-0">
+        {% if tiempo_refugio %}
+        <table class="table table-hover mb-0">
+          <thead class="table-light"><tr>
+            <th>#</th><th>Nombre</th><th>Raza</th><th>Fecha entrada</th><th>Días en sistema</th><th>Ubicación actual</th>
+          </tr></thead>
+          <tbody>
+            {% for i, p in enumerate(tiempo_refugio) %}
+            <tr>
+              <td class="text-muted">{{ i + 1 }}</td>
+              <td><a href="/perros/{{ p.id }}" class="text-decoration-none fw-semibold">{{ p.nombre }}</a></td>
+              <td>{{ p.raza }}</td>
+              <td>{{ p.fecha_entrada }}</td>
+              <td><span class="badge bg-secondary">{{ p.dias_en_sistema }}d</span></td>
+              <td><span class="badge badge-{{ p.ubicacion_actual }} text-white">{{ p.ubicacion_actual or '—' }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">
+          {% if total_activos == 0 %}Sin datos aún.{% else %}Ejecuta <code>dbt run</code> para ver este panel.{% endif %}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

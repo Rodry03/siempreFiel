@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{% if perro %}Editar {{ perro.nombre }}{% else %}Nuevo perro{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{% if perro %}Editar {{ perro.nombre }}{% else %}Nuevo perro{% endif %}</h2>
+</div>
+
+<div class="card" style="max-width:700px;">
+  <div class="card-body p-4">
+    <form method="post" action="{% if perro %}/perros/{{ perro.id }}/editar{% else %}/perros/nuevo{% endif %}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" name="nombre" class="form-control" required value="{{ perro.nombre if perro else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Raza *</label>
+          <select name="raza_id" class="form-select" required>
+            <option value="">— Selecciona una raza —</option>
+            {% for r in razas %}
+            <option value="{{ r.id }}" {% if perro and perro.raza_id == r.id %}selected{% endif %}>
+              {{ r.nombre }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Sexo *</label>
+          <select name="sexo" class="form-select" required>
+            {% for s in sexos %}
+            <option value="{{ s }}" {% if perro and perro.sexo.value == s %}selected{% endif %}>
+              {{ s | capitalize }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Fecha de nacimiento</label>
+          <input type="date" name="fecha_nacimiento" class="form-control"
+            value="{{ perro.fecha_nacimiento.isoformat() if perro and perro.fecha_nacimiento else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Color</label>
+          <input type="text" name="color" class="form-control" value="{{ perro.color if perro and perro.color else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Número de chip</label>
+          <input type="text" name="num_chip" class="form-control"
+            value="{{ perro.num_chip if perro and perro.num_chip else '' }}"
+            pattern="[0-9]{15}" minlength="15" maxlength="15"
+            placeholder="000000000000000"
+            title="El chip debe tener exactamente 15 dígitos numéricos">
+          <div class="form-text">15 dígitos (ISO 11784/11785)</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha de entrada *</label>
+          <input type="date" name="fecha_entrada" class="form-control" required
+            value="{{ perro.fecha_entrada.isoformat() if perro else hoy }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Estado</label>
+          <select name="estado" class="form-select">
+            <option value="activo" {% if not perro or perro.estado.value == 'activo' %}selected{% endif %}>Activo</option>
+            <option value="adoptado" {% if perro and perro.estado.value == 'adoptado' %}selected{% endif %}>Adoptado</option>
+            <option value="fallecido" {% if perro and perro.estado.value == 'fallecido' %}selected{% endif %}>Fallecido</option>
+          </select>
+        </div>
+        <div class="col-md-6 d-flex align-items-center">
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" name="esterilizado" id="esterilizado"
+              {% if perro and perro.esterilizado %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="esterilizado">Esterilizado/a</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Notas</label>
+          <textarea name="notas" class="form-control" rows="3">{{ perro.notas if perro and perro.notas else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>{% if perro %}Guardar cambios{% else %}Crear perro{% endif %}
+        </button>
+        <a href="/perros/" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

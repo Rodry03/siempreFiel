@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Protectora{% endblock %} — Protectora de Perros</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .sidebar {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #1a5276 0%, #154360 100%);
+    }
+    .sidebar .nav-link {
+      color: rgba(255,255,255,0.75);
+      border-radius: 8px;
+      margin: 2px 8px;
+      padding: 10px 16px;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,0.15);
+    }
+    .sidebar .brand { color: #fff; font-size: 1.2rem; font-weight: 700; padding: 20px 16px; }
+    .sidebar .brand small { display: block; font-size: 0.7rem; font-weight: 400; opacity: 0.7; }
+    .content { padding: 2rem; }
+    .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.08); border-radius: 12px; }
+    .stat-card { border-left: 4px solid; }
+    .badge-refugio { background-color: #0d6efd; }
+    .badge-acogida { background-color: #fd7e14; }
+    .badge-residencia { background-color: #6f42c1; }
+    .badge-adoptado { background-color: #198754; }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-0">
+  <div class="row g-0">
+    <!-- Sidebar -->
+    <div class="col-auto sidebar d-flex flex-column" style="width:220px; min-width:220px;">
+      <div class="brand">
+        <i class="bi bi-heart-fill text-danger"></i> Protectora
+        <small>Gestión de refugio</small>
+      </div>
+      <nav class="nav flex-column mt-2 flex-grow-1">
+        <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+        <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
+          <i class="bi bi-emoji-smile me-2"></i>Perros
+        </a>
+        <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
+          <i class="bi bi-people me-2"></i>Voluntarios
+        </a>
+      </nav>
+    </div>
+
+    <!-- Main content -->
+    <div class="col content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
