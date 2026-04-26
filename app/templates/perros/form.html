@@ -50,10 +50,10 @@
           <label class="form-label fw-semibold">Número de chip</label>
           <input type="text" name="num_chip" class="form-control"
             value="{{ perro.num_chip if perro and perro.num_chip else '' }}"
-            pattern="[0-9]{15}" minlength="15" maxlength="15"
-            placeholder="000000000000000"
-            title="El chip debe tener exactamente 15 dígitos numéricos">
-          <div class="form-text">15 dígitos (ISO 11784/11785)</div>
+            pattern="9[0-9]{14}" minlength="15" maxlength="15"
+            placeholder="9XXXXXXXXXXXXXX"
+            title="El chip debe tener 15 dígitos y empezar por 9">
+          <div class="form-text">15 dígitos, empieza por 9 (España)</div>
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Fecha de entrada *</label>

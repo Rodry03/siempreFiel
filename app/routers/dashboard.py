@@ -26,7 +26,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
     from app.models import Perro, EstadoPerro, Voluntario
     from app.routers.turnos import calcular_saldo
-    total_activos = db.query(Perro).filter(Perro.estado != EstadoPerro.fallecido).count()
+    total_activos = db.query(Perro).filter(Perro.estado == EstadoPerro.activo).count()
 
     hoy = date.today()
     voluntarios_top = [
