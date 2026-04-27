@@ -76,7 +76,7 @@ class Perro(Base):
     fecha_nacimiento = Column(Date, nullable=True)
     sexo = Column(Enum(Sexo), nullable=False)
     esterilizado = Column(Boolean, default=False, nullable=False)
-    num_chip = Column(String(15), unique=True, nullable=True)
+    num_chip = Column(String(20), unique=True, nullable=True)
     num_pasaporte = Column(String(50), unique=True, nullable=True)
     color = Column(String(100), nullable=True)
     fecha_entrada = Column(Date, nullable=False, default=date.today)
