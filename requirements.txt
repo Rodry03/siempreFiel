@@ -9,3 +9,5 @@ dbt-postgres
 passlib[bcrypt]
 bcrypt<4.0
 itsdangerous
+python-docx
+docx2pdf

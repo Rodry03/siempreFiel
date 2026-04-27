@@ -17,6 +17,9 @@
     <a href="/voluntarios/{{ voluntario.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
     </a>
+    <a href="/voluntarios/{{ voluntario.id }}/contrato" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-word me-1"></i>Generar contrato
+    </a>
     {% if voluntario.activo %}
     <form method="post" action="/voluntarios/{{ voluntario.id }}/dar-de-baja"
           onsubmit="return confirm('¿Dar de baja a {{ voluntario.nombre }}? Seguirá en el sistema pero no aparecerá en el listado activo.')">
