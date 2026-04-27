@@ -32,6 +32,14 @@ class PerfilVoluntario(str, enum.Enum):
     colaboradores = "colaboradores"
 
 
+class EstadoVisitante(str, enum.Enum):
+    interesado = "interesado"
+    visita_programada = "visita_programada"
+    visita_realizada = "visita_realizada"
+    se_convirtio = "se_convirtio"
+    descartado = "descartado"
+
+
 class FranjaTurno(str, enum.Enum):
     manana = "manana"
     tarde = "tarde"
@@ -120,6 +128,20 @@ class Voluntario(Base):
     notas = Column(Text, nullable=True)
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
+
+
+class Visitante(Base):
+    __tablename__ = "visitantes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False)
+    apellido = Column(String(100), nullable=False)
+    email = Column(String(200), unique=True, nullable=True)
+    telefono = Column(String(30), nullable=True)
+    fecha_contacto = Column(Date, nullable=False, default=date.today)
+    fecha_visita = Column(Date, nullable=True)
+    estado = Column(Enum(EstadoVisitante), nullable=False, default=EstadoVisitante.interesado)
+    notas = Column(Text, nullable=True)
 
 
 class TurnoVoluntario(Base):

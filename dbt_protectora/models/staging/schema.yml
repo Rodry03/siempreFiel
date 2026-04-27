@@ -7,7 +7,9 @@ models:
       - name: id
         tests: [unique, not_null]
       - name: nombre
-        tests: [not_null]
+        tests:
+          - not_null
+          - dbt_utils.not_empty_string
       - name: sexo
         tests:
           - accepted_values:
@@ -19,6 +21,10 @@ models:
 
   - name: stg_vacunas
     description: Historial de vacunaciones
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "fecha_proxima is null or fecha_proxima > fecha_administracion"
+          severity: warn
     columns:
       - name: id
         tests: [unique, not_null]
@@ -42,6 +48,14 @@ models:
     columns:
       - name: id
         tests: [unique, not_null]
+      - name: nombre
+        tests:
+          - not_null
+          - dbt_utils.not_empty_string
+      - name: apellido
+        tests:
+          - not_null
+          - dbt_utils.not_empty_string
       - name: email
         tests: [unique, not_null]
 

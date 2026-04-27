@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ visitante.nombre }} {{ visitante.apellido }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/visitas/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{{ visitante.nombre }} {{ visitante.apellido }}</h2>
+  <span class="badge bg-{{ estado_colors[visitante.estado.value] }} fs-6">
+    {{ estado_labels[visitante.estado.value] }}
+  </span>
+</div>
+
+<div class="d-flex gap-2 mb-4">
+  <a href="/visitas/{{ visitante.id }}/editar" class="btn btn-outline-secondary">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+  {% if visitante.estado.value not in ['se_convirtio', 'descartado'] %}
+  <form method="post" action="/visitas/{{ visitante.id }}/convertir" class="d-inline">
+    <button type="submit" class="btn btn-success"
+      onclick="return confirm('¿Convertir a {{ visitante.nombre }} en voluntario?')">
+      <i class="bi bi-person-plus me-1"></i>Convertir en voluntario
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-body p-4">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="text-muted small">Teléfono</div>
+        <div>{{ visitante.telefono or '—' }}</div>
+      </div>
+      <div class="col-md-6">
+        <div class="text-muted small">Email</div>
+        <div>{{ visitante.email or '—' }}</div>
+      </div>
+      <div class="col-md-6">
+        <div class="text-muted small">Fecha de contacto</div>
+        <div>{{ visitante.fecha_contacto }}</div>
+      </div>
+      <div class="col-md-6">
+        <div class="text-muted small">Días en el grupo</div>
+        <div>
+          {% set dias = (hoy - visitante.fecha_contacto).days %}
+          {{ dias }} días
+          {% if visitante.estado.value in ['interesado', 'visita_programada'] and dias > 30 %}
+          <span class="badge bg-danger ms-1">Mucho tiempo sin visitar</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="text-muted small">Fecha de visita</div>
+        <div>{{ visitante.fecha_visita or '—' }}</div>
+      </div>
+      {% if visitante.notas %}
+      <div class="col-12">
+        <div class="text-muted small">Notas</div>
+        <div>{{ visitante.notas }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

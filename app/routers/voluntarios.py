@@ -56,9 +56,16 @@ def _contexto_form(extra={}):
 
 
 @router.get("/nuevo")
-def form_nuevo_voluntario(request: Request):
+def form_nuevo_voluntario(
+    request: Request,
+    nombre: str = "",
+    apellido: str = "",
+    email: str = "",
+    telefono: str = "",
+):
+    prefill = {"nombre": nombre, "apellido": apellido, "email": email, "telefono": telefono}
     return templates.TemplateResponse(request, "voluntarios/form.html",
-        _contexto_form({"voluntario": None}))
+        _contexto_form({"voluntario": None, "prefill": prefill}))
 
 
 @router.post("/nuevo")

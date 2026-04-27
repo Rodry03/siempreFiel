@@ -19,12 +19,12 @@
         <div class="col-md-6">
           <label class="form-label fw-semibold">Nombre *</label>
           <input type="text" name="nombre" class="form-control" required
-            value="{{ voluntario.nombre if voluntario else '' }}">
+            value="{{ voluntario.nombre if voluntario else (prefill.nombre if prefill else '') }}">
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Apellido *</label>
           <input type="text" name="apellido" class="form-control" required
-            value="{{ voluntario.apellido if voluntario else '' }}">
+            value="{{ voluntario.apellido if voluntario else (prefill.apellido if prefill else '') }}">
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">DNI</label>
@@ -34,12 +34,12 @@
         <div class="col-md-8">
           <label class="form-label fw-semibold">Email *</label>
           <input type="email" name="email" class="form-control" required
-            value="{{ voluntario.email if voluntario else '' }}">
+            value="{{ voluntario.email if voluntario else (prefill.email if prefill else '') }}">
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">Teléfono</label>
           <input type="text" name="telefono" class="form-control"
-            value="{{ voluntario.telefono if voluntario and voluntario.telefono else '' }}">
+            value="{{ voluntario.telefono if voluntario and voluntario.telefono else (prefill.telefono if prefill else '') }}">
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Perfil *</label>

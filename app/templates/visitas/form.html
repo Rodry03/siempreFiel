@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{% if visitante %}Editar visita{% else %}Nueva visita{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/visitas/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{% if visitante %}Editar visita{% else %}Nueva visita{% endif %}</h2>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-body p-4">
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="{% if visitante and visitante.id %}/visitas/{{ visitante.id }}/editar{% else %}/visitas/nuevo{% endif %}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" name="nombre" class="form-control" required
+            value="{{ visitante.nombre if visitante else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Apellido *</label>
+          <input type="text" name="apellido" class="form-control" required
+            value="{{ visitante.apellido if visitante else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" name="telefono" class="form-control"
+            value="{{ visitante.telefono if visitante and visitante.telefono else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control"
+            value="{{ visitante.email if visitante and visitante.email else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha de contacto *</label>
+          <input type="date" name="fecha_contacto" class="form-control" required
+            value="{{ visitante.fecha_contacto.isoformat() if visitante else hoy.isoformat() }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha de visita</label>
+          <input type="date" name="fecha_visita" class="form-control"
+            value="{{ visitante.fecha_visita.isoformat() if visitante and visitante.fecha_visita else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Estado *</label>
+          <select name="estado" class="form-select" required>
+            {% for e in estados %}
+            <option value="{{ e }}" {% if visitante and visitante.estado.value == e %}selected{% endif %}>
+              {{ estado_labels[e] }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Notas</label>
+          <textarea name="notas" class="form-control" rows="3">{{ visitante.notas if visitante and visitante.notas else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>{% if visitante %}Guardar cambios{% else %}Crear visita{% endif %}
+        </button>
+        <a href="{% if visitante %}/visitas/{{ visitante.id }}{% else %}/visitas/{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

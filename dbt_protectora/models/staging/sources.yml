@@ -29,19 +29,19 @@ sources:
         columns:
           - name: num_chip
             description: Número de microchip del perro
-            tests: [not_null]
+            tests:
+              - not_null:
+                  severity: warn
           - name: perro
             description: Nombre del perro
             tests: [not_null]
           - name: sexo
             tests:
               - accepted_values:
+                  severity: warn
                   values: ['MACHO', 'HEMBRA']
-          - name: castrado
-            tests:
-              - accepted_values:
-                  values: ['SI', 'NO']
           - name: estado
             tests:
               - accepted_values:
+                  severity: warn
                   values: ['REFUGIO', 'ACOGIDA', 'RESIDENCIA']

@@ -16,7 +16,10 @@ models:
         tests: [unique, not_null]
 
   - name: mart_tiempo_en_refugio
-    description: Top 20 perros con más tiempo en el sistema
+    description: Todos los perros activos con el tiempo que llevan en el sistema
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_perros')
     columns:
       - name: id
         tests: [not_null]

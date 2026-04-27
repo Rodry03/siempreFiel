@@ -1,4 +1,3 @@
--- Top 20 perros con más tiempo en el sistema desde su fecha de entrada
 with perros as (
     select * from {{ ref('stg_perros') }}
 ),
@@ -17,4 +16,3 @@ select
 from perros p
 left join ubicacion_actual u on p.id = u.perro_id
 order by dias_en_sistema desc
-limit 20
