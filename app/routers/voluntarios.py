@@ -30,8 +30,10 @@ PERFIL_COLORS = {
 
 
 @router.get("/")
-def listar_voluntarios(request: Request, perfil: str = "todos", db: Session = Depends(get_db)):
+def listar_voluntarios(request: Request, perfil: str = "todos", bajas: bool = False, db: Session = Depends(get_db)):
     query = db.query(Voluntario)
+    if not bajas:
+        query = query.filter(Voluntario.activo == True)
     if perfil != "todos":
         try:
             query = query.filter(Voluntario.perfil == PerfilVoluntario(perfil))
@@ -44,6 +46,7 @@ def listar_voluntarios(request: Request, perfil: str = "todos", db: Session = De
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,
+        "bajas": bajas,
     })
 
 
@@ -150,4 +153,34 @@ def editar_voluntario(
         db.rollback()
         return templates.TemplateResponse(request, "voluntarios/form.html",
             _contexto_form({"voluntario": voluntario, "error": "El email o DNI ya está registrado."}))
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/dar-de-baja")
+def dar_de_baja(voluntario_id: int, db: Session = Depends(get_db)):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if voluntario:
+        voluntario.activo = False
+        db.commit()
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/reactivar")
+def reactivar(voluntario_id: int, db: Session = Depends(get_db)):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if voluntario:
+        voluntario.activo = True
+        db.commit()
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/cambiar-perfil")
+def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = Depends(get_db)):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if voluntario:
+        try:
+            voluntario.perfil = PerfilVoluntario(perfil)
+            db.commit()
+        except ValueError:
+            pass
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)

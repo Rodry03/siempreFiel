@@ -81,6 +81,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "voluntario": voluntario,
         "hace_turnos": hace_turnos,
         "saldo": saldo,
+        "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,
         "franja_labels": FRANJA_LABELS,
