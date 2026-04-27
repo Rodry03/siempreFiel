@@ -1,11 +1,20 @@
 import os
+import sys
 import pandas as pd
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/protectora")
+if "--prod" in sys.argv:
+    DATABASE_URL = (
+        f"postgresql://{os.getenv('DBT_NEON_USER')}:{os.getenv('DBT_NEON_PASSWORD')}"
+        f"@{os.getenv('DBT_NEON_HOST')}/{os.getenv('DBT_NEON_DBNAME')}?sslmode=require"
+    )
+    print("Cargando en PRODUCCIÓN (Neon)...")
+else:
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/protectora")
+    print("Cargando en LOCAL...")
 
 COLUMNAS = {
     "Nº":              "numero",
