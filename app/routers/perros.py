@@ -1,5 +1,6 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
+from app.auth import get_current_user
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc
@@ -8,7 +9,7 @@ from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
 from app.templates_config import templates
 
-router = APIRouter(prefix="/perros")
+router = APIRouter(prefix="/perros", dependencies=[Depends(get_current_user)])
 
 UBICACION_LABELS = {
     "refugio": "Refugio",

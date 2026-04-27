@@ -6,3 +6,6 @@ python-dotenv
 jinja2
 python-multipart
 dbt-postgres
+passlib[bcrypt]
+bcrypt<4.0
+itsdangerous

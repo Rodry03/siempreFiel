@@ -1,5 +1,6 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
+from app.auth import get_current_user
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -7,7 +8,7 @@ from app.database import get_db
 from app.models import Voluntario, TurnoVoluntario, FranjaTurno, EstadoTurno, PerfilVoluntario
 from app.templates_config import templates
 
-router = APIRouter(prefix="/voluntarios")
+router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
 
 PERFIL_LABELS = {
     "directiva": "Directiva",

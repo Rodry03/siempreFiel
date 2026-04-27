@@ -55,7 +55,25 @@
         <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
           <i class="bi bi-door-open me-2"></i>Visitas
         </a>
+        {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
+        <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
+          <i class="bi bi-shield-lock me-2"></i>Usuarios
+        </a>
+        {% endif %}
       </nav>
+      {% if request.state.current_user %}
+      <div class="px-3 pb-3 mt-auto">
+        <div class="text-white-50 small mb-1">
+          <i class="bi bi-person-circle me-1"></i>{{ request.state.current_user.nombre }}
+          <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">
+            {{ request.state.current_user.rol.value }}
+          </span>
+        </div>
+        <a href="/logout" class="btn btn-sm btn-outline-light w-100">
+          <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
+        </a>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Main content -->

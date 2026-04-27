@@ -32,6 +32,11 @@ class PerfilVoluntario(str, enum.Enum):
     colaboradores = "colaboradores"
 
 
+class RolUsuario(str, enum.Enum):
+    admin = "admin"
+    editor = "editor"
+
+
 class EstadoVisitante(str, enum.Enum):
     interesado = "interesado"
     visita_programada = "visita_programada"
@@ -128,6 +133,17 @@ class Voluntario(Base):
     notas = Column(Text, nullable=True)
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(200), nullable=False)
+    nombre = Column(String(100), nullable=False)
+    rol = Column(Enum(RolUsuario), nullable=False, default=RolUsuario.editor)
+    activo = Column(Boolean, default=True, nullable=False)
 
 
 class Visitante(Base):
