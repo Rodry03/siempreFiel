@@ -10,3 +10,13 @@ protectora:
       dbname: protectora
       schema: analytics
       threads: 4
+    prod:
+      type: postgres
+      host: "{{ env_var('DBT_NEON_HOST') }}"
+      port: 5432
+      user: "{{ env_var('DBT_NEON_USER') }}"
+      password: "{{ env_var('DBT_NEON_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_NEON_DBNAME') }}"
+      schema: analytics
+      threads: 4
+      sslmode: require
