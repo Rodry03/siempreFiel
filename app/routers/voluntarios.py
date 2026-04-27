@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.database import get_db
-from app.models import Voluntario, PerfilVoluntario
+from app.models import Voluntario, PerfilVoluntario, EstadoContrato
 from app.templates_config import templates
 
 router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
@@ -50,10 +50,24 @@ def listar_voluntarios(request: Request, perfil: str = "todos", bajas: bool = Fa
     })
 
 
+CONTRATO_LABELS = {
+    "pendiente": "Pendiente",
+    "enviado": "Enviado",
+    "firmado": "Firmado",
+}
+CONTRATO_COLORS = {
+    "pendiente": "secondary",
+    "enviado": "warning",
+    "firmado": "success",
+}
+
+
 def _contexto_form(extra={}):
     return {
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
+        "contratos": [e.value for e in EstadoContrato],
+        "contrato_labels": CONTRATO_LABELS,
         "hoy": date.today().isoformat(),
         **extra,
     }
@@ -84,6 +98,12 @@ def crear_voluntario(
     activo: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
+    direccion: Optional[str] = Form(None),
+    provincia: Optional[str] = Form(None),
+    codigo_postal: Optional[str] = Form(None),
+    fecha_contrato: Optional[date] = Form(None),
+    contrato_estado: Optional[str] = Form(None),
+    teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -97,6 +117,12 @@ def crear_voluntario(
         activo=activo == "on",
         ppp=ppp == "on",
         telefono=telefono or None,
+        direccion=direccion or None,
+        provincia=provincia or None,
+        codigo_postal=codigo_postal or None,
+        fecha_contrato=fecha_contrato,
+        contrato_estado=EstadoContrato(contrato_estado) if contrato_estado else None,
+        teaming=teaming == "on",
         notas=notas or None,
     )
     db.add(voluntario)
@@ -131,6 +157,12 @@ def editar_voluntario(
     activo: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
+    direccion: Optional[str] = Form(None),
+    provincia: Optional[str] = Form(None),
+    codigo_postal: Optional[str] = Form(None),
+    fecha_contrato: Optional[date] = Form(None),
+    contrato_estado: Optional[str] = Form(None),
+    teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -146,6 +178,12 @@ def editar_voluntario(
     voluntario.activo = activo == "on"
     voluntario.ppp = ppp == "on"
     voluntario.telefono = telefono or None
+    voluntario.direccion = direccion or None
+    voluntario.provincia = provincia or None
+    voluntario.codigo_postal = codigo_postal or None
+    voluntario.fecha_contrato = fecha_contrato
+    voluntario.contrato_estado = EstadoContrato(contrato_estado) if contrato_estado else None
+    voluntario.teaming = teaming == "on"
     voluntario.notas = notas or None
     try:
         db.commit()

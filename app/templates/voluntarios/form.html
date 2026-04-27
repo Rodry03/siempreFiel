@@ -72,6 +72,51 @@
             </label>
           </div>
         </div>
+        <div class="col-12"><hr class="my-1"><p class="fw-semibold text-muted small mb-0">Dirección</p></div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Dirección</label>
+          <input type="text" name="direccion" class="form-control"
+            value="{{ voluntario.direccion if voluntario and voluntario.direccion else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Provincia</label>
+          <input type="text" name="provincia" class="form-control"
+            value="{{ voluntario.provincia if voluntario and voluntario.provincia else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Código postal</label>
+          <input type="text" name="codigo_postal" class="form-control"
+            value="{{ voluntario.codigo_postal if voluntario and voluntario.codigo_postal else '' }}">
+        </div>
+
+        <div class="col-12"><hr class="my-1"><p class="fw-semibold text-muted small mb-0">Contrato y Teaming</p></div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Estado del contrato</label>
+          <select name="contrato_estado" class="form-select">
+            <option value="">— Sin definir —</option>
+            {% for c in contratos %}
+            <option value="{{ c }}" {% if voluntario and voluntario.contrato_estado and voluntario.contrato_estado.value == c %}selected{% endif %}>
+              {{ contrato_labels[c] }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha del contrato</label>
+          <input type="date" name="fecha_contrato" class="form-control"
+            value="{{ voluntario.fecha_contrato.isoformat() if voluntario and voluntario.fecha_contrato else '' }}">
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="teaming" id="teaming"
+              {% if voluntario and voluntario.teaming %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="teaming">
+              <i class="bi bi-heart me-1 text-danger"></i>Teaming confirmado
+            </label>
+          </div>
+        </div>
+
+        <div class="col-12"><hr class="my-1"></div>
         <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ voluntario.notas if voluntario and voluntario.notas else '' }}</textarea>

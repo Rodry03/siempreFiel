@@ -32,6 +32,12 @@ class PerfilVoluntario(str, enum.Enum):
     colaboradores = "colaboradores"
 
 
+class EstadoContrato(str, enum.Enum):
+    pendiente = "pendiente"
+    enviado = "enviado"
+    firmado = "firmado"
+
+
 class RolUsuario(str, enum.Enum):
     admin = "admin"
     editor = "editor"
@@ -130,6 +136,12 @@ class Voluntario(Base):
     fecha_alta = Column(Date, nullable=False, default=date.today)
     activo = Column(Boolean, default=True, nullable=False)
     ppp = Column(Boolean, default=False, nullable=False)
+    direccion = Column(String(200), nullable=True)
+    provincia = Column(String(100), nullable=True)
+    codigo_postal = Column(String(10), nullable=True)
+    fecha_contrato = Column(Date, nullable=True)
+    contrato_estado = Column(Enum(EstadoContrato), nullable=True)
+    teaming = Column(Boolean, default=False, nullable=False)
     notas = Column(Text, nullable=True)
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")

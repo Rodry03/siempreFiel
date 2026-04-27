@@ -53,6 +53,31 @@
               <span class="text-muted">Sin permiso</span>
             {% endif %}
           </td></tr>
+          {% if voluntario.direccion %}
+          <tr><th class="text-muted">Dirección</th><td>{{ voluntario.direccion }}</td></tr>
+          {% endif %}
+          {% if voluntario.provincia or voluntario.codigo_postal %}
+          <tr><th class="text-muted">Localidad</th><td>{{ voluntario.codigo_postal or '' }} {{ voluntario.provincia or '' }}</td></tr>
+          {% endif %}
+          <tr><th class="text-muted">Contrato</th><td>
+            {% if voluntario.contrato_estado %}
+              <span class="badge bg-{{ contrato_colors[voluntario.contrato_estado.value] }}">
+                {{ contrato_labels[voluntario.contrato_estado.value] }}
+              </span>
+              {% if voluntario.fecha_contrato %}
+                <span class="text-muted small ms-1">{{ voluntario.fecha_contrato }}</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td></tr>
+          <tr><th class="text-muted">Teaming</th><td>
+            {% if voluntario.teaming %}
+              <span class="badge bg-danger"><i class="bi bi-heart-fill me-1"></i>Confirmado</span>
+            {% else %}
+              <span class="text-muted">Pendiente</span>
+            {% endif %}
+          </td></tr>
           {% if voluntario.notas %}
           <tr><th class="text-muted">Notas</th><td>{{ voluntario.notas }}</td></tr>
           {% endif %}

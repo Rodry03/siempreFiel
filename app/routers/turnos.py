@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.models import Voluntario, TurnoVoluntario, FranjaTurno, EstadoTurno, PerfilVoluntario
+from app.routers.voluntarios import CONTRATO_LABELS, CONTRATO_COLORS
 from app.templates_config import templates
 
 router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
@@ -84,6 +85,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,
+        "contrato_labels": CONTRATO_LABELS,
+        "contrato_colors": CONTRATO_COLORS,
         "franja_labels": FRANJA_LABELS,
         "estado_labels": ESTADO_LABELS,
         "estado_colors": ESTADO_COLORS,
