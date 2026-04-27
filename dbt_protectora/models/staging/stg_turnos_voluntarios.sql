@@ -1,3 +1,5 @@
+{{ config(materialized='incremental', unique_key='id') }}
+
 select
     id,
     voluntario_id,
@@ -6,4 +8,8 @@ select
     estado,
     notas,
     date_trunc('week', fecha::timestamp)::date as semana
-from public.turnos_voluntarios
+from {{ source('protectora', 'turnos_voluntarios') }}
+
+{% if is_incremental() %}
+    where fecha > (select max(fecha) from {{ this }})
+{% endif %}

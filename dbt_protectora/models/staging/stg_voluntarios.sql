@@ -7,4 +7,4 @@ select
     perfil,
     fecha_alta,
     activo
-from public.voluntarios
+from {{ source('protectora', 'voluntarios') }}

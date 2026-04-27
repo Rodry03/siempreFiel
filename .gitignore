@@ -43,3 +43,6 @@ dbt_protectora/target/
 dbt_protectora/dbt_packages/
 dbt_protectora/logs/
 logs/
+
+# Datos sensibles
+data/

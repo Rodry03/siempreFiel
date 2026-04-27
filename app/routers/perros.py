@@ -2,6 +2,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc
 from typing import Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
@@ -21,21 +22,52 @@ def _ubicacion_actual(perro: Perro) -> Optional[Ubicacion]:
     return next((u for u in perro.ubicaciones if u.fecha_fin is None), None)
 
 
+POR_PAGINA = 25
+
+COLUMNAS_ORDEN = {
+    "nombre":        Perro.nombre,
+    "raza":          Raza.nombre,
+    "sexo":          Perro.sexo,
+    "esterilizado":  Perro.esterilizado,
+    "fecha_entrada": Perro.fecha_entrada,
+    "dias":          Perro.fecha_entrada,
+}
+
 @router.get("/")
-def listar_perros(request: Request, estado: str = "todos", db: Session = Depends(get_db)):
-    query = db.query(Perro)
+def listar_perros(
+    request: Request,
+    estado: str = "activo",
+    page: int = 1,
+    sort: str = "nombre",
+    order: str = "asc",
+    db: Session = Depends(get_db),
+):
+    query = db.query(Perro).join(Raza)
     if estado != "todos":
         try:
             query = query.filter(Perro.estado == EstadoPerro(estado))
         except ValueError:
             pass
-    perros = query.order_by(Perro.nombre).all()
+
+    columna = COLUMNAS_ORDEN.get(sort, Perro.nombre)
+    dir_fn = desc if order == "desc" else asc
+    query = query.order_by(dir_fn(columna))
+
+    total = query.count()
+    total_paginas = max(1, (total + POR_PAGINA - 1) // POR_PAGINA)
+    page = max(1, min(page, total_paginas))
+    perros = query.offset((page - 1) * POR_PAGINA).limit(POR_PAGINA).all()
     hoy = date.today()
     perros_con_ubicacion = [(p, _ubicacion_actual(p), (hoy - p.fecha_entrada).days) for p in perros]
     return templates.TemplateResponse(request, "perros/list.html", {
         "perros_con_ubicacion": perros_con_ubicacion,
         "estado_filtro": estado,
         "ubicacion_labels": UBICACION_LABELS,
+        "page": page,
+        "total_paginas": total_paginas,
+        "total": total,
+        "sort": sort,
+        "order": order,
     })
 
 
@@ -142,6 +174,15 @@ def editar_perro(
     perro.notas = notas or None
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/eliminar")
+def eliminar_perro(perro_id: int, db: Session = Depends(get_db)):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if perro:
+        db.delete(perro)
+        db.commit()
+    return RedirectResponse("/perros/", status_code=303)
 
 
 @router.post("/{perro_id}/vacuna")

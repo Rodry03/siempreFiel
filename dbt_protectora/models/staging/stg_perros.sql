@@ -11,6 +11,6 @@ select
     p.fecha_entrada,
     p.estado,
     p.notas
-from public.perros p
-left join public.razas r on p.raza_id = r.id
+from {{ source('protectora', 'perros') }} p
+left join {{ source('protectora', 'razas') }} r on p.raza_id = r.id
 where p.estado = 'activo'

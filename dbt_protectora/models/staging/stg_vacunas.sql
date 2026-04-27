@@ -6,4 +6,4 @@ select
     fecha_proxima,
     veterinario,
     notas
-from public.vacunas
+from {{ source('protectora', 'vacunas') }}

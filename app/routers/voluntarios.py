@@ -2,6 +2,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.database import get_db
 from app.models import Voluntario, PerfilVoluntario
@@ -45,20 +46,27 @@ def listar_voluntarios(request: Request, perfil: str = "todos", db: Session = De
     })
 
 
-@router.get("/nuevo")
-def form_nuevo_voluntario(request: Request):
-    return templates.TemplateResponse(request, "voluntarios/form.html", {
-        "voluntario": None,
+def _contexto_form(extra={}):
+    return {
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "hoy": date.today().isoformat(),
-    })
+        **extra,
+    }
+
+
+@router.get("/nuevo")
+def form_nuevo_voluntario(request: Request):
+    return templates.TemplateResponse(request, "voluntarios/form.html",
+        _contexto_form({"voluntario": None}))
 
 
 @router.post("/nuevo")
 def crear_voluntario(
+    request: Request,
     nombre: str = Form(...),
     apellido: str = Form(...),
+    dni: Optional[str] = Form(None),
     email: str = Form(...),
     perfil: str = Form(...),
     fecha_alta: date = Form(...),
@@ -71,6 +79,7 @@ def crear_voluntario(
     voluntario = Voluntario(
         nombre=nombre,
         apellido=apellido,
+        dni=dni or None,
         email=email,
         perfil=PerfilVoluntario(perfil),
         fecha_alta=fecha_alta,
@@ -80,7 +89,12 @@ def crear_voluntario(
         notas=notas or None,
     )
     db.add(voluntario)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return templates.TemplateResponse(request, "voluntarios/form.html",
+            _contexto_form({"voluntario": voluntario, "error": "El email o DNI ya está registrado."}))
     return RedirectResponse("/voluntarios/", status_code=303)
 
 
@@ -89,19 +103,17 @@ def form_editar_voluntario(request: Request, voluntario_id: int, db: Session = D
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if not voluntario:
         return RedirectResponse("/voluntarios/", status_code=303)
-    return templates.TemplateResponse(request, "voluntarios/form.html", {
-        "voluntario": voluntario,
-        "perfiles": [p.value for p in PerfilVoluntario],
-        "perfil_labels": PERFIL_LABELS,
-        "hoy": date.today().isoformat(),
-    })
+    return templates.TemplateResponse(request, "voluntarios/form.html",
+        _contexto_form({"voluntario": voluntario}))
 
 
 @router.post("/{voluntario_id}/editar")
 def editar_voluntario(
+    request: Request,
     voluntario_id: int,
     nombre: str = Form(...),
     apellido: str = Form(...),
+    dni: Optional[str] = Form(None),
     email: str = Form(...),
     perfil: str = Form(...),
     fecha_alta: date = Form(...),
@@ -116,6 +128,7 @@ def editar_voluntario(
         return RedirectResponse("/voluntarios/", status_code=303)
     voluntario.nombre = nombre
     voluntario.apellido = apellido
+    voluntario.dni = dni or None
     voluntario.email = email
     voluntario.perfil = PerfilVoluntario(perfil)
     voluntario.fecha_alta = fecha_alta
@@ -123,5 +136,10 @@ def editar_voluntario(
     voluntario.ppp = ppp == "on"
     voluntario.telefono = telefono or None
     voluntario.notas = notas or None
-    db.commit()
-    return RedirectResponse("/voluntarios/", status_code=303)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return templates.TemplateResponse(request, "voluntarios/form.html",
+            _contexto_form({"voluntario": voluntario, "error": "El email o DNI ya está registrado."}))
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)

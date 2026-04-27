@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: protectora
+    schema: public
+    description: Tablas operacionales de la app Siempre Fiel
+    tables:
+      - name: perros
+        description: Registro de perros gestionados por la protectora
+      - name: razas
+        description: Catálogo de razas
+      - name: vacunas
+        description: Historial de vacunaciones
+      - name: ubicaciones
+        description: Historial de ubicaciones de cada perro
+      - name: voluntarios
+        description: Voluntarios de la protectora
+      - name: turnos_voluntarios
+        description: Registro de turnos por voluntario
+
+  - name: raw
+    schema: raw
+    description: Datos crudos cargados desde fuentes externas sin transformar
+    tables:
+      - name: perros_xlsx
+        description: Perros activos cargados desde la hoja de cálculo de la protectora
+      - name: perros_adoptados
+        description: Perros adoptados cargados desde la hoja de cálculo de la protectora
+        columns:
+          - name: num_chip
+            description: Número de microchip del perro
+            tests: [not_null]
+          - name: perro
+            description: Nombre del perro
+            tests: [not_null]
+          - name: sexo
+            tests:
+              - accepted_values:
+                  values: ['MACHO', 'HEMBRA']
+          - name: castrado
+            tests:
+              - accepted_values:
+                  values: ['SI', 'NO']
+          - name: estado
+            tests:
+              - accepted_values:
+                  values: ['REFUGIO', 'ACOGIDA', 'RESIDENCIA']

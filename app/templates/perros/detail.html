@@ -8,9 +8,35 @@
   <span class="badge {% if perro.estado.value == 'activo' %}bg-primary{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
     {{ perro.estado.value | capitalize }}
   </span>
-  <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary ms-auto">
-    <i class="bi bi-pencil me-1"></i>Editar
-  </a>
+  <div class="ms-auto d-flex gap-2">
+    <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar">
+      <i class="bi bi-trash me-1"></i>Eliminar
+    </button>
+  </div>
+</div>
+
+<!-- Modal confirmación -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h6 class="modal-title fw-bold">¿Eliminar a {{ perro.nombre }}?</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-muted small pt-0">
+        Se borrarán también sus vacunas y ubicaciones. Esta acción no se puede deshacer.
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form method="post" action="/perros/{{ perro.id }}/eliminar">
+          <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="row g-4">

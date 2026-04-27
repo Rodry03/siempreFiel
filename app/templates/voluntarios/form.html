@@ -9,7 +9,11 @@
 
 <div class="card" style="max-width:600px;">
   <div class="card-body p-4">
-    <form method="post" action="{% if voluntario %}/voluntarios/{{ voluntario.id }}/editar{% else %}/voluntarios/nuevo{% endif %}">
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% if voluntario and voluntario.id %}/voluntarios/{{ voluntario.id }}/editar{% else %}/voluntarios/nuevo{% endif %}">
 
       <div class="row g-3">
         <div class="col-md-6">
@@ -21,6 +25,11 @@
           <label class="form-label fw-semibold">Apellido *</label>
           <input type="text" name="apellido" class="form-control" required
             value="{{ voluntario.apellido if voluntario else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">DNI</label>
+          <input type="text" name="dni" class="form-control"
+            value="{{ voluntario.dni if voluntario and voluntario.dni else '' }}">
         </div>
         <div class="col-md-8">
           <label class="form-label fw-semibold">Email *</label>

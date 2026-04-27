@@ -11,13 +11,11 @@ models:
       - name: sexo
         tests:
           - accepted_values:
-              arguments:
-                values: ['macho', 'hembra']
+              values: ['macho', 'hembra']
       - name: estado
         tests:
           - accepted_values:
-              arguments:
-                values: ['activo', 'adoptado', 'fallecido']
+              values: ['activo', 'adoptado', 'fallecido']
 
   - name: stg_vacunas
     description: Historial de vacunaciones
@@ -37,8 +35,7 @@ models:
       - name: tipo
         tests:
           - accepted_values:
-              arguments:
-                values: ['refugio', 'acogida', 'residencia', 'adoptado']
+              values: ['refugio', 'acogida', 'residencia', 'adoptado']
 
   - name: stg_voluntarios
     description: Voluntarios de la protectora
@@ -58,10 +55,31 @@ models:
       - name: franja
         tests:
           - accepted_values:
-              arguments:
-                values: ['manana', 'tarde']
+              values: ['manana', 'tarde']
       - name: estado
         tests:
           - accepted_values:
-              arguments:
-                values: ['realizado', 'medio_turno', 'falta_justificada', 'falta_injustificada', 'no_apuntado']
+              values: ['realizado', 'medio_turno', 'falta_justificada', 'falta_injustificada', 'no_apuntado']
+
+  - name: stg_perros_entrada
+    description: Perros del xlsx con datos limpios y normalizados, pendientes de cargar en la app
+    columns:
+      - name: nombre
+        tests: [not_null]
+      - name: num_chip
+        tests: [unique, not_null]
+      - name: sexo
+        tests:
+          - accepted_values:
+              values: ['macho', 'hembra']
+      - name: tipo_ubicacion
+        tests:
+          - accepted_values:
+              values: ['refugio', 'acogida', 'residencia']
+      - name: fecha_entrada
+        tests:
+          - not_null:
+              severity: warn
+              config:
+                error_if: ">10"
+                warn_if: ">0"

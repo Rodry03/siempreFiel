@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from app.database import init_db
 from app.routers import dashboard, perros, voluntarios, turnos
 
-app = FastAPI(title="Protectora de Perros")
+app = FastAPI(title="Siempre Fiel")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

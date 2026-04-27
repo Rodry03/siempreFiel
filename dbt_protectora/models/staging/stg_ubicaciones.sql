@@ -7,4 +7,4 @@ select
     nombre_contacto,
     telefono_contacto,
     notas
-from public.ubicaciones
+from {{ source('protectora', 'ubicaciones') }}
