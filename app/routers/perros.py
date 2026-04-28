@@ -1,5 +1,6 @@
+import os
 from datetime import date
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -8,6 +9,27 @@ from typing import Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
 from app.templates_config import templates
+import cloudinary
+import cloudinary.uploader
+
+
+def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
+    if not file or not file.filename:
+        return None
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.environ.get("CLOUDINARY_API_KEY"),
+        api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    )
+    contents = file.file.read()
+    result = cloudinary.uploader.upload(
+        contents,
+        folder="protectora",
+        public_id=f"perro_{perro_id}",
+        overwrite=True,
+        transformation=[{"width": 800, "crop": "limit"}],
+    )
+    return result["secure_url"]
 
 router = APIRouter(prefix="/perros", dependencies=[Depends(get_current_user)])
 
@@ -114,6 +136,7 @@ def crear_perro(
     num_chip: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     perro = Perro(
@@ -131,6 +154,7 @@ def crear_perro(
     )
     db.add(perro)
     db.flush()
+    perro.foto_url = _subir_foto(foto, perro.id)
     db.add(Ubicacion(perro_id=perro.id, tipo=TipoUbicacion.refugio, fecha_inicio=fecha_entrada))
     db.commit()
     return RedirectResponse(f"/perros/{perro.id}", status_code=303)
@@ -179,6 +203,7 @@ def editar_perro(
     num_chip: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
@@ -195,6 +220,9 @@ def editar_perro(
     perro.num_chip = num_chip or None
     perro.color = color or None
     perro.notas = notas or None
+    nueva_url = _subir_foto(foto, perro_id)
+    if nueva_url:
+        perro.foto_url = nueva_url
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 

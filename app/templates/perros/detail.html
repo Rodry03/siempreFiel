@@ -48,6 +48,10 @@
         <i class="bi bi-info-circle me-2"></i>Datos generales
       </div>
       <div class="card-body">
+        {% if perro.foto_url %}
+        <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}"
+             class="rounded mb-3 w-100" style="max-height:220px; object-fit:cover;">
+        {% endif %}
         <table class="table table-sm table-borderless mb-0">
           <tr><th class="text-muted" style="width:40%">Raza</th><td>{{ perro.raza.nombre }}</td></tr>
           <tr><th class="text-muted">Sexo</th><td>

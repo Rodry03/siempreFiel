@@ -89,6 +89,7 @@ class Perro(Base):
     fecha_entrada = Column(Date, nullable=False, default=date.today)
     estado = Column(Enum(EstadoPerro), default=EstadoPerro.activo, nullable=False)
     notas = Column(Text, nullable=True)
+    foto_url = Column(String, nullable=True)
 
     raza = relationship("Raza", back_populates="perros")
     vacunas = relationship("Vacuna", back_populates="perro", cascade="all, delete-orphan")

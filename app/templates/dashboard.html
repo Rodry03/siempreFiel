@@ -4,30 +4,35 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0">Dashboard</h2>
-  <span class="text-muted small"><i class="bi bi-info-circle"></i> Los datos analíticos requieren ejecutar <code>dbt run</code></span>
 </div>
 
 <!-- Stat cards -->
 <div class="row g-3 mb-4">
-  <div class="col-sm-6 col-xl-3">
+  <div class="col-sm-6 col-xl">
     <div class="card stat-card border-primary p-3">
       <div class="text-muted small">Perros activos</div>
       <div class="fs-2 fw-bold text-primary">{{ total_activos }}</div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-3">
+  <div class="col-sm-6 col-xl">
+    <div class="card stat-card border-info p-3">
+      <div class="text-muted small">En el refugio</div>
+      <div class="fs-2 fw-bold text-info">{{ dist_ubicacion.refugio }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl">
     <div class="card stat-card border-success p-3">
       <div class="text-muted small">Voluntarios activos</div>
       <div class="fs-2 fw-bold text-success">{{ total_voluntarios }}</div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-3">
+  <div class="col-sm-6 col-xl">
     <div class="card stat-card border-warning p-3">
       <div class="text-muted small">Vacunas próximas / vencidas</div>
       <div class="fs-2 fw-bold text-warning">{{ vacunas_proximas | length }}</div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-3">
+  <div class="col-sm-6 col-xl">
     <div class="card stat-card border-danger p-3">
       <div class="text-muted small">Sin esterilizar</div>
       <div class="fs-2 fw-bold text-danger">{{ no_esterilizados | length }}</div>
@@ -42,7 +47,6 @@
     <div class="card">
       <div class="card-header bg-white border-0 pt-3">
         <span class="fw-semibold"><i class="bi bi-arrow-left-right text-primary me-2"></i>Entradas vs adopciones por mes</span>
-        <span class="text-muted small ms-2">vía dbt · mart_entradas_salidas_por_mes</span>
       </div>
       <div class="card-body">
         <canvas id="chartEntradasSalidas" style="min-height:180px; max-height:260px;"></canvas>
@@ -58,7 +62,6 @@
     <div class="card h-100">
       <div class="card-header bg-white border-0 pt-3">
         <span class="fw-semibold"><i class="bi bi-bar-chart text-primary me-2"></i>Entradas mensuales</span>
-        <span class="text-muted small ms-2">vía dbt · mart_entradas_por_mes</span>
       </div>
       <div class="card-body">
         {% if entradas_por_mes %}

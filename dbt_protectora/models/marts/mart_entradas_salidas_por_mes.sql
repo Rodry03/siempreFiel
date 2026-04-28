@@ -4,7 +4,7 @@ with entradas as (
         count(*)                                  as total_entradas
     from {{ source('protectora', 'perros') }}
     where fecha_entrada is not null
-      and fecha_entrada >= date_trunc('month', current_date - interval '2 years')
+      and fecha_entrada >= date_trunc('month', current_date - interval '1 year')
     group by date_trunc('month', fecha_entrada)
 ),
 
@@ -14,7 +14,7 @@ salidas as (
         count(*)                                 as total_salidas
     from {{ source('protectora', 'ubicaciones') }}
     where tipo = 'adoptado'
-      and fecha_inicio >= date_trunc('month', current_date - interval '2 years')
+      and fecha_inicio >= date_trunc('month', current_date - interval '1 year')
     group by date_trunc('month', fecha_inicio)
 ),
 

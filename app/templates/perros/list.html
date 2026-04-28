@@ -60,6 +60,11 @@
         {% for perro, ubicacion, dias in perros_con_ubicacion %}
         <tr>
           <td class="fw-semibold">
+            {% if perro.foto_url %}
+            {% set thumb = perro.foto_url.replace('/upload/', '/upload/c_fill,w_72,h_72/') %}
+            <img src="{{ thumb }}" alt="{{ perro.nombre }}"
+                 class="rounded-circle me-2" style="width:36px; height:36px; object-fit:cover;">
+            {% endif %}
             <a href="/perros/{{ perro.id }}" class="text-decoration-none">{{ perro.nombre }}</a>
             {% if perro.ppp %}<span class="badge bg-danger ms-1">PPP</span>{% endif %}
           </td>

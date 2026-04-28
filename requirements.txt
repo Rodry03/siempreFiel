@@ -11,3 +11,4 @@ bcrypt<4.0
 itsdangerous
 python-docx
 docx2pdf
+cloudinary

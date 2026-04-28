@@ -9,7 +9,7 @@
 
 <div class="card" style="max-width:700px;">
   <div class="card-body p-4">
-    <form method="post" action="{% if perro %}/perros/{{ perro.id }}/editar{% else %}/perros/nuevo{% endif %}">
+    <form method="post" action="{% if perro %}/perros/{{ perro.id }}/editar{% else %}/perros/nuevo{% endif %}" enctype="multipart/form-data">
 
       <div class="row g-3">
         <div class="col-md-6">
@@ -79,6 +79,16 @@
               {% if perro and perro.ppp %}checked{% endif %}>
             <label class="form-check-label fw-semibold text-danger" for="ppp">PPP</label>
           </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Foto</label>
+          {% if perro and perro.foto_url %}
+          <div class="mb-2">
+            <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}" class="rounded" style="height:80px; width:80px; object-fit:cover;">
+            <span class="text-muted small ms-2">Sube una nueva para reemplazarla</span>
+          </div>
+          {% endif %}
+          <input type="file" name="foto" class="form-control" accept="image/*">
         </div>
         <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
