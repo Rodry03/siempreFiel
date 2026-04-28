@@ -56,6 +56,12 @@
           <div class="form-text">15 dígitos, empieza por 9 (España)</div>
         </div>
         <div class="col-md-6">
+          <label class="form-label fw-semibold">Número de pasaporte</label>
+          <input type="text" name="num_pasaporte" class="form-control"
+            value="{{ perro.num_pasaporte if perro and perro.num_pasaporte else '' }}"
+            placeholder="ESxxxxxxxx">
+        </div>
+        <div class="col-md-6">
           <label class="form-label fw-semibold">Fecha de entrada *</label>
           <input type="date" name="fecha_entrada" class="form-control" required
             value="{{ perro.fecha_entrada.isoformat() if perro else hoy }}">

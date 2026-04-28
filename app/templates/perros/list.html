@@ -8,20 +8,19 @@
 </div>
 
 <!-- Filtros y búsqueda -->
+{% set q_raza = "&q=" ~ q ~ "&raza_id=" ~ raza_id_filtro %}
 {% set base_filtros = "&q=" ~ q ~ "&ubicacion=" ~ ubicacion_filtro ~ "&raza_id=" ~ raza_id_filtro %}
 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
   <div class="btn-group">
-    <a href="/perros/?estado=activo{{ base_filtros }}" class="btn btn-sm {% if estado_filtro == 'activo' %}btn-primary{% else %}btn-outline-primary{% endif %}">Activos</a>
-    <a href="/perros/?estado=adoptado{{ base_filtros }}" class="btn btn-sm {% if estado_filtro == 'adoptado' %}btn-success{% else %}btn-outline-success{% endif %}">Adoptados</a>
-    <a href="/perros/?estado=fallecido{{ base_filtros }}" class="btn btn-sm {% if estado_filtro == 'fallecido' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Fallecidos</a>
-    <a href="/perros/?estado=todos{{ base_filtros }}" class="btn btn-sm {% if estado_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
+    <a href="/perros/?estado=activo&ubicacion=refugio{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'refugio' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+      <i class="bi bi-heart me-1"></i>En refugio
+    </a>
+    <a href="/perros/?estado=activo&ubicacion=acogida{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'acogida' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+      <i class="bi bi-house me-1"></i>En acogida
+    </a>
+    <a href="/perros/?estado=adoptado&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'adoptado' %}btn-success{% else %}btn-outline-success{% endif %}">Adoptados</a>
+    <a href="/perros/?estado=todos&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
   </div>
-  <select id="filtro-ubicacion" class="form-select form-select-sm" style="max-width:160px">
-    <option value="">Todas las ubicaciones</option>
-    <option value="refugio" {% if ubicacion_filtro == 'refugio' %}selected{% endif %}>Refugio</option>
-    <option value="acogida" {% if ubicacion_filtro == 'acogida' %}selected{% endif %}>Acogida</option>
-    <option value="residencia" {% if ubicacion_filtro == 'residencia' %}selected{% endif %}>Residencia</option>
-  </select>
   <select id="filtro-raza" class="form-select form-select-sm" style="max-width:180px">
     <option value="0">Todas las razas</option>
     {% for r in razas %}
@@ -148,9 +147,6 @@
     timer = setTimeout(() => aplicarFiltro('q', input.value), 350);
   });
 
-  document.getElementById('filtro-ubicacion').addEventListener('change', function() {
-    aplicarFiltro('ubicacion', this.value);
-  });
   document.getElementById('filtro-raza').addEventListener('change', function() {
     aplicarFiltro('raza_id', this.value);
   });

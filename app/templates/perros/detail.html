@@ -49,8 +49,10 @@
       </div>
       <div class="card-body">
         {% if perro.foto_url %}
-        <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}"
-             class="rounded mb-3 w-100" style="max-height:220px; object-fit:cover;">
+        <div class="text-center mb-3">
+          <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}"
+               class="rounded" style="max-height:300px; max-width:100%; object-fit:contain;">
+        </div>
         {% endif %}
         <table class="table table-sm table-borderless mb-0">
           <tr><th class="text-muted" style="width:40%">Raza</th><td>{{ perro.raza.nombre }}</td></tr>
@@ -58,9 +60,10 @@
             {% if perro.sexo.value == 'macho' %}<span class="text-primary"><i class="bi bi-gender-male"></i> Macho</span>
             {% else %}<span class="text-danger"><i class="bi bi-gender-female"></i> Hembra</span>{% endif %}
           </td></tr>
-          <tr><th class="text-muted">Nacimiento</th><td>{{ perro.fecha_nacimiento or '—' }}</td></tr>
+          <tr><th class="text-muted">Nacimiento</th><td>{{ perro.fecha_nacimiento or '—' }}{% if edad %} <span class="text-muted small">({{ edad }})</span>{% endif %}</td></tr>
           <tr><th class="text-muted">Color</th><td>{{ perro.color or '—' }}</td></tr>
           <tr><th class="text-muted">Chip</th><td>{{ perro.num_chip or '—' }}</td></tr>
+          <tr><th class="text-muted">Pasaporte</th><td>{{ perro.num_pasaporte or '—' }}</td></tr>
           <tr><th class="text-muted">Entrada</th><td>{{ perro.fecha_entrada }}</td></tr>
           <tr><th class="text-muted">Esterilizado</th><td>
             {% if perro.esterilizado %}<span class="badge bg-success">Sí</span>

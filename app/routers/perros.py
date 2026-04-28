@@ -45,6 +45,19 @@ def _ubicacion_actual(perro: Perro) -> Optional[Ubicacion]:
     return next((u for u in perro.ubicaciones if u.fecha_fin is None), None)
 
 
+def _calcular_edad(fecha_nacimiento) -> Optional[str]:
+    if not fecha_nacimiento:
+        return None
+    hoy = date.today()
+    anos = hoy.year - fecha_nacimiento.year - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+    if anos == 0:
+        meses = (hoy.year - fecha_nacimiento.year) * 12 + hoy.month - fecha_nacimiento.month
+        if hoy.day < fecha_nacimiento.day:
+            meses -= 1
+        return f"{meses} mes{'es' if meses != 1 else ''}"
+    return f"{anos} año{'s' if anos != 1 else ''}"
+
+
 POR_PAGINA = 25
 
 COLUMNAS_ORDEN = {
@@ -64,7 +77,7 @@ def listar_perros(
     sort: str = "nombre",
     order: str = "asc",
     q: str = "",
-    ubicacion: str = "",
+    ubicacion: str = "refugio",
     raza_id: int = 0,
     db: Session = Depends(get_db),
 ):
@@ -134,13 +147,14 @@ def crear_perro(
     estado: str = Form("activo"),
     fecha_nacimiento: Optional[date] = Form(None),
     num_chip: Optional[str] = Form(None),
+    num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     perro = Perro(
-        nombre=nombre,
+        nombre=nombre.upper(),
         raza_id=raza_id,
         sexo=Sexo(sexo),
         esterilizado=esterilizado == "on",
@@ -149,6 +163,7 @@ def crear_perro(
         estado=EstadoPerro(estado),
         fecha_nacimiento=fecha_nacimiento,
         num_chip=num_chip or None,
+        num_pasaporte=num_pasaporte or None,
         color=color or None,
         notas=notas or None,
     )
@@ -173,6 +188,7 @@ def detalle_perro(request: Request, perro_id: int, db: Session = Depends(get_db)
         "ubicacion_labels": UBICACION_LABELS,
         "hoy": date.today().isoformat(),
         "tipos_ubicacion": [t.value for t in TipoUbicacion],
+        "edad": _calcular_edad(perro.fecha_nacimiento),
     })
 
 
@@ -201,6 +217,7 @@ def editar_perro(
     estado: str = Form("activo"),
     fecha_nacimiento: Optional[date] = Form(None),
     num_chip: Optional[str] = Form(None),
+    num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     foto: Optional[UploadFile] = File(None),
@@ -209,7 +226,7 @@ def editar_perro(
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if not perro:
         return RedirectResponse("/perros/", status_code=303)
-    perro.nombre = nombre
+    perro.nombre = nombre.upper()
     perro.raza_id = raza_id
     perro.sexo = Sexo(sexo)
     perro.esterilizado = esterilizado == "on"
@@ -218,6 +235,7 @@ def editar_perro(
     perro.estado = EstadoPerro(estado)
     perro.fecha_nacimiento = fecha_nacimiento
     perro.num_chip = num_chip or None
+    perro.num_pasaporte = num_pasaporte or None
     perro.color = color or None
     perro.notas = notas or None
     nueva_url = _subir_foto(foto, perro_id)
