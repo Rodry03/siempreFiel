@@ -81,6 +81,18 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
 
 router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
 
+
+@router.get("/debug/soffice")
+def debug_soffice():
+    result = subprocess.run(
+        ["find", "/", "-name", "soffice", "-type", "f"],
+        capture_output=True, timeout=30,
+    )
+    return {
+        "stdout": result.stdout.decode(errors="replace"),
+        "stderr": result.stderr.decode(errors="replace"),
+    }
+
 PERFIL_LABELS = {
     "directiva": "Directiva",
     "veterano": "Veterano",
