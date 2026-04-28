@@ -25,9 +25,26 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     no_esterilizados = _query_analytics(db, "mart_perros_no_esterilizados")
     tiempo_refugio = _query_analytics(db, "mart_tiempo_en_refugio")
 
-    from app.models import Perro, EstadoPerro, Voluntario
+    entradas_por_mes = _query_analytics(db, "mart_entradas_por_mes")
+    entradas_salidas = _query_analytics(db, "mart_entradas_salidas_por_mes")
+
+    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
     from app.routers.turnos import calcular_saldo
     total_activos = db.query(Perro).filter(Perro.estado == EstadoPerro.activo).count()
+    total_voluntarios = db.query(Voluntario).filter(Voluntario.activo == True).count()
+
+    # Distribución de perros activos por ubicación actual (última ubicación de cada perro)
+    perros_activos = db.query(Perro).filter(Perro.estado == EstadoPerro.activo).all()
+    dist_ubicacion = {"refugio": 0, "acogida": 0, "residencia": 0, "sin_ubicacion": 0}
+    for perro in perros_activos:
+        if perro.ubicaciones:
+            tipo = perro.ubicaciones[0].tipo.value
+            if tipo in dist_ubicacion:
+                dist_ubicacion[tipo] += 1
+            else:
+                dist_ubicacion["sin_ubicacion"] += 1
+        else:
+            dist_ubicacion["sin_ubicacion"] += 1
 
     hoy = date.today()
     voluntarios_top = [
@@ -54,6 +71,10 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "no_esterilizados": no_esterilizados,
         "tiempo_refugio": tiempo_refugio,
         "total_activos": total_activos,
+        "total_voluntarios": total_voluntarios,
         "voluntarios_top": voluntarios_top,
         "top_deudores": top_deudores,
+        "entradas_por_mes": entradas_por_mes,
+        "entradas_salidas": entradas_salidas,
+        "dist_ubicacion": dist_ubicacion,
     })

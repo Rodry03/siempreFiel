@@ -16,6 +16,12 @@
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card border-success p-3">
+      <div class="text-muted small">Voluntarios activos</div>
+      <div class="fs-2 fw-bold text-success">{{ total_voluntarios }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
     <div class="card stat-card border-warning p-3">
       <div class="text-muted small">Vacunas próximas / vencidas</div>
       <div class="fs-2 fw-bold text-warning">{{ vacunas_proximas | length }}</div>
@@ -25,6 +31,56 @@
     <div class="card stat-card border-danger p-3">
       <div class="text-muted small">Sin esterilizar</div>
       <div class="fs-2 fw-bold text-danger">{{ no_esterilizados | length }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráfico entradas vs salidas -->
+{% if entradas_salidas %}
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-arrow-left-right text-primary me-2"></i>Entradas vs adopciones por mes</span>
+        <span class="text-muted small ms-2">vía dbt · mart_entradas_salidas_por_mes</span>
+      </div>
+      <div class="card-body">
+        <canvas id="chartEntradasSalidas" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Gráficos -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-bar-chart text-primary me-2"></i>Entradas mensuales</span>
+        <span class="text-muted small ms-2">vía dbt · mart_entradas_por_mes</span>
+      </div>
+      <div class="card-body">
+        {% if entradas_por_mes %}
+        <canvas id="chartEntradas" height="100"></canvas>
+        {% else %}
+        <p class="text-muted mb-0">Ejecuta <code>dbt run</code> para ver este gráfico.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-pie-chart text-primary me-2"></i>Ubicación actual</span>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% if total_activos > 0 %}
+        <canvas id="chartUbicacion"></canvas>
+        {% else %}
+        <p class="text-muted mb-0">Sin perros activos.</p>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -227,4 +283,82 @@
     </div>
   </div>
 </div>
+
+{% if entradas_por_mes or total_activos > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if entradas_salidas %}
+new Chart(document.getElementById('chartEntradasSalidas'), {
+  type: 'bar',
+  data: {
+    labels: {{ entradas_salidas | map(attribute='mes_label') | list | tojson }},
+    datasets: [
+      {
+        label: 'Entradas',
+        data: {{ entradas_salidas | map(attribute='total_entradas') | list | tojson }},
+        backgroundColor: 'rgba(220, 53, 69, 0.6)',
+        borderRadius: 4,
+      },
+      {
+        label: 'Adopciones',
+        data: {{ entradas_salidas | map(attribute='total_salidas') | list | tojson }},
+        backgroundColor: 'rgba(25, 135, 84, 0.6)',
+        borderRadius: 4,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+{% endif %}
+
+{% if entradas_por_mes %}
+new Chart(document.getElementById('chartEntradas'), {
+  type: 'bar',
+  data: {
+    labels: {{ entradas_por_mes | map(attribute='mes_label') | list | tojson }},
+    datasets: [{
+      label: 'Entradas',
+      data: {{ entradas_por_mes | map(attribute='total_entradas') | list | tojson }},
+      backgroundColor: 'rgba(13, 110, 253, 0.7)',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+{% endif %}
+
+{% if total_activos > 0 %}
+new Chart(document.getElementById('chartUbicacion'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Refugio', 'Acogida', 'Residencia', 'Sin ubicación'],
+    datasets: [{
+      data: [
+        {{ dist_ubicacion.refugio }},
+        {{ dist_ubicacion.acogida }},
+        {{ dist_ubicacion.residencia }},
+        {{ dist_ubicacion.sin_ubicacion }}
+      ],
+      backgroundColor: ['#0d6efd', '#fd7e14', '#6f42c1', '#adb5bd'],
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12 } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endif %}
 {% endblock %}
