@@ -53,8 +53,15 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             result = subprocess.run(
-                ["soffice", "--headless", "--convert-to", "pdf", "--outdir", tmpdir, docx_path],
-                capture_output=True, timeout=30,
+                [
+                    "soffice",
+                    "--headless",
+                    "-env:UserInstallation=file:///tmp/libreoffice_profile",
+                    "--convert-to", "pdf",
+                    "--outdir", tmpdir,
+                    docx_path,
+                ],
+                capture_output=True, timeout=60,
             )
             if result.returncode != 0:
                 return None
