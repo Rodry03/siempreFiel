@@ -1,6 +1,6 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
-from app.auth import get_current_user
+from app.auth import get_current_user, require_not_veterano
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import Visitante, EstadoVisitante
 from app.templates_config import templates
 
-router = APIRouter(prefix="/visitas", dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/visitas", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
 ESTADO_LABELS = {
     "interesado": "Interesado",

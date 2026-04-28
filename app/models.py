@@ -40,7 +40,8 @@ class EstadoContrato(str, enum.Enum):
 
 class RolUsuario(str, enum.Enum):
     admin = "admin"
-    editor = "editor"
+    junta = "junta"
+    veterano = "veterano"
 
 
 class EstadoVisitante(str, enum.Enum):
@@ -156,8 +157,9 @@ class Usuario(Base):
     username = Column(String(50), unique=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     nombre = Column(String(100), nullable=False)
-    rol = Column(Enum(RolUsuario), nullable=False, default=RolUsuario.editor)
+    rol = Column(Enum(RolUsuario), nullable=False, default=RolUsuario.junta)
     activo = Column(Boolean, default=True, nullable=False)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=True)
 
 
 class Visitante(Base):

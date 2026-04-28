@@ -13,6 +13,7 @@
   {% else %}
     <span class="badge bg-secondary">Baja</span>
   {% endif %}
+  {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
   <div class="ms-auto d-flex gap-2">
     <a href="/voluntarios/{{ voluntario.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
@@ -35,6 +36,7 @@
     </form>
     {% endif %}
   </div>
+  {% endif %}
 </div>
 
 <div class="row g-4">
@@ -85,6 +87,7 @@
           <tr><th class="text-muted">Notas</th><td>{{ voluntario.notas }}</td></tr>
           {% endif %}
         </table>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
         <hr class="my-2">
         <form method="post" action="/voluntarios/{{ voluntario.id }}/cambiar-perfil" class="d-flex gap-2 align-items-center">
           <label class="small text-muted mb-0 text-nowrap">Cambiar perfil:</label>
@@ -99,12 +102,28 @@
             <i class="bi bi-arrow-repeat me-1"></i>Aplicar
           </button>
         </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row g-2 mt-1">
+      <div class="col-6">
+        <div class="card border-0 bg-light text-center py-3">
+          <div class="text-muted small mb-1">En la protectora</div>
+          <div class="fs-5 fw-bold text-primary">{{ tiempo_voluntario }}</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="card border-0 bg-light text-center py-3">
+          <div class="text-muted small mb-1">Turnos realizados</div>
+          <div class="fs-5 fw-bold text-success">{{ "%.1f"|format(total_turnos) }}</div>
+        </div>
       </div>
     </div>
 
     {% if hace_turnos %}
     <!-- Tarjeta saldo -->
-    <div class="card border-0
+    <div class="card border-0 mt-2
       {% if saldo > 0 %}bg-success bg-opacity-10{% elif saldo < 0 %}bg-danger bg-opacity-10{% else %}bg-light{% endif %}">
       <div class="card-body text-center py-4">
         <div class="text-muted small mb-1">Saldo de turnos</div>
@@ -125,9 +144,11 @@
     <div class="card">
       <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
         <span><i class="bi bi-calendar-check me-2"></i>Turnos</span>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
         <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formTurno">
           <i class="bi bi-plus-lg me-1"></i>Registrar turno
         </button>
+        {% endif %}
       </div>
       <div class="card-body">
 
@@ -185,12 +206,14 @@
               </td>
               <td class="text-muted small">{{ t.notas or '' }}</td>
               <td>
+                {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
                 <form method="post" action="/voluntarios/{{ voluntario.id }}/turno/{{ t.id }}/eliminar"
                       onsubmit="return confirm('¿Eliminar este turno?')">
                   <button type="submit" class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-trash"></i>
                   </button>
                 </form>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}

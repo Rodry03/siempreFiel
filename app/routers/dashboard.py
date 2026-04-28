@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.templates_config import templates
-from app.auth import get_current_user
+from app.auth import get_current_user, require_not_veterano
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
 
 def _query_analytics(db: Session, view: str) -> list[dict]:

@@ -93,22 +93,33 @@
     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column p-0">
+    {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
     <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
+      {% if not es_veterano %}
       <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
       </a>
+      {% endif %}
       <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
         <i class="bi bi-emoji-smile me-2"></i>Perros
       </a>
+      {% if not es_veterano %}
       <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
         <i class="bi bi-people me-2"></i>Voluntarios
       </a>
       <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
         <i class="bi bi-door-open me-2"></i>Visitas
       </a>
+      {% endif %}
       {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
       <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
         <i class="bi bi-shield-lock me-2"></i>Usuarios
+      </a>
+      {% endif %}
+      {% if es_veterano and request.state.current_user.voluntario_id %}
+      <a class="nav-link {% if '/voluntarios/' ~ request.state.current_user.voluntario_id == request.url.path %}active{% endif %}"
+         href="/voluntarios/{{ request.state.current_user.voluntario_id }}">
+        <i class="bi bi-person-circle me-2"></i>Mi perfil
       </a>
       {% endif %}
     </nav>
@@ -138,22 +149,33 @@
         <img src="/static/img/logo.png" alt="Logo" style="height:28px; width:28px; object-fit:contain; background:white; border-radius:6px; padding:2px;"> Siempre Fiel
         <small>Gestión de refugio</small>
       </a>
+      {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
       <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
+        {% if not es_veterano %}
         <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
           <i class="bi bi-speedometer2 me-2"></i>Dashboard
         </a>
+        {% endif %}
         <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
           <i class="bi bi-emoji-smile me-2"></i>Perros
         </a>
+        {% if not es_veterano %}
         <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
           <i class="bi bi-people me-2"></i>Voluntarios
         </a>
         <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
           <i class="bi bi-door-open me-2"></i>Visitas
         </a>
+        {% endif %}
         {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
         <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
           <i class="bi bi-shield-lock me-2"></i>Usuarios
+        </a>
+        {% endif %}
+        {% if es_veterano and request.state.current_user.voluntario_id %}
+        <a class="nav-link {% if '/voluntarios/' ~ request.state.current_user.voluntario_id == request.url.path %}active{% endif %}"
+           href="/voluntarios/{{ request.state.current_user.voluntario_id }}">
+          <i class="bi bi-person-circle me-2"></i>Mi perfil
         </a>
         {% endif %}
       </nav>

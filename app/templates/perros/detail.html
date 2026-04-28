@@ -9,6 +9,7 @@
     {{ perro.estado.value | capitalize }}
   </span>
   {% if perro.ppp %}<span class="badge bg-danger">PPP</span>{% endif %}
+  {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
   <div class="ms-auto d-flex gap-2">
     <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
@@ -17,6 +18,7 @@
       <i class="bi bi-trash me-1"></i>Eliminar
     </button>
   </div>
+  {% endif %}
 </div>
 
 <!-- Modal confirmación -->
@@ -86,9 +88,11 @@
     <div class="card mb-4">
       <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
         <span><i class="bi bi-geo-alt me-2"></i>Ubicación actual</span>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#formUbicacion">
           <i class="bi bi-arrow-left-right me-1"></i>Cambiar
         </button>
+        {% endif %}
       </div>
       <div class="card-body">
         {% if ubicacion_actual %}

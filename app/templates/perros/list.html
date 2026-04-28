@@ -4,13 +4,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0"><i class="bi bi-emoji-smile me-2"></i>Perros</h2>
+  {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
   <a href="/perros/nuevo" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo perro</a>
+  {% endif %}
 </div>
 
 <!-- Filtros y búsqueda -->
 {% set q_raza = "&q=" ~ q ~ "&raza_id=" ~ raza_id_filtro %}
 {% set base_filtros = "&q=" ~ q ~ "&ubicacion=" ~ ubicacion_filtro ~ "&raza_id=" ~ raza_id_filtro %}
+{% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  {% if not es_veterano %}
   <div class="btn-group">
     <a href="/perros/?estado=activo&ubicacion=refugio{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'refugio' %}btn-primary{% else %}btn-outline-primary{% endif %}">
       <i class="bi bi-heart me-1"></i>En refugio
@@ -21,6 +25,7 @@
     <a href="/perros/?estado=adoptado&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'adoptado' %}btn-success{% else %}btn-outline-success{% endif %}">Adoptados</a>
     <a href="/perros/?estado=todos&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
   </div>
+  {% endif %}
   <select id="filtro-raza" class="form-select form-select-sm" style="max-width:180px">
     <option value="0">Todas las razas</option>
     {% for r in razas %}

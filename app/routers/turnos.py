@@ -1,6 +1,6 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
-from app.auth import get_current_user
+from app.auth import get_current_user, require_not_veterano
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -64,6 +64,17 @@ ESTADO_VALOR = {
 FECHA_INICIO_TURNOS = date(2026, 4, 1)
 
 
+def calcular_tiempo_voluntario(fecha_alta) -> str:
+    hoy = date.today()
+    anos = hoy.year - fecha_alta.year - ((hoy.month, hoy.day) < (fecha_alta.month, fecha_alta.day))
+    if anos == 0:
+        meses = (hoy.year - fecha_alta.year) * 12 + hoy.month - fecha_alta.month
+        if hoy.day < fecha_alta.day:
+            meses -= 1
+        return f"{meses} mes{'es' if meses != 1 else ''}"
+    return f"{anos} año{'s' if anos != 1 else ''}"
+
+
 def calcular_saldo(voluntario: Voluntario) -> float:
     fecha_inicio = max(FECHA_INICIO_TURNOS, voluntario.fecha_alta)
     semanas_activo = (date.today() - fecha_inicio).days // 7
@@ -73,11 +84,19 @@ def calcular_saldo(voluntario: Voluntario) -> float:
 
 @router.get("/{voluntario_id}")
 def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depends(get_db)):
+    from app.models import RolUsuario
+    current_user = request.state.current_user
+    if current_user.rol == RolUsuario.veterano:
+        if not current_user.voluntario_id or current_user.voluntario_id != voluntario_id:
+            from app.auth import NotAuthorized
+            raise NotAuthorized()
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if not voluntario:
         return RedirectResponse("/voluntarios/", status_code=303)
     hace_turnos = voluntario.perfil not in PERFILES_SIN_TURNOS
     saldo = calcular_saldo(voluntario) if hace_turnos else None
+    total_turnos = sum(ESTADO_VALOR[t.estado.value] for t in voluntario.turnos)
+    tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
     return templates.TemplateResponse(request, "voluntarios/detail.html", {
         "voluntario": voluntario,
         "hace_turnos": hace_turnos,
@@ -93,10 +112,12 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "franjas": [f.value for f in FranjaTurno],
         "estados": [e.value for e in EstadoTurno],
         "hoy": date.today().isoformat(),
+        "total_turnos": total_turnos,
+        "tiempo_voluntario": tiempo_voluntario,
     })
 
 
-@router.post("/{voluntario_id}/turno")
+@router.post("/{voluntario_id}/turno", dependencies=[Depends(require_not_veterano)])
 def registrar_turno(
     voluntario_id: int,
     fecha: date = Form(...),
@@ -120,7 +141,7 @@ def registrar_turno(
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
-@router.post("/{voluntario_id}/turno/{turno_id}/eliminar")
+@router.post("/{voluntario_id}/turno/{turno_id}/eliminar", dependencies=[Depends(require_not_veterano)])
 def eliminar_turno(voluntario_id: int, turno_id: int, db: Session = Depends(get_db)):
     turno = db.query(TurnoVoluntario).filter(
         TurnoVoluntario.id == turno_id,

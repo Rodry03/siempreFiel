@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from datetime import date
 from docx import Document as DocxDocument
 from fastapi import APIRouter, Depends, Form, Request
-from app.auth import get_current_user
+from app.auth import get_current_user, require_not_veterano
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -79,7 +79,7 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
         logger.warning("soffice no encontrado en el sistema")
         return None
 
-router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
 
 @router.get("/debug/soffice")

@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from app.auth import get_current_user
+from app.auth import get_current_user, require_not_veterano
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
@@ -81,6 +81,11 @@ def listar_perros(
     raza_id: int = 0,
     db: Session = Depends(get_db),
 ):
+    from app.models import RolUsuario
+    if request.state.current_user and request.state.current_user.rol == RolUsuario.veterano:
+        estado = "activo"
+        ubicacion = "refugio"
+
     query = db.query(Perro).join(Raza)
     if estado != "todos":
         try:
@@ -135,7 +140,7 @@ def form_nuevo_perro(request: Request, db: Session = Depends(get_db)):
     })
 
 
-@router.post("/nuevo")
+@router.post("/nuevo", dependencies=[Depends(require_not_veterano)])
 def crear_perro(
     request: Request,
     nombre: str = Form(...),
@@ -205,7 +210,7 @@ def form_editar_perro(request: Request, perro_id: int, db: Session = Depends(get
     })
 
 
-@router.post("/{perro_id}/editar")
+@router.post("/{perro_id}/editar", dependencies=[Depends(require_not_veterano)])
 def editar_perro(
     perro_id: int,
     nombre: str = Form(...),
@@ -245,7 +250,7 @@ def editar_perro(
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 
-@router.post("/{perro_id}/eliminar")
+@router.post("/{perro_id}/eliminar", dependencies=[Depends(require_not_veterano)])
 def eliminar_perro(perro_id: int, db: Session = Depends(get_db)):
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if perro:
@@ -254,7 +259,7 @@ def eliminar_perro(perro_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/perros/", status_code=303)
 
 
-@router.post("/{perro_id}/vacuna")
+@router.post("/{perro_id}/vacuna", dependencies=[Depends(require_not_veterano)])
 def agregar_vacuna(
     perro_id: int,
     tipo: str = Form(...),
@@ -277,7 +282,7 @@ def agregar_vacuna(
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 
-@router.post("/{perro_id}/ubicacion")
+@router.post("/{perro_id}/ubicacion", dependencies=[Depends(require_not_veterano)])
 def cambiar_ubicacion(
     perro_id: int,
     tipo: str = Form(...),

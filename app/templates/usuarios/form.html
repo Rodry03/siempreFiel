@@ -33,13 +33,26 @@
         </div>
         <div class="col-12">
           <label class="form-label fw-semibold">Rol *</label>
-          <select name="rol" class="form-select" required>
+          <select name="rol" id="sel-rol" class="form-select" required>
             {% for r in roles %}
             <option value="{{ r }}" {% if usuario and usuario.rol.value == r %}selected{% endif %}>
               {{ rol_labels[r] }}
             </option>
             {% endfor %}
           </select>
+        </div>
+        <div class="col-12" id="campo-voluntario" style="display:none;">
+          <label class="form-label fw-semibold">Voluntario vinculado</label>
+          <select name="voluntario_id" class="form-select">
+            <option value="">— Sin vincular —</option>
+            {% for v in voluntarios %}
+            <option value="{{ v.id }}"
+              {% if usuario and usuario.voluntario_id == v.id %}selected{% endif %}>
+              {{ v.nombre }} {{ v.apellido }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Selecciona el voluntario correspondiente a este usuario.</div>
         </div>
         <div class="col-12">
           <div class="form-check">
@@ -59,4 +72,13 @@
     </form>
   </div>
 </div>
+<script>
+  const selRol = document.getElementById('sel-rol');
+  const campoVol = document.getElementById('campo-voluntario');
+  function toggleVol() {
+    campoVol.style.display = selRol.value === 'veterano' ? '' : 'none';
+  }
+  selRol.addEventListener('change', toggleVol);
+  toggleVol();
+</script>
 {% endblock %}

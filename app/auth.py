@@ -38,6 +38,16 @@ def require_admin(request: Request):
     return user
 
 
+def require_not_veterano(request: Request):
+    user = getattr(request.state, "current_user", None)
+    if not user:
+        raise NotAuthenticated()
+    from app.models import RolUsuario
+    if user.rol == RolUsuario.veterano:
+        raise NotAuthorized()
+    return user
+
+
 class CurrentUserMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         from app.database import SessionLocal
