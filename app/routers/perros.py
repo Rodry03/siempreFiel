@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from app.auth import get_current_user
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, and_
 from typing import Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
@@ -42,6 +42,8 @@ def listar_perros(
     sort: str = "nombre",
     order: str = "asc",
     q: str = "",
+    ubicacion: str = "",
+    raza_id: int = 0,
     db: Session = Depends(get_db),
 ):
     query = db.query(Perro).join(Raza)
@@ -52,6 +54,14 @@ def listar_perros(
             pass
     if q:
         query = query.filter(Perro.nombre.ilike(f"%{q}%"))
+    if ubicacion:
+        query = query.join(Ubicacion, and_(
+            Ubicacion.perro_id == Perro.id,
+            Ubicacion.fecha_fin == None,
+            Ubicacion.tipo == TipoUbicacion(ubicacion),
+        ))
+    if raza_id:
+        query = query.filter(Perro.raza_id == raza_id)
 
     columna = COLUMNAS_ORDEN.get(sort, Perro.nombre)
     dir_fn = desc if order == "desc" else asc
@@ -63,6 +73,7 @@ def listar_perros(
     perros = query.offset((page - 1) * POR_PAGINA).limit(POR_PAGINA).all()
     hoy = date.today()
     perros_con_ubicacion = [(p, _ubicacion_actual(p), (hoy - p.fecha_entrada).days) for p in perros]
+    razas = db.query(Raza).order_by(Raza.nombre).all()
     return templates.TemplateResponse(request, "perros/list.html", {
         "perros_con_ubicacion": perros_con_ubicacion,
         "estado_filtro": estado,
@@ -73,6 +84,9 @@ def listar_perros(
         "sort": sort,
         "order": order,
         "q": q,
+        "ubicacion_filtro": ubicacion,
+        "raza_id_filtro": raza_id,
+        "razas": razas,
     })
 
 

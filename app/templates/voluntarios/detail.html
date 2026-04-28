@@ -168,7 +168,8 @@
         </div>
 
         {% if voluntario.turnos %}
-        <table class="table table-hover align-middle mb-0">
+        <div style="overflow-x:auto;">
+        <table class="table table-hover align-middle mb-0" style="min-width:500px;">
           <thead class="table-light">
             <tr><th>Fecha</th><th>Franja</th><th>Estado</th><th>Notas</th><th></th></tr>
           </thead>
@@ -195,6 +196,7 @@
             {% endfor %}
           </tbody>
         </table>
+        </div>
         {% else %}
         <p class="text-muted mb-0 text-center py-3">Sin turnos registrados aún.</p>
         {% endif %}
