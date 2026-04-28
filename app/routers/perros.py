@@ -41,6 +41,7 @@ def listar_perros(
     page: int = 1,
     sort: str = "nombre",
     order: str = "asc",
+    q: str = "",
     db: Session = Depends(get_db),
 ):
     query = db.query(Perro).join(Raza)
@@ -49,6 +50,8 @@ def listar_perros(
             query = query.filter(Perro.estado == EstadoPerro(estado))
         except ValueError:
             pass
+    if q:
+        query = query.filter(Perro.nombre.ilike(f"%{q}%"))
 
     columna = COLUMNAS_ORDEN.get(sort, Perro.nombre)
     dir_fn = desc if order == "desc" else asc
@@ -69,6 +72,7 @@ def listar_perros(
         "total": total,
         "sort": sort,
         "order": order,
+        "q": q,
     })
 
 
