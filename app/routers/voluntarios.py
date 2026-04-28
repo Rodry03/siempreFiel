@@ -1,7 +1,10 @@
 import io
+import logging
 import os
 import subprocess
 import tempfile
+
+logger = logging.getLogger(__name__)
 from datetime import date
 from docx import Document as DocxDocument
 from fastapi import APIRouter, Depends, Form, Request
@@ -63,6 +66,9 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
                 ],
                 capture_output=True, timeout=60,
             )
+            logger.warning("soffice returncode: %s", result.returncode)
+            logger.warning("soffice stdout: %s", result.stdout.decode(errors="replace"))
+            logger.warning("soffice stderr: %s", result.stderr.decode(errors="replace"))
             if result.returncode != 0:
                 return None
             base = os.path.splitext(os.path.basename(docx_path))[0]
@@ -70,6 +76,7 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
             with open(pdf_path, "rb") as f:
                 return f.read()
     except FileNotFoundError:
+        logger.warning("soffice no encontrado en el sistema")
         return None
 
 router = APIRouter(prefix="/voluntarios", dependencies=[Depends(get_current_user)])
