@@ -1,10 +1,13 @@
+import os
+import subprocess
 from datetime import date
 from fastapi import APIRouter, Request, Depends
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.templates_config import templates
-from app.auth import get_current_user, require_not_veterano
+from app.auth import get_current_user, require_not_veterano, require_admin
 
 router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
@@ -20,7 +23,7 @@ def _query_analytics(db: Session, view: str) -> list[dict]:
 
 
 @router.get("/")
-def dashboard(request: Request, db: Session = Depends(get_db)):
+def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     vacunas_proximas = _query_analytics(db, "mart_vacunas_proximas")
     no_esterilizados = _query_analytics(db, "mart_perros_no_esterilizados")
     tiempo_refugio = _query_analytics(db, "mart_tiempo_en_refugio")
@@ -77,4 +80,22 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "entradas_por_mes": entradas_por_mes,
         "entradas_salidas": entradas_salidas,
         "dist_ubicacion": dist_ubicacion,
+        "dbt_status": dbt,
     })
+
+
+@router.post("/dbt-run", dependencies=[Depends(require_admin)])
+def ejecutar_dbt():
+    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
+    try:
+        result = subprocess.run(
+            ["dbt", "run"],
+            cwd=dbt_dir,
+            capture_output=True,
+            timeout=180,
+            env={**os.environ},
+        )
+        status = "ok" if result.returncode == 0 else "error"
+    except Exception:
+        status = "error"
+    return RedirectResponse(f"/?dbt={status}", status_code=303)

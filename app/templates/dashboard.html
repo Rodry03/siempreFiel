@@ -4,7 +4,19 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0">Dashboard</h2>
+  {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
+  <form method="post" action="/dbt-run">
+    <button type="submit" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-repeat me-1"></i>Actualizar analytics
+    </button>
+  </form>
+  {% endif %}
 </div>
+{% if dbt_status == 'ok' %}
+<div class="alert alert-success py-2 mb-3">Analytics actualizados correctamente.</div>
+{% elif dbt_status == 'error' %}
+<div class="alert alert-danger py-2 mb-3">Error al actualizar los analytics. Revisa los logs.</div>
+{% endif %}
 
 <!-- Stat cards -->
 <div class="row g-3 mb-4">
