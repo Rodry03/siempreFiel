@@ -93,6 +93,7 @@ def crear_perro(
     raza_id: int = Form(...),
     sexo: str = Form(...),
     esterilizado: Optional[str] = Form(None),
+    ppp: Optional[str] = Form(None),
     fecha_entrada: date = Form(...),
     estado: str = Form("activo"),
     fecha_nacimiento: Optional[date] = Form(None),
@@ -106,6 +107,7 @@ def crear_perro(
         raza_id=raza_id,
         sexo=Sexo(sexo),
         esterilizado=esterilizado == "on",
+        ppp=ppp == "on",
         fecha_entrada=fecha_entrada,
         estado=EstadoPerro(estado),
         fecha_nacimiento=fecha_nacimiento,
@@ -156,6 +158,7 @@ def editar_perro(
     raza_id: int = Form(...),
     sexo: str = Form(...),
     esterilizado: Optional[str] = Form(None),
+    ppp: Optional[str] = Form(None),
     fecha_entrada: date = Form(...),
     estado: str = Form("activo"),
     fecha_nacimiento: Optional[date] = Form(None),
@@ -171,6 +174,7 @@ def editar_perro(
     perro.raza_id = raza_id
     perro.sexo = Sexo(sexo)
     perro.esterilizado = esterilizado == "on"
+    perro.ppp = ppp == "on"
     perro.fecha_entrada = fecha_entrada
     perro.estado = EstadoPerro(estado)
     perro.fecha_nacimiento = fecha_nacimiento

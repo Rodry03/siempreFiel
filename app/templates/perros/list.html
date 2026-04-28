@@ -48,6 +48,7 @@
         <tr>
           <td class="fw-semibold">
             <a href="/perros/{{ perro.id }}" class="text-decoration-none">{{ perro.nombre }}</a>
+            {% if perro.ppp %}<span class="badge bg-danger ms-1">PPP</span>{% endif %}
           </td>
           <td>{{ perro.raza.nombre }}</td>
           <td>

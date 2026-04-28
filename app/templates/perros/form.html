@@ -68,11 +68,16 @@
             <option value="fallecido" {% if perro and perro.estado.value == 'fallecido' %}selected{% endif %}>Fallecido</option>
           </select>
         </div>
-        <div class="col-md-6 d-flex align-items-center">
+        <div class="col-md-6 d-flex align-items-center gap-4">
           <div class="form-check mt-4">
             <input class="form-check-input" type="checkbox" name="esterilizado" id="esterilizado"
               {% if perro and perro.esterilizado %}checked{% endif %}>
             <label class="form-check-label fw-semibold" for="esterilizado">Esterilizado/a</label>
+          </div>
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" name="ppp" id="ppp"
+              {% if perro and perro.ppp %}checked{% endif %}>
+            <label class="form-check-label fw-semibold text-danger" for="ppp">PPP</label>
           </div>
         </div>
         <div class="col-12">
