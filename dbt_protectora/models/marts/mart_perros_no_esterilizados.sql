@@ -1,21 +1,15 @@
--- Perros activos que todavía no están esterilizados
 with perros as (
-    select * from {{ ref('stg_perros') }}
-),
-
-ubicacion_actual as (
-    {{ ubicacion_actual_perro() }}
+    select * from {{ ref('int_perros_con_ubicacion') }}
 )
 
 select
-    p.id,
-    p.nombre,
-    p.raza,
-    p.sexo,
-    p.fecha_nacimiento,
-    date_part('year', age(p.fecha_nacimiento))::int as edad_anios,
-    u.ubicacion as ubicacion_actual
-from perros p
-left join ubicacion_actual u on p.id = u.perro_id
-where p.esterilizado = false
-order by p.fecha_nacimiento asc nulls last
+    id,
+    nombre,
+    raza,
+    sexo,
+    fecha_nacimiento,
+    edad_anios,
+    ubicacion_actual
+from perros
+where esterilizado = false
+order by fecha_nacimiento asc nulls last
