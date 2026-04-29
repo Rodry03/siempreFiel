@@ -227,7 +227,6 @@ def editar_perro(
     num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
-    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
@@ -245,10 +244,19 @@ def editar_perro(
     perro.num_pasaporte = num_pasaporte or None
     perro.color = color or None
     perro.notas = notas or None
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/foto", dependencies=[Depends(require_not_veterano)])
+def subir_foto(perro_id: int, foto: UploadFile = File(...), db: Session = Depends(get_db)):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if not perro:
+        return RedirectResponse("/perros/", status_code=303)
     nueva_url = _subir_foto(foto, perro_id)
     if nueva_url:
         perro.foto_url = nueva_url
-    db.commit()
+        db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 

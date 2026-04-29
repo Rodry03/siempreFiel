@@ -41,14 +41,26 @@ def _set_paragraph_text(para, text):
 
 
 def _docx_a_pdf(docx_path: str) -> bytes | None:
-    # Intenta con docx2pdf (usa Microsoft Word en Windows)
+    # Intenta con Word COM (Windows) — inicializa COM para contexto multi-hilo
     try:
-        from docx2pdf import convert as docx2pdf_convert
-        with tempfile.TemporaryDirectory() as tmpdir:
-            pdf_path = os.path.join(tmpdir, "contrato.pdf")
-            docx2pdf_convert(docx_path, pdf_path)
-            with open(pdf_path, "rb") as f:
-                return f.read()
+        import pythoncom
+        import win32com.client
+        pythoncom.CoInitialize()
+        word = None
+        try:
+            word = win32com.client.Dispatch("Word.Application")
+            word.Visible = False
+            with tempfile.TemporaryDirectory() as tmpdir:
+                pdf_path = os.path.join(tmpdir, "contrato.pdf")
+                doc = word.Documents.Open(docx_path)
+                doc.SaveAs(pdf_path, FileFormat=17)  # 17 = wdFormatPDF
+                doc.Close(False)
+                with open(pdf_path, "rb") as f:
+                    return f.read()
+        finally:
+            if word:
+                word.Quit()
+            pythoncom.CoUninitialize()
     except Exception:
         pass
 

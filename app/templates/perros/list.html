@@ -22,6 +22,9 @@
     <a href="/perros/?estado=activo&ubicacion=acogida{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'acogida' %}btn-warning{% else %}btn-outline-warning{% endif %}">
       <i class="bi bi-house me-1"></i>En acogida
     </a>
+    <a href="/perros/?estado=reservado&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'reservado' %}btn-info{% else %}btn-outline-info{% endif %}">
+      <i class="bi bi-bookmark-heart me-1"></i>Reservados
+    </a>
     <a href="/perros/?estado=adoptado&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'adoptado' %}btn-success{% else %}btn-outline-success{% endif %}">Adoptados</a>
     <a href="/perros/?estado=todos&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
   </div>

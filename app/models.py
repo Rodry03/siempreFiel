@@ -14,6 +14,7 @@ class EstadoPerro(str, enum.Enum):
     activo = "activo"
     adoptado = "adoptado"
     fallecido = "fallecido"
+    reservado = "reservado"
 
 
 class TipoUbicacion(str, enum.Enum):

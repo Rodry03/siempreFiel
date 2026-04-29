@@ -86,16 +86,12 @@
             <label class="form-check-label fw-semibold text-danger" for="ppp">PPP</label>
           </div>
         </div>
+        {% if not perro %}
         <div class="col-12">
           <label class="form-label fw-semibold">Foto</label>
-          {% if perro and perro.foto_url %}
-          <div class="mb-2">
-            <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}" class="rounded" style="height:80px; width:80px; object-fit:cover;">
-            <span class="text-muted small ms-2">Sube una nueva para reemplazarla</span>
-          </div>
-          {% endif %}
           <input type="file" name="foto" class="form-control" accept="image/*">
         </div>
+        {% endif %}
         <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ perro.notas if perro and perro.notas else '' }}</textarea>

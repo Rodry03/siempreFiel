@@ -37,6 +37,7 @@ Thumbs.db
 
 # Claude
 .claude/
+CLAUDE.md
 
 # dbt
 dbt_protectora/target/

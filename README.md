@@ -1,6 +1,6 @@
 # Siempre Fiel — App de gestión de protectora de perros
 
-Aplicación web para la gestión interna de la protectora **Siempre Fiel**: registro de perros, voluntarios, turnos y analítica con dbt.
+Aplicación web para la gestión interna de la protectora **Siempre Fiel**: registro de perros, voluntarios, turnos, visitantes y analítica con dbt.
 
 ## Stack
 
@@ -8,51 +8,40 @@ Aplicación web para la gestión interna de la protectora **Siempre Fiel**: regi
 |---|---|
 | Backend | FastAPI + Jinja2 |
 | Frontend | Bootstrap 5 |
-| Base de datos | PostgreSQL |
+| Base de datos | PostgreSQL (Neon) |
 | ORM | SQLAlchemy |
+| Imágenes | Cloudinary |
 | Analítica | dbt-postgres |
+| Despliegue | Render |
 
-## Estructura del proyecto
+## Roles y permisos
 
-```
-protectora/
-├── app/
-│   ├── main.py              # Entrada FastAPI
-│   ├── database.py          # Conexión y sesión SQLAlchemy
-│   ├── models.py            # Modelos ORM
-│   ├── schemas.py           # Schemas Pydantic
-│   ├── routers/
-│   │   ├── dashboard.py
-│   │   ├── perros.py
-│   │   └── voluntarios.py
-│   ├── templates/           # Jinja2 + Bootstrap
-│   └── static/
-├── scripts/                 # Pipeline de carga de datos
-│   ├── load_raw_perros.py   # xlsx → PostgreSQL raw schema
-│   ├── cargar_perros.py     # mart → app (perros activos)
-│   ├── cargar_vacunas.py    # staging → app (vacunas)
-│   └── cargar_adoptados.py  # raw → app (perros adoptados)
-└── dbt_protectora/
-    ├── macros/              # Macros Jinja reutilizables
-    ├── models/
-    │   ├── staging/         # Limpieza y normalización de datos crudos
-    │   └── marts/           # Modelos de negocio listos para consumir
-    └── tests/               # Tests singulares SQL
-```
+La app tiene tres roles de usuario:
+
+| Rol | Acceso |
+|---|---|
+| `admin` | Acceso total: CRUD usuarios, voluntarios, perros, turnos, visitas. Puede ejecutar dbt. |
+| `junta` | Todo excepto gestión de usuarios. No puede ejecutar dbt. |
+| `veterano` | Solo lectura: perros activos en refugio y su propio perfil de voluntario. |
 
 ## Modelos de datos
 
 ### Perros
-- **Perro** — nombre, raza (FK), fecha nacimiento, sexo, esterilizado, chip, pasaporte, color, fecha entrada, estado (`activo` / `adoptado` / `fallecido`), notas
+
+- **Perro** — nombre (siempre en mayúsculas), raza (FK), fecha nacimiento, sexo, esterilizado, PPP, chip, pasaporte, color, fecha entrada, estado (`activo` / `adoptado` / `fallecido`), foto (Cloudinary URL), notas
 - **Raza** — tabla normalizada de razas
-- **Vacuna** — tipo, fecha administración, próxima dosis, veterinario
-- **Ubicacion** — tipo (`refugio` / `acogida` / `residencia` / `adoptado`), periodo, contacto
+- **Vacuna** — tipo, fecha administración, próxima dosis, veterinario, notas
+- **Ubicacion** — tipo (`refugio` / `acogida` / `residencia` / `adoptado`), fecha inicio/fin, contacto, notas
+- **PesoPerro** — fecha, peso en kg, notas
+- **CeloPerro** — fecha inicio, fecha fin (nullable), notas
 
 ### Voluntarios
-- **Voluntario** — nombre, apellido, DNI, email, teléfono, perfil, fecha alta, activo, permiso PPP, notas
+
+- **Voluntario** — nombre, apellidos, DNI, email, teléfono, perfil, fecha alta, activo, PPP, dirección, provincia, CP, contrato, teaming, notas
 - **TurnoVoluntario** — fecha, franja (`manana` / `tarde`), estado
 
 #### Perfiles de voluntario
+
 | Perfil | Hace turnos |
 |---|---|
 | `veterano` | Sí |
@@ -62,8 +51,9 @@ protectora/
 | `eventos` | No |
 | `colaboradores` | No |
 
-#### Estados de turno
-| Estado | Valor saldo |
+#### Estados de turno y valor en saldo
+
+| Estado | Valor |
 |---|---|
 | `realizado` | 1.0 |
 | `medio_turno` | 0.5 |
@@ -71,109 +61,109 @@ protectora/
 | `falta_injustificada` | 0.0 |
 | `no_apuntado` | 0.0 |
 
-## Analítica con dbt
+El saldo se calcula como `turnos_realizados − semanas_activo` desde `max(2026-04-01, fecha_alta)`.
 
-El proyecto dbt transforma los datos de PostgreSQL en modelos listos para analizar, siguiendo el patrón **ELT** (Extract → Load → Transform).
+### Visitantes
 
-### Sources declaradas
+Pipeline de adopción/acogida:
 
-```yaml
-# dbt_protectora/models/staging/sources.yml
-sources:
-  - name: protectora   # schema: public  (tablas de la app)
-  - name: raw          # schema: raw     (datos crudos del xlsx)
+`interesado` → `visita_programada` → `visita_realizada` → `se_convirtio` / `descartado`
+
+Si se registra `fecha_visita` y ya ha pasado, el estado pasa automáticamente a `visita_realizada`. Desde el detalle del visitante se puede convertir en voluntario (redirige al formulario prefilled).
+
+### Usuarios
+
+- **Usuario** — username, password (hash bcrypt), nombre, rol, activo, voluntario asociado (FK nullable)
+
+## Estructura del proyecto
+
+```
+protectora/
+├── app/
+│   ├── main.py              # Entrada FastAPI
+│   ├── database.py          # Conexión y sesión SQLAlchemy
+│   ├── models.py            # Modelos ORM
+│   ├── auth.py              # Autenticación y dependencias de rol
+│   ├── templates_config.py  # Configuración Jinja2
+│   ├── routers/
+│   │   ├── dashboard.py     # Stats y botón dbt (admin)
+│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación
+│   │   ├── voluntarios.py   # CRUD voluntarios
+│   │   ├── turnos.py        # Registro de turnos y cálculo de saldo
+│   │   ├── visitas.py       # Pipeline visitantes
+│   │   └── usuarios.py      # Gestión de usuarios (admin)
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── login.html
+│   │   ├── dashboard.html
+│   │   ├── perros/          # list, detail (pesos + celos), form
+│   │   ├── voluntarios/     # list, detail, form
+│   │   ├── visitas/         # list, detail, form
+│   │   └── usuarios/        # list, form
+│   └── static/
+├── scripts/                 # Pipeline de carga inicial de datos
+│   ├── load_raw_perros.py   # xlsx → PostgreSQL schema raw
+│   ├── cargar_perros.py     # mart → app (perros activos)
+│   ├── cargar_vacunas.py    # staging → app (vacunas)
+│   └── cargar_adoptados.py  # raw → app (perros adoptados)
+└── dbt_protectora/
+    ├── profiles.yml         # Target: prod (Neon)
+    ├── models/
+    │   ├── staging/         # Limpieza y normalización
+    │   └── marts/           # Modelos de negocio
+    └── tests/               # Tests SQL singulares
 ```
 
-### Staging (limpieza y normalización)
+## Analítica con dbt
 
-Modelos de la app:
-- `stg_perros` — perros activos con raza denormalizada
-- `stg_vacunas` — historial de vacunas
-- `stg_ubicaciones` — historial de ubicaciones
-- `stg_voluntarios` — voluntarios activos con perfiles que hacen turnos
-- `stg_turnos_voluntarios` — registro de turnos (**incremental**, unique_key: `id`)
+### Staging
 
-Pipeline de carga desde xlsx:
-- `stg_perros_entrada` — perros activos del xlsx con limpieza completa (razas normalizadas, fechas validadas, PPP extraído)
-- `stg_perros_adoptados` — perros adoptados del xlsx
+- `stg_perros`, `stg_vacunas`, `stg_ubicaciones`
+- `stg_voluntarios`, `stg_turnos_voluntarios` (incremental, unique_key: `id`)
+- `stg_perros_entrada`, `stg_perros_adoptados` (desde xlsx)
 
-### Marts (negocio)
+### Marts
 
 - `mart_vacunas_proximas` — vacunas próximas a vencer
-- `mart_perros_no_esterilizados` — perros que aún no están esterilizados
-- `mart_tiempo_en_refugio` — tiempo que lleva cada perro en el refugio
-- `mart_saldo_turnos` — saldo de turnos por voluntario (turnos realizados vs semanas activo desde `2026-04-01`)
-- `mart_perros_a_cargar` — estado de cada perro del xlsx para la carga a la app (`listo` / `pendiente_raza` / `pendiente_datos` / `ya_cargado`)
+- `mart_perros_no_esterilizados` — perros sin esterilizar
+- `mart_tiempo_en_refugio` — tiempo de estancia por perro
+- `mart_saldo_turnos` — saldo de turnos por voluntario
+- `mart_perros_a_cargar` — estado de carga desde xlsx (`listo` / `pendiente_raza` / `pendiente_datos` / `ya_cargado`)
 
 ### Macros
 
-- `ubicacion_actual_perro()` — devuelve la ubicación vigente de cada perro (sin `fecha_fin`), usada en varios marts
+- `ubicacion_actual_perro()` — ubicación vigente de cada perro (sin `fecha_fin`)
 
 ### Tests
 
-**Tests genéricos** (`schema.yml`) — `not_null`, `unique`, `accepted_values`, `relationships`. Algunos con `severity: warn`.
+**Genéricos** (`schema.yml`): `not_null`, `unique`, `accepted_values`, `relationships`.
 
-**Tests singulares** (`tests/`):
-- `vacuna_proxima_antes_de_administracion.sql` — detecta vacunas con próxima dosis anterior a la administración
-- `perro_activo_sin_ubicacion.sql` — detecta perros activos sin ubicación registrada
-- `voluntario_deuda_excesiva.sql` — detecta voluntarios con saldo de turnos inferior a -30
-
-### Documentación
-
-```bash
-cd dbt_protectora
-dbt docs generate
-dbt docs serve
-```
-
-Genera documentación interactiva con el grafo de linaje completo del DAG.
-
-## Pipeline de carga de datos
-
-Para poblar la app desde el fichero xlsx de la protectora:
-
-```bash
-# 1. Cargar xlsx al schema raw de PostgreSQL
-python scripts/load_raw_perros.py
-
-# 2. Transformar con dbt (staging + mart_perros_a_cargar)
-cd dbt_protectora && dbt run
-
-# 3. Cargar perros activos a la app
-python scripts/cargar_perros.py
-
-# 4. Cargar vacunas
-python scripts/cargar_vacunas.py
-
-# 5. Cargar perros adoptados
-python scripts/cargar_adoptados.py
-```
+**Singulares** (`tests/`):
+- `vacuna_proxima_antes_de_administracion.sql`
+- `perro_activo_sin_ubicacion.sql`
+- `voluntario_deuda_excesiva.sql`
 
 ## Instalación y arranque
 
 ### Requisitos
+
 - Python 3.10+
-- PostgreSQL con base de datos `protectora` y usuario `postgres`
+- Cuenta en Neon (PostgreSQL) o PostgreSQL local
 
 ### Puesta en marcha
 
 ```bash
-# Clonar el repositorio
 git clone https://github.com/Rodry03/siempreFiel.git
 cd siempreFiel
 
-# Crear y activar entorno virtual
 python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Linux/Mac
 
-# Instalar dependencias
 pip install -r requirements.txt
 
-# Configurar variables de entorno (copiar y editar)
-cp .env.example .env
+cp .env.example .env         # Editar con las credenciales
 
-# Arrancar la app
 uvicorn app.main:app --reload
 ```
 
@@ -191,14 +181,30 @@ $env:DBT_PASSWORD="tu_password"; dbt run
 DBT_PASSWORD=tu_password dbt run
 ```
 
-## Variables de entorno
+## Despliegue
 
-Ver `.env.example` para la configuración necesaria (conexión a PostgreSQL).
+El despliegue es continuo en **Render** via GitHub Actions: cada push a `main` dispara el redeploy. La app local y Render comparten la misma base de datos Neon.
 
-## Añadir razas
+## Tareas habituales
 
-Las razas se gestionan directamente en base de datos:
+### Añadir una raza
 
 ```sql
 INSERT INTO razas (nombre) VALUES ('Nueva Raza');
+```
+
+### Crear un usuario administrador
+
+```bash
+python scripts/crear_usuario.py
+```
+
+### Pipeline de carga inicial desde xlsx
+
+```bash
+python scripts/load_raw_perros.py   # 1. xlsx → schema raw
+cd dbt_protectora && dbt run        # 2. transformaciones
+python scripts/cargar_perros.py     # 3. perros activos → app
+python scripts/cargar_vacunas.py    # 4. vacunas → app
+python scripts/cargar_adoptados.py  # 5. adoptados → app
 ```

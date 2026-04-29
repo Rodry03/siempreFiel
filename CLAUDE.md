@@ -69,6 +69,18 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run
 - `foto_url`: Cloudinary URL (nullable)
 - `estado`: EstadoPerro (activo, adoptado, fallecido)
 - `ubicacion_id`: FK to current location — `TipoUbicacion`: refugio, acogida, residencia, **adoptado**
+- `pesos`: one-to-many `PesoPerro` (ordered by fecha desc)
+- `celos`: one-to-many `CeloPerro` (ordered by fecha_inicio desc)
+
+### PesoPerro
+- `perro_id`, `fecha`, `peso_kg` (Float), `notas` (nullable)
+- CRUD via `POST /perros/{id}/peso` and `POST /perros/{id}/peso/{peso_id}/eliminar`
+- Displayed in `perros/detail.html` as a collapsible section (hidden for veterano)
+
+### CeloPerro
+- `perro_id`, `fecha_inicio`, `fecha_fin` (nullable), `notas` (nullable)
+- CRUD via `POST /perros/{id}/celo` and `POST /perros/{id}/celo/{celo_id}/eliminar`
+- Displayed in `perros/detail.html` as a collapsible section (hidden for veterano)
 
 ### Voluntario
 - `perfil`: PerfilVoluntario enum
@@ -143,7 +155,7 @@ app/
     dashboard.html    — 5 stat cards + dbt status alert + run button
     perros/
       list.html       — Tabs: En refugio (heart) / En acogida (house) / Adoptados / Todos
-      detail.html     — Photo (portrait-friendly), edit/delete/location change (hidden for veterano)
+      detail.html     — Photo (portrait-friendly), edit/delete/location change (hidden for veterano), control de pesos y celos
       form.html       — Create/edit, name uppercase, photo upload, age/passport
     voluntarios/
       list.html       — Active volunteers

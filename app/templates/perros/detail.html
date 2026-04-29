@@ -52,12 +52,27 @@
         <i class="bi bi-info-circle me-2"></i>Datos generales
       </div>
       <div class="card-body">
-        {% if perro.foto_url %}
         <div class="text-center mb-3">
+          {% if perro.foto_url %}
           <img src="{{ perro.foto_url }}" alt="{{ perro.nombre }}"
-               class="rounded" style="max-height:300px; max-width:100%; object-fit:contain;">
+               class="rounded mb-2" style="max-height:300px; max-width:100%; object-fit:contain;">
+          {% endif %}
+          {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+          <div>
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#formFoto">
+              <i class="bi bi-camera me-1"></i>{{ 'Cambiar foto' if perro.foto_url else 'Añadir foto' }}
+            </button>
+          </div>
+          <div class="collapse mt-2" id="formFoto">
+            <form method="post" action="/perros/{{ perro.id }}/foto" enctype="multipart/form-data" class="d-flex gap-2 justify-content-center align-items-center flex-wrap">
+              <input type="file" name="foto" class="form-control form-control-sm" accept="image/*" style="max-width:260px;" required>
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-upload me-1"></i>Subir
+              </button>
+            </form>
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
         <table class="table table-sm table-borderless mb-0">
           <tr><th class="text-muted" style="width:40%">Raza</th><td>{{ perro.raza.nombre }}</td></tr>
           <tr><th class="text-muted">Sexo</th><td>
