@@ -61,8 +61,8 @@ def _docx_a_pdf(docx_path: str) -> bytes | None:
             if word:
                 word.Quit()
             pythoncom.CoUninitialize()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Word COM falló: %s: %s", type(e).__name__, e)
 
     # Fallback: LibreOffice (Linux/Render)
     try:
