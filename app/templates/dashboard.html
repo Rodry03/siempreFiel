@@ -73,11 +73,11 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-header bg-white border-0 pt-3">
-        <span class="fw-semibold"><i class="bi bi-bar-chart text-primary me-2"></i>Entradas mensuales</span>
+        <span class="fw-semibold"><i class="bi bi-clock-history text-success me-2"></i>Tiempo medio hasta adopción (días)</span>
       </div>
       <div class="card-body">
-        {% if entradas_por_mes %}
-        <canvas id="chartEntradas" height="100"></canvas>
+        {% if tiempo_adopcion %}
+        <canvas id="chartTiempoAdopcion" height="100"></canvas>
         {% else %}
         <p class="text-muted mb-0">Ejecuta <code>dbt run</code> para ver este gráfico.</p>
         {% endif %}
@@ -299,7 +299,7 @@
   </div>
 </div>
 
-{% if entradas_por_mes or total_activos > 0 %}
+{% if entradas_salidas or tiempo_adopcion or total_activos > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 {% if entradas_salidas %}
@@ -330,22 +330,26 @@ new Chart(document.getElementById('chartEntradasSalidas'), {
 });
 {% endif %}
 
-{% if entradas_por_mes %}
-new Chart(document.getElementById('chartEntradas'), {
-  type: 'bar',
+{% if tiempo_adopcion %}
+new Chart(document.getElementById('chartTiempoAdopcion'), {
+  type: 'line',
   data: {
-    labels: {{ entradas_por_mes | map(attribute='mes_label') | list | tojson }},
+    labels: {{ tiempo_adopcion | map(attribute='mes_label') | list | tojson }},
     datasets: [{
-      label: 'Entradas',
-      data: {{ entradas_por_mes | map(attribute='total_entradas') | list | tojson }},
-      backgroundColor: 'rgba(13, 110, 253, 0.7)',
-      borderRadius: 6,
+      label: 'Días medios',
+      data: {{ tiempo_adopcion | map(attribute='dias_medio') | list | tojson }},
+      borderColor: 'rgba(25, 135, 84, 0.9)',
+      backgroundColor: 'rgba(25, 135, 84, 0.1)',
+      borderWidth: 2,
+      pointRadius: 4,
+      fill: true,
+      tension: 0.3,
     }]
   },
   options: {
     responsive: true,
     plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 10 } } }
   }
 });
 {% endif %}

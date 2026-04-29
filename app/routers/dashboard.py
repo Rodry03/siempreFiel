@@ -28,8 +28,11 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     no_esterilizados = _query_analytics(db, "mart_perros_no_esterilizados")
     tiempo_refugio = _query_analytics(db, "mart_tiempo_en_refugio")
 
-    entradas_por_mes = _query_analytics(db, "mart_entradas_por_mes")
     entradas_salidas = _query_analytics(db, "mart_entradas_salidas_por_mes")
+    tiempo_adopcion = [
+        {**r, "dias_medio": float(r["dias_medio"])}
+        for r in _query_analytics(db, "mart_tiempo_adopcion")
+    ]
 
     from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
     from app.routers.turnos import calcular_saldo
@@ -77,8 +80,8 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "total_voluntarios": total_voluntarios,
         "voluntarios_top": voluntarios_top,
         "top_deudores": top_deudores,
-        "entradas_por_mes": entradas_por_mes,
         "entradas_salidas": entradas_salidas,
+        "tiempo_adopcion": tiempo_adopcion,
         "dist_ubicacion": dist_ubicacion,
         "dbt_status": dbt,
     })
