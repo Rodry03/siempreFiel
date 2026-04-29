@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: siempreFiel
+    env: docker
+    dockerfilePath: ./Dockerfile
+    branch: main
+    plan: free
