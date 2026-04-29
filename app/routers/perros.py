@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
 from typing import Optional
 from app.database import get_db
-from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza
+from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro
 from app.templates_config import templates
 import cloudinary
 import cloudinary.uploader
@@ -189,6 +189,8 @@ def detalle_perro(request: Request, perro_id: int, db: Session = Depends(get_db)
     return templates.TemplateResponse(request, "perros/detail.html", {
         "perro": perro,
         "vacunas": vacunas,
+        "pesos": perro.pesos,
+        "celos": perro.celos,
         "ubicacion_actual": _ubicacion_actual(perro),
         "ubicacion_labels": UBICACION_LABELS,
         "hoy": date.today().isoformat(),
@@ -312,4 +314,48 @@ def cambiar_ubicacion(
         if perro:
             perro.estado = EstadoPerro.adoptado
     db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/peso", dependencies=[Depends(require_not_veterano)])
+def agregar_peso(
+    perro_id: int,
+    fecha: date = Form(...),
+    peso_kg: float = Form(...),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    db.add(PesoPerro(perro_id=perro_id, fecha=fecha, peso_kg=peso_kg, notas=notas or None))
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/peso/{peso_id}/eliminar", dependencies=[Depends(require_not_veterano)])
+def eliminar_peso(perro_id: int, peso_id: int, db: Session = Depends(get_db)):
+    peso = db.query(PesoPerro).filter(PesoPerro.id == peso_id, PesoPerro.perro_id == perro_id).first()
+    if peso:
+        db.delete(peso)
+        db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/celo", dependencies=[Depends(require_not_veterano)])
+def agregar_celo(
+    perro_id: int,
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    db.add(CeloPerro(perro_id=perro_id, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, notas=notas or None))
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/celo/{celo_id}/eliminar", dependencies=[Depends(require_not_veterano)])
+def eliminar_celo(perro_id: int, celo_id: int, db: Session = Depends(get_db)):
+    celo = db.query(CeloPerro).filter(CeloPerro.id == celo_id, CeloPerro.perro_id == perro_id).first()
+    if celo:
+        db.delete(celo)
+        db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)

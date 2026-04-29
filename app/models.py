@@ -1,5 +1,5 @@
 from datetime import date
-from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
@@ -95,6 +95,8 @@ class Perro(Base):
     raza = relationship("Raza", back_populates="perros")
     vacunas = relationship("Vacuna", back_populates="perro", cascade="all, delete-orphan")
     ubicaciones = relationship("Ubicacion", back_populates="perro", cascade="all, delete-orphan", order_by="Ubicacion.fecha_inicio.desc()")
+    pesos = relationship("PesoPerro", back_populates="perro", cascade="all, delete-orphan", order_by="PesoPerro.fecha.desc()")
+    celos = relationship("CeloPerro", back_populates="perro", cascade="all, delete-orphan", order_by="CeloPerro.fecha_inicio.desc()")
 
 
 class Vacuna(Base):
@@ -187,3 +189,27 @@ class TurnoVoluntario(Base):
     notas = Column(Text, nullable=True)
 
     voluntario = relationship("Voluntario", back_populates="turnos")
+
+
+class PesoPerro(Base):
+    __tablename__ = "pesos_perro"
+
+    id = Column(Integer, primary_key=True, index=True)
+    perro_id = Column(Integer, ForeignKey("perros.id"), nullable=False)
+    fecha = Column(Date, nullable=False, default=date.today)
+    peso_kg = Column(Float, nullable=False)
+    notas = Column(Text, nullable=True)
+
+    perro = relationship("Perro", back_populates="pesos")
+
+
+class CeloPerro(Base):
+    __tablename__ = "celos_perro"
+
+    id = Column(Integer, primary_key=True, index=True)
+    perro_id = Column(Integer, ForeignKey("perros.id"), nullable=False)
+    fecha_inicio = Column(Date, nullable=False)
+    fecha_fin = Column(Date, nullable=True)
+    notas = Column(Text, nullable=True)
+
+    perro = relationship("Perro", back_populates="celos")

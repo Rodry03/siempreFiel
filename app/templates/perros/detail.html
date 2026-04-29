@@ -175,6 +175,147 @@
     {% endif %}
   </div>
 
+  <!-- Peso -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-speedometer2 me-2"></i>Control de peso</span>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formPeso">
+          <i class="bi bi-plus-lg me-1"></i>Registrar peso
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="collapse mb-3" id="formPeso">
+          <form method="post" action="/perros/{{ perro.id }}/peso" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Fecha *</label>
+                <input type="date" name="fecha" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Peso (kg) *</label>
+                <input type="number" name="peso_kg" class="form-control form-control-sm" step="0.1" min="0.1" placeholder="Ej: 18.5" required>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success mt-2">
+              <i class="bi bi-check-lg me-1"></i>Guardar
+            </button>
+          </form>
+          <hr>
+        </div>
+        {% if pesos %}
+        <div style="overflow-x:auto;">
+        <table class="table table-hover align-middle mb-0" style="min-width:400px;">
+          <thead class="table-light">
+            <tr><th>Fecha</th><th>Peso</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for p in pesos %}
+            <tr>
+              <td>{{ p.fecha }}</td>
+              <td class="fw-semibold">{{ p.peso_kg }} kg</td>
+              <td class="text-muted small">{{ p.notas or '' }}</td>
+              <td>
+                {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+                <form method="post" action="/perros/{{ perro.id }}/peso/{{ p.id }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar este registro de peso?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-3">Sin registros de peso aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Celos (solo hembras) -->
+  {% if perro.sexo.value == 'hembra' %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-heart me-2"></i>Control de celos</span>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formCelo">
+          <i class="bi bi-plus-lg me-1"></i>Registrar celo
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="collapse mb-3" id="formCelo">
+          <form method="post" action="/perros/{{ perro.id }}/celo" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Fecha inicio *</label>
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Fecha fin</label>
+                <input type="date" name="fecha_fin" class="form-control form-control-sm">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success mt-2">
+              <i class="bi bi-check-lg me-1"></i>Guardar
+            </button>
+          </form>
+          <hr>
+        </div>
+        {% if celos %}
+        <div style="overflow-x:auto;">
+        <table class="table table-hover align-middle mb-0" style="min-width:400px;">
+          <thead class="table-light">
+            <tr><th>Inicio</th><th>Fin</th><th>Duración</th><th>Notas</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for c in celos %}
+            <tr>
+              <td>{{ c.fecha_inicio }}</td>
+              <td>{{ c.fecha_fin or '—' }}</td>
+              <td>
+                {% if c.fecha_fin %}
+                  <span class="badge bg-secondary">{{ (c.fecha_fin - c.fecha_inicio).days }} días</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">En curso</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ c.notas or '' }}</td>
+              <td>
+                {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+                <form method="post" action="/perros/{{ perro.id }}/celo/{{ c.id }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar este registro de celo?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-3">Sin registros de celo aún.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Vacunas -->
   <div class="col-12">
     <div class="card">
