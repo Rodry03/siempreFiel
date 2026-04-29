@@ -24,7 +24,7 @@
 <!-- Filtros por perfil -->
 {% if not bajas %}
 <div class="mb-3">
-  <div class="btn-group">
+  <div class="d-flex flex-wrap gap-1">
     <a href="/voluntarios/?perfil=todos" class="btn btn-sm {% if perfil_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
     {% for p in perfiles %}
     <a href="/voluntarios/?perfil={{ p }}"

@@ -2,19 +2,21 @@
 {% block title %}{{ voluntario.nombre }} {{ voluntario.apellido }}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center mb-4 gap-3">
-  <a href="/voluntarios/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
-  <h2 class="fw-bold mb-0">{{ voluntario.nombre }} {{ voluntario.apellido }}</h2>
-  <span class="badge bg-{{ perfil_colors[voluntario.perfil.value] }}">
-    {{ perfil_labels[voluntario.perfil.value] }}
-  </span>
-  {% if voluntario.activo %}
-    <span class="badge bg-success">Activo</span>
-  {% else %}
-    <span class="badge bg-secondary">Baja</span>
-  {% endif %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="/voluntarios/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <h2 class="fw-bold mb-0">{{ voluntario.nombre }} {{ voluntario.apellido }}</h2>
+    <span class="badge bg-{{ perfil_colors[voluntario.perfil.value] }}">
+      {{ perfil_labels[voluntario.perfil.value] }}
+    </span>
+    {% if voluntario.activo %}
+      <span class="badge bg-success">Activo</span>
+    {% else %}
+      <span class="badge bg-secondary">Baja</span>
+    {% endif %}
+  </div>
   {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-  <div class="ms-auto d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
     <a href="/voluntarios/{{ voluntario.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
     </a>

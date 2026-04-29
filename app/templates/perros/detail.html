@@ -2,15 +2,17 @@
 {% block title %}{{ perro.nombre }}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center mb-4 gap-3">
-  <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
-  <h2 class="fw-bold mb-0">{{ perro.nombre }}</h2>
-  <span class="badge {% if perro.estado.value == 'activo' %}bg-primary{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
-    {{ perro.estado.value | capitalize }}
-  </span>
-  {% if perro.ppp %}<span class="badge bg-danger">PPP</span>{% endif %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <h2 class="fw-bold mb-0">{{ perro.nombre }}</h2>
+    <span class="badge {% if perro.estado.value == 'activo' %}bg-primary{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
+      {{ perro.estado.value | capitalize }}
+    </span>
+    {% if perro.ppp %}<span class="badge bg-danger">PPP</span>{% endif %}
+  </div>
   {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-  <div class="ms-auto d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
     <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
     </a>
@@ -217,7 +219,8 @@
         </div>
 
         {% if vacunas %}
-        <table class="table table-hover align-middle mb-0">
+        <div style="overflow-x:auto;">
+        <table class="table table-hover align-middle mb-0" style="min-width:500px;">
           <thead class="table-light">
             <tr><th>Vacuna</th><th>Administrada</th><th>Próxima dosis</th><th>Veterinario</th><th>Notas</th></tr>
           </thead>
@@ -237,6 +240,7 @@
             {% endfor %}
           </tbody>
         </table>
+        </div>
         {% else %}
         <p class="text-muted mb-0">Sin vacunas registradas aún.</p>
         {% endif %}
