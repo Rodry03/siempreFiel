@@ -112,6 +112,9 @@
         <i class="bi bi-door-open me-2"></i>Visitas
       </a>
       {% endif %}
+      <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
+        <i class="bi bi-clipboard-check me-2"></i>Tareas
+      </a>
       {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
       <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
         <i class="bi bi-shield-lock me-2"></i>Usuarios
@@ -168,6 +171,9 @@
           <i class="bi bi-door-open me-2"></i>Visitas
         </a>
         {% endif %}
+        <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
+          <i class="bi bi-clipboard-check me-2"></i>Tareas
+        </a>
         {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
         <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
           <i class="bi bi-shield-lock me-2"></i>Usuarios

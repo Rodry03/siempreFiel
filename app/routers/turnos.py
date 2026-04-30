@@ -97,6 +97,20 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     saldo = calcular_saldo(voluntario) if hace_turnos else None
     total_turnos = sum(ESTADO_VALOR[t.estado.value] for t in voluntario.turnos)
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
+
+    from app.models import MiembroGrupoTarea, EjecucionGrupoTarea
+    from datetime import timedelta
+    hoy = date.today()
+    semana_actual = hoy - timedelta(days=hoy.weekday())
+    memberships = db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).all()
+    grupos_voluntario = []
+    for m in memberships:
+        ej = db.query(EjecucionGrupoTarea).filter(
+            EjecucionGrupoTarea.grupo_id == m.grupo_id,
+            EjecucionGrupoTarea.semana == semana_actual,
+        ).first()
+        grupos_voluntario.append({"grupo": m.grupo, "ejecucion": ej})
+
     return templates.TemplateResponse(request, "voluntarios/detail.html", {
         "voluntario": voluntario,
         "hace_turnos": hace_turnos,
@@ -111,9 +125,11 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "estado_colors": ESTADO_COLORS,
         "franjas": [f.value for f in FranjaTurno],
         "estados": [e.value for e in EstadoTurno],
-        "hoy": date.today().isoformat(),
+        "hoy": hoy.isoformat(),
         "total_turnos": total_turnos,
         "tiempo_voluntario": tiempo_voluntario,
+        "grupos_voluntario": grupos_voluntario,
+        "semana_actual": semana_actual,
     })
 
 

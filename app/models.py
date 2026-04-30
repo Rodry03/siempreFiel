@@ -155,6 +155,45 @@ class Voluntario(Base):
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
 
 
+class GrupoTarea(Base):
+    __tablename__ = "grupos_tarea"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    nombre      = Column(String(100), nullable=False, unique=True)
+    descripcion = Column(Text, nullable=True)
+    capitan_id  = Column(Integer, ForeignKey("voluntarios.id"), nullable=True)
+
+    capitan    = relationship("Voluntario", foreign_keys=[capitan_id])
+    miembros   = relationship("MiembroGrupoTarea", back_populates="grupo", cascade="all, delete-orphan")
+    ejecuciones = relationship("EjecucionGrupoTarea", back_populates="grupo", cascade="all, delete-orphan",
+                               order_by="EjecucionGrupoTarea.semana.desc()")
+
+
+class MiembroGrupoTarea(Base):
+    __tablename__ = "miembros_grupo_tarea"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    grupo_id      = Column(Integer, ForeignKey("grupos_tarea.id"), nullable=False)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+
+    grupo      = relationship("GrupoTarea", back_populates="miembros")
+    voluntario = relationship("Voluntario")
+
+
+class EjecucionGrupoTarea(Base):
+    __tablename__ = "ejecuciones_grupo_tarea"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    grupo_id    = Column(Integer, ForeignKey("grupos_tarea.id"), nullable=False)
+    semana      = Column(Date, nullable=False)
+    realizado   = Column(Boolean, default=False, nullable=False)
+    ejecutor_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=True)
+    notas       = Column(Text, nullable=True)
+
+    grupo    = relationship("GrupoTarea", back_populates="ejecuciones")
+    ejecutor = relationship("Voluntario", foreign_keys=[ejecutor_id])
+
+
 class Usuario(Base):
     __tablename__ = "usuarios"
 

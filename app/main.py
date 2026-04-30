@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from app.database import init_db
-from app.routers import dashboard, perros, voluntarios, turnos, visitas, usuarios
+from app.routers import dashboard, perros, voluntarios, turnos, visitas, usuarios, tareas
 from app.routers import login as login_router
 from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
 
@@ -27,6 +27,7 @@ app.include_router(voluntarios.router)
 app.include_router(turnos.router)
 app.include_router(visitas.router)
 app.include_router(usuarios.router)
+app.include_router(tareas.router)
 
 
 @app.exception_handler(NotAuthenticated)

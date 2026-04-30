@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}{{ grupo.nombre }}{% endblock %}
+
+{% block content %}
+{% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/tareas/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{{ grupo.nombre }}</h2>
+</div>
+
+<div class="row g-4">
+
+  <!-- Info del grupo + registrar ejecución -->
+  <div class="col-lg-5">
+
+    <!-- Info -->
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-info-circle me-2"></i>Información</span>
+        {% if not es_veterano %}
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#formEditar">
+          <i class="bi bi-pencil me-1"></i>Editar
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="mb-2">{{ grupo.descripcion or '<span class="text-muted">Sin descripción</span>' }}</p>
+        <p class="mb-0 small">
+          <i class="bi bi-star-fill text-warning me-1"></i><strong>Capitán:</strong>
+          {% if grupo.capitan %}
+          <a href="/voluntarios/{{ grupo.capitan.id }}" class="text-decoration-none fw-semibold">{{ grupo.capitan.nombre }} {{ grupo.capitan.apellido }}</a>
+          {% else %}<span class="text-muted">Sin asignar</span>{% endif %}
+        </p>
+
+        {% if not es_veterano %}
+        <div class="collapse mt-3" id="formEditar">
+          <hr>
+          <form method="post" action="/tareas/{{ grupo.id }}/editar">
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Descripción</label>
+              <input type="text" name="descripcion" class="form-control form-control-sm"
+                value="{{ grupo.descripcion or '' }}">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Capitán</label>
+              <select name="capitan_id" class="form-select form-select-sm">
+                <option value="">— Sin asignar —</option>
+                {% for v in voluntarios %}
+                <option value="{{ v.id }}" {% if grupo.capitan_id == v.id %}selected{% endif %}>
+                  {{ v.nombre }} {{ v.apellido }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Registrar ejecución semana actual -->
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-calendar-week me-2"></i>Semana del {{ semana.strftime('%d/%m/%Y') }}
+      </div>
+      <div class="card-body">
+        {% if ejecucion_actual %}
+          {% if ejecucion_actual.realizado %}
+          <div class="alert alert-success py-2 mb-3">
+            <i class="bi bi-check-circle me-1"></i>Tarea realizada
+            {% if ejecucion_actual.ejecutor %}
+            por <a href="/voluntarios/{{ ejecucion_actual.ejecutor.id }}" class="alert-link">{{ ejecucion_actual.ejecutor.nombre }} {{ ejecucion_actual.ejecutor.apellido }}</a>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="alert alert-warning py-2 mb-3">
+            <i class="bi bi-x-circle me-1"></i>Marcada como no realizada
+          </div>
+          {% endif %}
+          {% if ejecucion_actual.notas %}
+          <p class="text-muted small mb-3"><i class="bi bi-chat-left-text me-1"></i>{{ ejecucion_actual.notas }}</p>
+          {% endif %}
+        {% endif %}
+        <form method="post" action="/tareas/{{ grupo.id }}/ejecucion">
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="realizado" id="realizado"
+              {% if ejecucion_actual and ejecucion_actual.realizado %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="realizado">Tarea realizada esta semana</label>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">¿Quién la llevó a cabo?</label>
+            <select name="ejecutor_id" class="form-select form-select-sm">
+              <option value="">— Sin especificar —</option>
+              {% for m in grupo.miembros %}
+              <option value="{{ m.voluntario.id }}"
+                {% if ejecucion_actual and ejecucion_actual.ejecutor_id == m.voluntario.id %}selected{% endif %}>
+                {{ m.voluntario.nombre }} {{ m.voluntario.apellido }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Notas</label>
+            <input type="text" name="notas" class="form-control form-control-sm"
+              placeholder="Opcional" value="{{ ejecucion_actual.notas if ejecucion_actual and ejecucion_actual.notas else '' }}">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            {% if ejecucion_actual %}Actualizar{% else %}Registrar{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Miembros + historial -->
+  <div class="col-lg-7">
+
+    <!-- Miembros -->
+    <div class="card mb-4">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2"></i>Miembros del grupo</span>
+        <span class="badge bg-primary">{{ grupo.miembros | length }}</span>
+      </div>
+      <div class="card-body {% if grupo.miembros %}p-0{% endif %}">
+        {% if grupo.miembros %}
+        <table class="table table-sm table-hover mb-0">
+          <tbody>
+            {% for m in grupo.miembros | sort(attribute='voluntario.nombre') %}
+            <tr>
+              <td>
+                <a href="/voluntarios/{{ m.voluntario.id }}" class="text-decoration-none fw-semibold">
+                  {{ m.voluntario.nombre }} {{ m.voluntario.apellido }}
+                </a>
+                {% if m.voluntario.id == grupo.capitan_id %}
+                <span class="badge bg-warning text-dark ms-1"><i class="bi bi-star-fill"></i> Capitán</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ m.voluntario.perfil.value }}</td>
+              <td class="text-end">
+                {% if not es_veterano %}
+                <form method="post" action="/tareas/{{ grupo.id }}/miembro/{{ m.voluntario.id }}/eliminar"
+                      onsubmit="return confirm('¿Quitar a {{ m.voluntario.nombre }} del grupo?')" class="d-inline">
+                  <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">Sin miembros asignados.</p>
+        {% endif %}
+
+        {% if not es_veterano %}
+        <div class="p-3 border-top">
+          <form method="post" action="/tareas/{{ grupo.id }}/miembro" class="d-flex gap-2">
+            <select name="voluntario_id" class="form-select form-select-sm">
+              <option value="">Añadir voluntario…</option>
+              {% for v in voluntarios %}
+              {% if v.id not in miembro_ids %}
+              <option value="{{ v.id }}">{{ v.nombre }} {{ v.apellido }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+              <i class="bi bi-plus-lg"></i> Añadir
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Historial de ejecuciones -->
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-clock-history me-2"></i>Historial
+      </div>
+      <div class="card-body p-0">
+        {% if grupo.ejecuciones %}
+        <div style="max-height:320px; overflow-y:auto;">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light sticky-top">
+              <tr><th>Semana</th><th>Estado</th><th>Ejecutado por</th><th>Notas</th></tr>
+            </thead>
+            <tbody>
+              {% for e in grupo.ejecuciones %}
+              <tr>
+                <td class="text-muted small">{{ e.semana.strftime('%d/%m/%Y') }}</td>
+                <td>
+                  {% if e.realizado %}
+                  <span class="badge bg-success">Hecha</span>
+                  {% else %}
+                  <span class="badge bg-danger">No realizada</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if e.ejecutor %}
+                  <a href="/voluntarios/{{ e.ejecutor.id }}" class="text-decoration-none">{{ e.ejecutor.nombre }} {{ e.ejecutor.apellido }}</a>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-muted small">{{ e.notas or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">Sin registros aún.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
