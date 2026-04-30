@@ -182,7 +182,7 @@ def crear_perro(
 
 
 @router.get("/{perro_id}")
-def detalle_perro(request: Request, perro_id: int, db: Session = Depends(get_db)):
+def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, db: Session = Depends(get_db)):
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if not perro:
         return RedirectResponse("/perros/", status_code=303)
@@ -197,6 +197,7 @@ def detalle_perro(request: Request, perro_id: int, db: Session = Depends(get_db)
         "hoy": date.today().isoformat(),
         "tipos_ubicacion": [t.value for t in TipoUbicacion],
         "edad": _calcular_edad(perro.fecha_nacimiento),
+        "error": error,
     })
 
 
@@ -307,6 +308,11 @@ def cambiar_ubicacion(
         Ubicacion.perro_id == perro_id,
         Ubicacion.fecha_fin.is_(None)
     ).first()
+    if ubicacion_actual and fecha_inicio < ubicacion_actual.fecha_inicio:
+        return RedirectResponse(
+            f"/perros/{perro_id}?error=La+fecha+de+inicio+no+puede+ser+anterior+a+la+ubicaci%C3%B3n+actual+%28{ubicacion_actual.fecha_inicio}%29",
+            status_code=303
+        )
     if ubicacion_actual:
         ubicacion_actual.fecha_fin = fecha_inicio
 
@@ -326,6 +332,35 @@ def cambiar_ubicacion(
         perro = db.query(Perro).filter(Perro.id == perro_id).first()
         if perro and perro.estado in (EstadoPerro.reservado, EstadoPerro.adoptado):
             perro.estado = EstadoPerro.activo
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/ubicacion/{ubicacion_id}/eliminar", dependencies=[Depends(require_not_veterano)])
+def eliminar_ubicacion(perro_id: int, ubicacion_id: int, db: Session = Depends(get_db)):
+    ubicacion = db.query(Ubicacion).filter(
+        Ubicacion.id == ubicacion_id,
+        Ubicacion.perro_id == perro_id,
+    ).first()
+    if not ubicacion:
+        return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+    es_activa = ubicacion.fecha_fin is None
+    db.delete(ubicacion)
+
+    if es_activa:
+        anterior = db.query(Ubicacion).filter(
+            Ubicacion.perro_id == perro_id,
+        ).order_by(Ubicacion.fecha_inicio.desc()).first()
+        if anterior:
+            anterior.fecha_fin = None
+            perro = db.query(Perro).filter(Perro.id == perro_id).first()
+            if perro:
+                if anterior.tipo in (TipoUbicacion.adoptado, TipoUbicacion.reservado):
+                    perro.estado = EstadoPerro(anterior.tipo.value)
+                else:
+                    perro.estado = EstadoPerro.activo
+
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 

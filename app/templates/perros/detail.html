@@ -2,6 +2,12 @@
 {% block title %}{{ perro.nombre }}{% endblock %}
 
 {% block content %}
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div class="d-flex align-items-center gap-2 flex-wrap">
     <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
@@ -173,7 +179,7 @@
       </div>
       <div class="card-body p-0">
         <table class="table table-sm table-hover mb-0">
-          <thead class="table-light"><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Contacto</th></tr></thead>
+          <thead class="table-light"><tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Contacto</th>{% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}<th></th>{% endif %}</tr></thead>
           <tbody>
             {% for u in perro.ubicaciones %}
             <tr>
@@ -181,6 +187,16 @@
               <td>{{ u.fecha_inicio }}</td>
               <td>{{ u.fecha_fin or 'Actual' }}</td>
               <td>{{ u.nombre_contacto or '—' }}</td>
+              {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+              <td>
+                <form method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar esta entrada del historial?')">
+                  <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+              {% endif %}
             </tr>
             {% endfor %}
           </tbody>
