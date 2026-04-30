@@ -78,6 +78,7 @@
       <div class="card-body">
         {% if tiempo_adopcion %}
         <canvas id="chartTiempoAdopcion" height="100"></canvas>
+        <p class="text-muted small mt-2 mb-0">Días de media que tardaron en adoptarse los perros, agrupados por mes de adopción. Valores bajos indican adopciones más rápidas.</p>
         {% else %}
         <p class="text-muted mb-0">Ejecuta <code>dbt run</code> para ver este gráfico.</p>
         {% endif %}

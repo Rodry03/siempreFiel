@@ -37,6 +37,7 @@ UBICACION_LABELS = {
     "refugio": "Refugio",
     "acogida": "Casa de acogida",
     "residencia": "Residencia canina",
+    "reservado": "Reservado",
     "adoptado": "Adoptado",
 }
 
@@ -317,10 +318,14 @@ def cambiar_ubicacion(
         telefono_contacto=telefono_contacto or None,
         notas=notas or None,
     ))
-    if tipo == "adoptado":
+    if tipo in ("adoptado", "reservado"):
         perro = db.query(Perro).filter(Perro.id == perro_id).first()
         if perro:
-            perro.estado = EstadoPerro.adoptado
+            perro.estado = EstadoPerro(tipo)
+    elif tipo in ("refugio", "acogida", "residencia"):
+        perro = db.query(Perro).filter(Perro.id == perro_id).first()
+        if perro and perro.estado in (EstadoPerro.reservado, EstadoPerro.adoptado):
+            perro.estado = EstadoPerro.activo
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 

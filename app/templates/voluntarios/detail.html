@@ -63,8 +63,11 @@
           {% if voluntario.direccion %}
           <tr><th class="text-muted">Dirección</th><td>{{ voluntario.direccion }}</td></tr>
           {% endif %}
-          {% if voluntario.provincia or voluntario.codigo_postal %}
-          <tr><th class="text-muted">Localidad</th><td>{{ voluntario.codigo_postal or '' }} {{ voluntario.provincia or '' }}</td></tr>
+          {% if voluntario.ciudad or voluntario.codigo_postal %}
+          <tr><th class="text-muted">Localidad</th><td>{{ voluntario.ciudad or '' }}{% if voluntario.codigo_postal %} - {{ voluntario.codigo_postal }}{% endif %}</td></tr>
+          {% endif %}
+          {% if voluntario.provincia %}
+          <tr><th class="text-muted">Provincia</th><td>{{ voluntario.provincia }}</td></tr>
           {% endif %}
           <tr><th class="text-muted">Contrato</th><td>
             {% if voluntario.contrato_estado %}

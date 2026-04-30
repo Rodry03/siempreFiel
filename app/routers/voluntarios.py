@@ -193,6 +193,7 @@ def crear_voluntario(
     ppp: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
+    ciudad: Optional[str] = Form(None),
     provincia: Optional[str] = Form(None),
     codigo_postal: Optional[str] = Form(None),
     fecha_contrato: Optional[date] = Form(None),
@@ -212,6 +213,7 @@ def crear_voluntario(
         ppp=ppp == "on",
         telefono=telefono or None,
         direccion=direccion or None,
+        ciudad=ciudad or None,
         provincia=provincia or None,
         codigo_postal=codigo_postal or None,
         fecha_contrato=fecha_contrato,
@@ -252,6 +254,7 @@ def editar_voluntario(
     ppp: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
+    ciudad: Optional[str] = Form(None),
     provincia: Optional[str] = Form(None),
     codigo_postal: Optional[str] = Form(None),
     fecha_contrato: Optional[date] = Form(None),
@@ -273,6 +276,7 @@ def editar_voluntario(
     voluntario.ppp = ppp == "on"
     voluntario.telefono = telefono or None
     voluntario.direccion = direccion or None
+    voluntario.ciudad = ciudad or None
     voluntario.provincia = provincia or None
     voluntario.codigo_postal = codigo_postal or None
     voluntario.fecha_contrato = fecha_contrato

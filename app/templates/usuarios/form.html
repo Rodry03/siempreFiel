@@ -41,7 +41,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-12" id="campo-voluntario" style="display:none;">
+        <div class="col-12">
           <label class="form-label fw-semibold">Voluntario vinculado</label>
           <select name="voluntario_id" class="form-select">
             <option value="">— Sin vincular —</option>
@@ -72,13 +72,4 @@
     </form>
   </div>
 </div>
-<script>
-  const selRol = document.getElementById('sel-rol');
-  const campoVol = document.getElementById('campo-voluntario');
-  function toggleVol() {
-    campoVol.style.display = selRol.value === 'veterano' ? '' : 'none';
-  }
-  selRol.addEventListener('change', toggleVol);
-  toggleVol();
-</script>
 {% endblock %}

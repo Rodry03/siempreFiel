@@ -21,6 +21,7 @@ class TipoUbicacion(str, enum.Enum):
     refugio = "refugio"
     acogida = "acogida"
     residencia = "residencia"
+    reservado = "reservado"
     adoptado = "adoptado"
 
 
@@ -143,6 +144,7 @@ class Voluntario(Base):
     activo = Column(Boolean, default=True, nullable=False)
     ppp = Column(Boolean, default=False, nullable=False)
     direccion = Column(String(200), nullable=True)
+    ciudad = Column(String(100), nullable=True)
     provincia = Column(String(100), nullable=True)
     codigo_postal = Column(String(10), nullable=True)
     fecha_contrato = Column(Date, nullable=True)

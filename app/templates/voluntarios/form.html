@@ -79,6 +79,11 @@
             value="{{ voluntario.direccion if voluntario and voluntario.direccion else '' }}">
         </div>
         <div class="col-md-6">
+          <label class="form-label fw-semibold">Localidad</label>
+          <input type="text" name="ciudad" class="form-control"
+            value="{{ voluntario.ciudad if voluntario and voluntario.ciudad else '' }}">
+        </div>
+        <div class="col-md-6">
           <label class="form-label fw-semibold">Provincia</label>
           <input type="text" name="provincia" class="form-control"
             value="{{ voluntario.provincia if voluntario and voluntario.provincia else '' }}">
