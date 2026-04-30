@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
-from app.models import Usuario, RolUsuario, Voluntario
+from app.models import Usuario, RolUsuario, Voluntario, PerfilVoluntario
 from app.auth import get_current_user, require_admin, hash_password
 from app.templates_config import templates
 
@@ -14,7 +14,10 @@ ROL_COLORS = {"admin": "danger", "junta": "primary", "veterano": "warning"}
 
 
 def _contexto(db, extra={}):
-    voluntarios = db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.apellido, Voluntario.nombre).all()
+    voluntarios = db.query(Voluntario).filter(
+        Voluntario.activo == True,
+        Voluntario.perfil != PerfilVoluntario.voluntario,
+    ).order_by(Voluntario.apellido, Voluntario.nombre).all()
     return {
         "roles": [r.value for r in RolUsuario],
         "rol_labels": ROL_LABELS,
