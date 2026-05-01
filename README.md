@@ -16,24 +16,40 @@ Aplicación web para la gestión interna de la protectora **Siempre Fiel**: regi
 
 ## Roles y permisos
 
-La app tiene tres roles de usuario:
-
 | Rol | Acceso |
 |---|---|
 | `admin` | Acceso total: CRUD usuarios, voluntarios, perros, turnos, visitas. Puede ejecutar dbt. |
 | `junta` | Todo excepto gestión de usuarios. No puede ejecutar dbt. |
-| `veterano` | Solo lectura: perros activos en refugio y su propio perfil de voluntario. |
+| `veterano` | Solo lectura: perros en refugio bajo gestión y su propio perfil de voluntario. |
 
 ## Modelos de datos
 
 ### Perros
 
-- **Perro** — nombre (siempre en mayúsculas), raza (FK), fecha nacimiento, sexo, esterilizado, PPP, chip, pasaporte, color, fecha entrada, estado (`activo` / `adoptado` / `fallecido`), foto (Cloudinary URL), notas
+- **Perro** — nombre (siempre en mayúsculas), raza (FK), fecha nacimiento, sexo, esterilizado, PPP, chip, pasaporte, color, fecha entrada, **estado**, **fecha_adopcion**, foto (Cloudinary URL), notas
 - **Raza** — tabla normalizada de razas
 - **Vacuna** — tipo, fecha administración, próxima dosis, veterinario, notas
-- **Ubicacion** — tipo (`refugio` / `acogida` / `residencia` / `adoptado`), fecha inicio/fin, contacto, notas
+- **Ubicacion** — tipo (`refugio` / `acogida` / `residencia` / `casa_adoptiva`), fecha inicio/fin, contacto, notas
 - **PesoPerro** — fecha, peso en kg, notas
-- **CeloPerro** — fecha inicio, fecha fin (nullable), notas
+- **CeloPerro** — fecha inicio, fecha fin, notas
+
+#### Estados del perro
+
+| Estado | Significado | Bajo gestión |
+|---|---|---|
+| `libre` | En la protectora, nadie interesado | Sí |
+| `reservado` | Reservado por alguien | Sí |
+| `adoptado` | Adoptado (puede ser devuelto) | No |
+| `fallecido` | Fallecido | No |
+
+**"Activo"** (bajo gestión) se deriva: `estado in ('libre', 'reservado')`.
+
+#### Sincronización estado ↔ ubicación
+
+Estado y ubicación se sincronizan automáticamente:
+- Cambiar ubicación a `casa_adoptiva` → estado pasa a `adoptado`
+- Guardar estado `adoptado` sin `casa_adoptiva` → se crea registro `casa_adoptiva` automáticamente
+- Volver a ubicación física (refugio/acogida/residencia) → estado vuelve a `libre`
 
 ### Voluntarios
 
@@ -51,7 +67,7 @@ La app tiene tres roles de usuario:
 | `eventos` | No |
 | `colaboradores` | No |
 
-#### Estados de turno y valor en saldo
+#### Saldo de turnos
 
 | Estado | Valor |
 |---|---|
@@ -61,7 +77,7 @@ La app tiene tres roles de usuario:
 | `falta_injustificada` | 0.0 |
 | `no_apuntado` | 0.0 |
 
-El saldo se calcula como `turnos_realizados − semanas_activo` desde `max(2026-04-01, fecha_alta)`.
+Saldo = `turnos_realizados − semanas_activo` desde `max(2026-04-01, fecha_alta)`.
 
 ### Visitantes
 
@@ -86,62 +102,48 @@ protectora/
 │   ├── auth.py              # Autenticación y dependencias de rol
 │   ├── templates_config.py  # Configuración Jinja2
 │   ├── routers/
-│   │   ├── dashboard.py     # Stats y botón dbt (admin)
-│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación
+│   │   ├── dashboard.py     # Stats, botón dbt (admin), drill-down gráfico por mes
+│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación, sync estado↔ubicación
 │   │   ├── voluntarios.py   # CRUD voluntarios
 │   │   ├── turnos.py        # Registro de turnos y cálculo de saldo
 │   │   ├── visitas.py       # Pipeline visitantes
 │   │   └── usuarios.py      # Gestión de usuarios (admin)
-│   ├── templates/
-│   │   ├── base.html
-│   │   ├── login.html
-│   │   ├── dashboard.html
-│   │   ├── perros/          # list, detail (pesos + celos), form
-│   │   ├── voluntarios/     # list, detail, form
-│   │   ├── visitas/         # list, detail, form
-│   │   └── usuarios/        # list, form
-│   └── static/
-├── scripts/                 # Pipeline de carga inicial de datos
-│   ├── load_raw_perros.py   # xlsx → PostgreSQL schema raw
-│   ├── cargar_perros.py     # mart → app (perros activos)
-│   ├── cargar_vacunas.py    # staging → app (vacunas)
-│   └── cargar_adoptados.py  # raw → app (perros adoptados)
+│   └── templates/
+│       ├── base.html
+│       ├── login.html
+│       ├── dashboard.html   # Charts con drill-down al clicar mes
+│       ├── perros/          # list (peso ordenable), detail (pesos + celos), form
+│       ├── voluntarios/     # list, detail, form
+│       ├── visitas/         # list, detail, form
+│       └── usuarios/        # list, form
 └── dbt_protectora/
     ├── profiles.yml         # Target: prod (Neon)
-    ├── models/
-    │   ├── staging/         # Limpieza y normalización
-    │   └── marts/           # Modelos de negocio
-    └── tests/               # Tests SQL singulares
+    └── models/
+        ├── staging/         # Limpieza y normalización
+        └── marts/           # Modelos de negocio
 ```
 
 ## Analítica con dbt
 
 ### Staging
 
-- `stg_perros`, `stg_vacunas`, `stg_ubicaciones`
-- `stg_voluntarios`, `stg_turnos_voluntarios` (incremental, unique_key: `id`)
-- `stg_perros_entrada`, `stg_perros_adoptados` (desde xlsx)
+- `stg_perros` — perros bajo gestión (`estado in ('libre', 'reservado')`)
+- `stg_voluntarios`, `stg_turnos_voluntarios`
 
 ### Marts
 
-- `mart_vacunas_proximas` — vacunas próximas a vencer
-- `mart_perros_no_esterilizados` — perros sin esterilizar
-- `mart_tiempo_en_refugio` — tiempo de estancia por perro
-- `mart_saldo_turnos` — saldo de turnos por voluntario
-- `mart_perros_a_cargar` — estado de carga desde xlsx (`listo` / `pendiente_raza` / `pendiente_datos` / `ya_cargado`)
-
-### Macros
-
-- `ubicacion_actual_perro()` — ubicación vigente de cada perro (sin `fecha_fin`)
-
-### Tests
-
-**Genéricos** (`schema.yml`): `not_null`, `unique`, `accepted_values`, `relationships`.
-
-**Singulares** (`tests/`):
-- `vacuna_proxima_antes_de_administracion.sql`
-- `perro_activo_sin_ubicacion.sql`
-- `voluntario_deuda_excesiva.sql`
+| Mart | Descripción |
+|---|---|
+| `mart_entradas_salidas_por_mes` | Entradas vs adopciones por mes (usa `perros.fecha_adopcion`) |
+| `mart_tiempo_adopcion` | Días medios hasta adopción por mes |
+| `mart_patrones_dificultad` | Días medios hasta adopción por factor (sexo, PPP, edad, esterilizado) |
+| `mart_perros_sin_adoptar` | Perros libres con más tiempo esperando (alertas crítico/atención) |
+| `mart_vacunas_proximas` | Vacunas próximas a vencer o vencidas |
+| `mart_perros_no_esterilizados` | Perros activos sin esterilizar |
+| `mart_tiempo_en_refugio` | Tiempo de estancia en el sistema por perro |
+| `mart_saldo_turnos` | Saldo de turnos por voluntario |
+| `mart_cobertura_semanal` | Cobertura semanal de turnos (con/sin veterano) |
+| `mart_faltas_voluntario` | Faltas e incumplimientos por voluntario |
 
 ## Instalación y arranque
 
@@ -169,6 +171,15 @@ uvicorn app.main:app --reload
 
 La app estará disponible en `http://localhost:8000`.
 
+### Variables de entorno
+
+```
+DATABASE_URL=postgresql://...
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+```
+
 ### Ejecutar dbt
 
 ```bash
@@ -183,7 +194,7 @@ DBT_PASSWORD=tu_password dbt run
 
 ## Despliegue
 
-El despliegue es continuo en **Render** via GitHub Actions: cada push a `main` dispara el redeploy. La app local y Render comparten la misma base de datos Neon.
+Despliegue continuo en **Render** via GitHub Actions: cada push a `main` dispara el redeploy. La app local y Render comparten la misma base de datos Neon.
 
 ## Tareas habituales
 
@@ -193,18 +204,10 @@ El despliegue es continuo en **Render** via GitHub Actions: cada push a `main` d
 INSERT INTO razas (nombre) VALUES ('Nueva Raza');
 ```
 
-### Crear un usuario administrador
+### Modificar un enum de PostgreSQL
 
-```bash
-python scripts/crear_usuario.py
-```
-
-### Pipeline de carga inicial desde xlsx
-
-```bash
-python scripts/load_raw_perros.py   # 1. xlsx → schema raw
-cd dbt_protectora && dbt run        # 2. transformaciones
-python scripts/cargar_perros.py     # 3. perros activos → app
-python scripts/cargar_vacunas.py    # 4. vacunas → app
-python scripts/cargar_adoptados.py  # 5. adoptados → app
+```sql
+ALTER TYPE nombre_enum RENAME VALUE 'old' TO 'new';
+ALTER TYPE nombre_enum ADD VALUE 'new_value';
+-- Nota: no se pueden eliminar valores de un enum sin recrear el tipo
 ```

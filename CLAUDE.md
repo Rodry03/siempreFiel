@@ -45,7 +45,7 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run
 - Cannot run dbt
 
 ### Veterano (read-only + own profile)
-- Can view **only activos perros in refugio** (no filters, no tabs, no location change)
+- Can view **only perros in refugio with estado=activos** (no filters, no tabs, no location change)
 - Can view **own volunteer profile** only (profile + turnos)
 - Cannot: register turnos, edit profile, change perfil, see other profiles
 - **Redirect target on auth fail:** `/perros/` (not `/`), avoids infinite loop
@@ -67,20 +67,32 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run
 - `num_pasaporte`: passport number (unique, nullable)
 - `ppp`: boolean (perro potencialmente peligroso)
 - `foto_url`: Cloudinary URL (nullable)
-- `estado`: EstadoPerro (activo, adoptado, fallecido)
-- `ubicacion_id`: FK to current location — `TipoUbicacion`: refugio, acogida, residencia, **adoptado**
+- `fecha_adopcion`: date when adopted (nullable). Set automatically when ubicación changes to `casa_adoptiva` or estado set to `adoptado`.
+- `estado`: `EstadoPerro` — **libre** (bajo gestión, nadie interesado), **reservado**, **adoptado**, **fallecido**
+  - "activo" (bajo gestión) se deriva: `estado in ('libre', 'reservado')`
+  - Cambiar ubicación ↔ estado están sincronizados bidireccionalmente (ver lógica abajo)
+- `ubicaciones`: historial de ubicaciones físicas — `TipoUbicacion`: **refugio**, **acogida**, **residencia**, **casa_adoptiva**
+  - `reservado` y `adoptado` fueron eliminados de `TipoUbicacion` (eran estados disfrazados de ubicación)
 - `pesos`: one-to-many `PesoPerro` (ordered by fecha desc)
 - `celos`: one-to-many `CeloPerro` (ordered by fecha_inicio desc)
+
+### Sincronización estado ↔ ubicación
+- Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había
+- Cambiar ubicación a física (refugio/acogida/residencia) estando adoptado → `estado = libre`
+- Guardar formulario con `estado = adoptado` y ubicación actual ≠ `casa_adoptiva` → se crea automáticamente registro `casa_adoptiva` (sin datos de contacto, rellenar después)
+- Guardar formulario con `estado ≠ adoptado` viniendo de adoptado con `casa_adoptiva` → se cierra `casa_adoptiva` y se crea `refugio`
 
 ### PesoPerro
 - `perro_id`, `fecha`, `peso_kg` (Float), `notas` (nullable)
 - CRUD via `POST /perros/{id}/peso` and `POST /perros/{id}/peso/{peso_id}/eliminar`
 - Displayed in `perros/detail.html` as a collapsible section (hidden for veterano)
+- Columna "Peso" visible en `list.html`, ordenable (subquery del último peso por perro)
 
 ### CeloPerro
 - `perro_id`, `fecha_inicio`, `fecha_fin` (nullable), `notas` (nullable)
 - CRUD via `POST /perros/{id}/celo` and `POST /perros/{id}/celo/{celo_id}/eliminar`
 - Displayed in `perros/detail.html` as a collapsible section (hidden for veterano)
+- `fecha_fin` se precarga con `fecha_inicio + 15 días` por defecto (JS en detail.html)
 
 ### Voluntario
 - `perfil`: PerfilVoluntario enum
@@ -143,20 +155,20 @@ app/
   templates_config.py — Jinja2 setup
   main.py             — FastAPI app, NotAuthorized redirect to /perros/
   routers/
-    dashboard.py      — Dashboard stats, dbt run button (admin-only)
-    perros.py         — CRUD perros, photo upload, location tabs
+    dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes (drill-down chart)
+    perros.py         — CRUD perros, photo upload, location tabs, sync estado↔ubicación
     voluntarios.py    — CRUD voluntarios
     turnos.py         — Turno registration, saldo calculation, KPIs
     visitas.py        — CRUD visitantes, pipeline estados, convertir a voluntario
     usuarios.py       — User management (admin-only)
   templates/
-    base.html         — Sidebar, role-gated menu items
+    base.html         — Sidebar, role-gated menu items, badge-* CSS (incluye badge-casa_adoptiva)
     login.html        — Login form (with logo)
-    dashboard.html    — 5 stat cards + dbt status alert + run button
+    dashboard.html    — Stat cards + charts + dbt button. Chart "Entradas vs adopciones" tiene drill-down: clic en barra abre modal con perros del mes
     perros/
-      list.html       — Tabs: En refugio (heart) / En acogida (house) / Adoptados / Todos
-      detail.html     — Photo (portrait-friendly), edit/delete/location change (hidden for veterano), control de pesos y celos
-      form.html       — Create/edit, name uppercase, photo upload, age/passport
+      list.html       — Tabs: En refugio / En acogida (estado=activos) / Reservados / Adoptados / Todos. Columna Peso ordenable.
+      detail.html     — Photo, edit/delete/location change (hidden for veterano), pesos, celos (fecha_fin default +15d), vacunas
+      form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
     voluntarios/
       list.html       — Active volunteers
       detail.html     — Profile + turnos (KPIs: time as volunteer, total turnos done)
@@ -172,8 +184,12 @@ app/
 dbt_protectora/
   profiles.yml        — Default target: prod (points to Neon)
   models/
-    staging/          — stg_perros, stg_voluntarios, etc.
+    staging/          — stg_perros (estado in libre/reservado), stg_voluntarios, etc.
     marts/            — Business logic tables
+      mart_entradas_salidas_por_mes  — usa perros.fecha_adopcion (no ubicaciones.tipo='adoptado')
+      mart_tiempo_adopcion           — usa perros.fecha_adopcion
+      mart_patrones_dificultad       — usa perros.fecha_adopcion
+      mart_perros_sin_adoptar        — filtra estado='libre'
 ```
 
 ---
@@ -211,6 +227,9 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 5. **Name uppercase:** Enforced in create/edit endpoints (`nombre = nombre.upper()`).
 6. **Portrait photos:** `max-height: 300px; object-fit: contain; margin: 0 auto;`
 7. **Photo display for veterano:** Can view photos but cannot change location or upload new ones.
+8. **Estado vs ubicación separados:** `estado` = interés/adopción (libre/reservado/adoptado/fallecido). `TipoUbicacion` = lugar físico (refugio/acogida/residencia/casa_adoptiva). "Activo" se deriva de `estado in ('libre', 'reservado')`. Sincronización bidireccional automática entre estado y ubicación.
+9. **fecha_adopcion en Perro:** Fecha de adopción guardada directamente en `perros.fecha_adopcion` (no en ubicaciones). Permite que los perros devueltos sigan en el sistema. Los marts dbt la usan para analytics de adopciones.
+10. **Tabs de ubicación física usan estado=activos:** Las pestañas "En refugio" y "En acogida" muestran tanto `libre` como `reservado` para reflejar la ubicación real del perro independientemente de su estado de interés.
 
 ---
 
@@ -230,6 +249,8 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 
 **Cloudinary config empty:** Move `cloudinary.config()` inside the upload function so it reads env vars at request time, not import time.
 
-**PostgreSQL enum change:** Cannot rename or add values with a simple UPDATE. Use `ALTER TYPE` DDL.
+**PostgreSQL enum change:** Cannot rename or add values with a simple UPDATE. Use `ALTER TYPE` DDL. Cannot DROP enum values — recreate type if needed.
 
 **dbt run timeout:** If it takes >180s, increase timeout in `dashboard.py:ejecutar_dbt()`.
+
+**Badge invisible (mismo color que fondo):** Añadir `.badge-{tipo}` en `base.html` con el color correspondiente.
