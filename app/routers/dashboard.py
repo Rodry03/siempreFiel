@@ -1,10 +1,10 @@
 import os
 import subprocess
 from datetime import date
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Depends, Query
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, extract
 from app.database import get_db
 from app.templates_config import templates
 from app.auth import get_current_user, require_not_veterano, require_admin
@@ -28,7 +28,10 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     no_esterilizados = _query_analytics(db, "mart_perros_no_esterilizados")
     tiempo_refugio = _query_analytics(db, "mart_tiempo_en_refugio")
 
-    entradas_salidas = _query_analytics(db, "mart_entradas_salidas_por_mes")
+    entradas_salidas = [
+        {**r, "mes": r["mes"].isoformat() if hasattr(r.get("mes"), "isoformat") else str(r.get("mes", ""))}
+        for r in _query_analytics(db, "mart_entradas_salidas_por_mes")
+    ]
     tiempo_adopcion = [
         {**r, "dias_medio": float(r["dias_medio"])}
         for r in _query_analytics(db, "mart_tiempo_adopcion")
@@ -98,6 +101,70 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "dist_ubicacion": dist_ubicacion,
         "dbt_status": dbt,
     })
+
+
+@router.get("/dashboard/detalle-mes")
+def detalle_mes(
+    mes: str = Query(...),
+    tipo: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    from app.models import Perro, Ubicacion, TipoUbicacion, Raza
+    try:
+        mes_date = date.fromisoformat(mes)
+    except ValueError:
+        return JSONResponse({"error": "mes inválido"}, status_code=400)
+
+    if tipo == "entradas":
+        perros = (
+            db.query(Perro)
+            .join(Raza, Perro.raza_id == Raza.id)
+            .filter(
+                extract("year", Perro.fecha_entrada) == mes_date.year,
+                extract("month", Perro.fecha_entrada) == mes_date.month,
+            )
+            .order_by(Perro.fecha_entrada)
+            .all()
+        )
+        items = [
+            {
+                "id": p.id,
+                "nombre": p.nombre,
+                "raza": p.raza.nombre if p.raza else "—",
+                "sexo": p.sexo.value,
+                "fecha": p.fecha_entrada.isoformat(),
+                "estado": p.estado.value,
+            }
+            for p in perros
+        ]
+    elif tipo == "adopciones":
+        ubicaciones = (
+            db.query(Ubicacion)
+            .join(Perro, Ubicacion.perro_id == Perro.id)
+            .join(Raza, Perro.raza_id == Raza.id)
+            .filter(
+                Ubicacion.tipo == TipoUbicacion.adoptado,
+                extract("year", Ubicacion.fecha_inicio) == mes_date.year,
+                extract("month", Ubicacion.fecha_inicio) == mes_date.month,
+            )
+            .order_by(Ubicacion.fecha_inicio)
+            .all()
+        )
+        items = [
+            {
+                "id": u.perro.id,
+                "nombre": u.perro.nombre,
+                "raza": u.perro.raza.nombre if u.perro.raza else "—",
+                "sexo": u.perro.sexo.value,
+                "fecha": u.fecha_inicio.isoformat(),
+                "estado": u.perro.estado.value,
+            }
+            for u in ubicaciones
+        ]
+    else:
+        return JSONResponse({"error": "tipo inválido"}, status_code=400)
+
+    return JSONResponse({"items": items})
 
 
 @router.post("/dbt-run", dependencies=[Depends(require_admin)])

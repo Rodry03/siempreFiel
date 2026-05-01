@@ -1,4 +1,26 @@
-with turnos_con_perfil as (
+with semanas as (
+    select distinct semana
+    from {{ ref('stg_turnos_voluntarios') }}
+    where semana >= date_trunc('month', current_date - interval '5 months')::date
+),
+
+dias_semana as (
+    select
+        s.semana,
+        s.semana + (generate_series(0, 6) || ' day')::interval as fecha
+    from semanas s
+),
+
+slots_esperados as (
+    select
+        ds.semana,
+        ds.fecha,
+        f.franja
+    from dias_semana ds
+    cross join (select 'manana' as franja union all select 'tarde') f
+),
+
+turnos_con_perfil as (
     select
         t.semana,
         t.fecha,
@@ -12,19 +34,22 @@ with turnos_con_perfil as (
 
 por_slot as (
     select
-        semana,
-        fecha,
-        franja,
-        max(case when perfil = 'veterano'   and estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
-        max(case when perfil = 'voluntario' and estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
-    from turnos_con_perfil
-    group by semana, fecha, franja
+        se.semana,
+        se.fecha,
+        se.franja,
+        max(case when tcp.perfil = 'veterano'   and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
+        max(case when tcp.perfil = 'voluntario' and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
+    from slots_esperados se
+    left join turnos_con_perfil tcp on se.semana = tcp.semana
+                                    and se.fecha = tcp.fecha
+                                    and se.franja = tcp.franja
+    group by se.semana, se.fecha, se.franja
 ),
 
 por_semana as (
     select
         semana,
-        sum(tiene_veterano)                                                                as slots_con_veterano,
+        sum(case when tiene_veterano = 1 then 1 else 0 end)                                as slots_con_veterano,
         sum(case when tiene_veterano = 1 and tiene_voluntario = 1 then 1 else 0 end)      as slots_completos
     from por_slot
     group by semana

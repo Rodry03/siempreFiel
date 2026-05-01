@@ -1,15 +1,11 @@
-{{ config(materialized='incremental', unique_key='id') }}
+{{ config(materialized='table') }}
 
 select
     id,
     voluntario_id,
     fecha,
-    franja,
-    estado,
+    franja::text                                as franja,
+    estado::text                                as estado,
     notas,
-    date_trunc('week', fecha::timestamp)::date as semana
+    date_trunc('week', fecha::timestamp)::date  as semana
 from {{ source('protectora', 'turnos_voluntarios') }}
-
-{% if is_incremental() %}
-    where fecha > (select max(fecha) from {{ this }})
-{% endif %}
