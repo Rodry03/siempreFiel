@@ -127,19 +127,19 @@
   <nav>
     <ul class="pagination pagination-sm mb-0">
       <li class="page-item {% if page == 1 %}disabled{% endif %}">
-        <a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&page={{ page - 1 }}">Anterior</a>
+        <a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&sort={{ sort }}&order={{ order }}&page={{ page - 1 }}">Anterior</a>
       </li>
       {% for p in range(1, total_paginas + 1) %}
         {% if p == page %}
           <li class="page-item active"><span class="page-link">{{ p }}</span></li>
         {% elif p == 1 or p == total_paginas or (p >= page - 2 and p <= page + 2) %}
-          <li class="page-item"><a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&page={{ p }}">{{ p }}</a></li>
+          <li class="page-item"><a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&sort={{ sort }}&order={{ order }}&page={{ p }}">{{ p }}</a></li>
         {% elif p == page - 3 or p == page + 3 %}
           <li class="page-item disabled"><span class="page-link">…</span></li>
         {% endif %}
       {% endfor %}
       <li class="page-item {% if page == total_paginas %}disabled{% endif %}">
-        <a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&page={{ page + 1 }}">Siguiente</a>
+        <a class="page-link" href="/perros/?estado={{ estado_filtro }}&q={{ q }}&ubicacion={{ ubicacion_filtro }}&raza_id={{ raza_id_filtro }}&sort={{ sort }}&order={{ order }}&page={{ page + 1 }}">Siguiente</a>
       </li>
     </ul>
   </nav>

@@ -127,6 +127,19 @@
             {{ ubicacion_labels[ubicacion_actual.tipo.value] }}
           </span>
           <span class="text-muted small">desde {{ ubicacion_actual.fecha_inicio }}</span>
+          {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+          <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1 ms-auto" style="font-size:.75rem;"
+            data-bs-toggle="modal" data-bs-target="#modalEditUbicacion"
+            data-id="{{ ubicacion_actual.id }}"
+            data-tipo="{{ ubicacion_actual.tipo.value }}"
+            data-fecha-inicio="{{ ubicacion_actual.fecha_inicio }}"
+            data-fecha-fin="{{ ubicacion_actual.fecha_fin or '' }}"
+            data-contacto="{{ ubicacion_actual.nombre_contacto or '' }}"
+            data-telefono="{{ ubicacion_actual.telefono_contacto or '' }}"
+            data-notas="{{ ubicacion_actual.notas or '' }}">
+            <i class="bi bi-pencil"></i>
+          </button>
+          {% endif %}
         </div>
         {% if ubicacion_actual.nombre_contacto %}
         <p class="mb-0 text-muted small">
@@ -191,7 +204,18 @@
               <td>{{ u.fecha_fin or 'Actual' }}</td>
               <td>{{ u.nombre_contacto or '—' }}</td>
               {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-              <td>
+              <td class="d-flex gap-1">
+                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" style="font-size:.75rem;"
+                  data-bs-toggle="modal" data-bs-target="#modalEditUbicacion"
+                  data-id="{{ u.id }}"
+                  data-tipo="{{ u.tipo.value }}"
+                  data-fecha-inicio="{{ u.fecha_inicio }}"
+                  data-fecha-fin="{{ u.fecha_fin or '' }}"
+                  data-contacto="{{ u.nombre_contacto or '' }}"
+                  data-telefono="{{ u.telefono_contacto or '' }}"
+                  data-notas="{{ u.notas or '' }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
                 <form method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar"
                       onsubmit="return confirm('¿Eliminar esta entrada del historial?')">
                   <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
@@ -442,5 +466,69 @@
   }
   celoInicio.addEventListener('change', actualizarCeloFin);
   actualizarCeloFin();
+</script>
+
+<!-- Modal editar ubicación -->
+<div class="modal fade" id="modalEditUbicacion" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" id="formEditUbicacion">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar ubicación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Tipo</label>
+              <select name="tipo" id="editUbicTipo" class="form-select form-select-sm">
+                {% for t in tipos_ubicacion %}
+                <option value="{{ t }}">{{ ubicacion_labels[t] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Fecha inicio</label>
+              <input type="date" name="fecha_inicio" id="editUbicFechaInicio" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Fecha fin <span class="text-muted">(vacío = actual)</span></label>
+              <input type="date" name="fecha_fin" id="editUbicFechaFin" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nombre contacto</label>
+              <input type="text" name="nombre_contacto" id="editUbicContacto" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Teléfono contacto</label>
+              <input type="text" name="telefono_contacto" id="editUbicTelefono" class="form-control form-control-sm">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Notas</label>
+              <input type="text" name="notas" id="editUbicNotas" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('modalEditUbicacion').addEventListener('show.bs.modal', function (e) {
+    const btn = e.relatedTarget;
+    const id = btn.dataset.id;
+    document.getElementById('formEditUbicacion').action = `/perros/{{ perro.id }}/ubicacion/${id}/editar`;
+    document.getElementById('editUbicTipo').value = btn.dataset.tipo;
+    document.getElementById('editUbicFechaInicio').value = btn.dataset.fechaInicio;
+    document.getElementById('editUbicFechaFin').value = btn.dataset.fechaFin;
+    document.getElementById('editUbicContacto').value = btn.dataset.contacto;
+    document.getElementById('editUbicTelefono').value = btn.dataset.telefono;
+    document.getElementById('editUbicNotas').value = btn.dataset.notas;
+  });
 </script>
 {% endblock %}

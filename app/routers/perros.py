@@ -376,6 +376,47 @@ def cambiar_ubicacion(
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 
+@router.post("/{perro_id}/ubicacion/{ubicacion_id}/editar", dependencies=[Depends(require_not_veterano)])
+def editar_ubicacion(
+    perro_id: int,
+    ubicacion_id: int,
+    tipo: str = Form(...),
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    nombre_contacto: Optional[str] = Form(None),
+    telefono_contacto: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    ubicacion = db.query(Ubicacion).filter(
+        Ubicacion.id == ubicacion_id,
+        Ubicacion.perro_id == perro_id,
+    ).first()
+    if not ubicacion:
+        return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+    ubicacion.tipo = TipoUbicacion(tipo)
+    ubicacion.fecha_inicio = fecha_inicio
+    ubicacion.fecha_fin = fecha_fin or None
+    ubicacion.nombre_contacto = nombre_contacto or None
+    ubicacion.telefono_contacto = telefono_contacto or None
+    ubicacion.notas = notas or None
+
+    # Sincronizar estado del perro si es la ubicación activa (sin fecha_fin)
+    if not ubicacion.fecha_fin:
+        perro = db.query(Perro).filter(Perro.id == perro_id).first()
+        if perro:
+            if ubicacion.tipo == TipoUbicacion.casa_adoptiva:
+                perro.estado = EstadoPerro.adoptado
+                if not perro.fecha_adopcion:
+                    perro.fecha_adopcion = fecha_inicio
+            elif perro.estado == EstadoPerro.adoptado:
+                perro.estado = EstadoPerro.libre
+
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
 @router.post("/{perro_id}/ubicacion/{ubicacion_id}/eliminar", dependencies=[Depends(require_not_veterano)])
 def eliminar_ubicacion(perro_id: int, ubicacion_id: int, db: Session = Depends(get_db)):
     ubicacion = db.query(Ubicacion).filter(
