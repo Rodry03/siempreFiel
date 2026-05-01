@@ -6,19 +6,18 @@ with adoptados as (
         p.esterilizado,
         p.fecha_entrada,
         p.fecha_nacimiento,
-        u.fecha_inicio                                                             as fecha_adopcion,
-        (u.fecha_inicio - p.fecha_entrada)                                         as dias_hasta_adopcion,
+        p.fecha_adopcion,
+        (p.fecha_adopcion - p.fecha_entrada)                                       as dias_hasta_adopcion,
         case
-            when date_part('year', age(u.fecha_inicio, p.fecha_nacimiento)) < 2 then 'joven'
-            when date_part('year', age(u.fecha_inicio, p.fecha_nacimiento)) < 7 then 'adulto'
+            when date_part('year', age(p.fecha_adopcion, p.fecha_nacimiento)) < 2 then 'joven'
+            when date_part('year', age(p.fecha_adopcion, p.fecha_nacimiento)) < 7 then 'adulto'
             else 'senior'
         end                                                                        as franja_edad
     from {{ source('protectora', 'perros') }} p
-    inner join {{ source('protectora', 'ubicaciones') }} u
-        on u.perro_id = p.id and u.tipo = 'adoptado'
     where p.estado = 'adoptado'
       and p.fecha_entrada is not null
-      and u.fecha_inicio >= p.fecha_entrada
+      and p.fecha_adopcion is not null
+      and p.fecha_adopcion >= p.fecha_entrada
 ),
 
 por_sexo as (

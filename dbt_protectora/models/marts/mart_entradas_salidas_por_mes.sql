@@ -10,12 +10,12 @@ with entradas as (
 
 salidas as (
     select
-        date_trunc('month', fecha_inicio)::date as mes,
-        count(*)                                 as total_salidas
-    from {{ source('protectora', 'ubicaciones') }}
-    where tipo = 'adoptado'
-      and fecha_inicio >= date_trunc('month', current_date - interval '1 year')
-    group by date_trunc('month', fecha_inicio)
+        date_trunc('month', fecha_adopcion)::date as mes,
+        count(*)                                   as total_salidas
+    from {{ source('protectora', 'perros') }}
+    where fecha_adopcion is not null
+      and fecha_adopcion >= date_trunc('month', current_date - interval '1 year')
+    group by date_trunc('month', fecha_adopcion)
 ),
 
 meses as (

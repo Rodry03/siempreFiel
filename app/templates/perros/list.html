@@ -16,10 +16,10 @@
 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
   {% if not es_veterano %}
   <div class="d-flex flex-wrap gap-1">
-    <a href="/perros/?estado=activo&ubicacion=refugio{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'refugio' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    <a href="/perros/?estado=activos&ubicacion=refugio{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activos' and ubicacion_filtro == 'refugio' %}btn-primary{% else %}btn-outline-primary{% endif %}">
       <i class="bi bi-heart me-1"></i>En refugio
     </a>
-    <a href="/perros/?estado=activo&ubicacion=acogida{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activo' and ubicacion_filtro == 'acogida' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+    <a href="/perros/?estado=activos&ubicacion=acogida{{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'activos' and ubicacion_filtro == 'acogida' %}btn-warning{% else %}btn-outline-warning{% endif %}">
       <i class="bi bi-house me-1"></i>En acogida
     </a>
     <a href="/perros/?estado=reservado&ubicacion={{ q_raza }}" class="btn btn-sm {% if estado_filtro == 'reservado' %}btn-info{% else %}btn-outline-info{% endif %}">
@@ -60,6 +60,7 @@
           {{ th("esterilizado", "Esterilizado") }}
           {{ th("fecha_entrada", "Entrada") }}
           {{ th("dias", "Días en sistema") }}
+          {{ th("peso", "Peso") }}
           <th>Ubicación</th><th></th>
         </tr>
       </thead>
@@ -93,6 +94,11 @@
           </td>
           <td>{{ perro.fecha_entrada }}</td>
           <td><span class="badge bg-secondary">{{ dias }}d</span></td>
+          <td>
+            {% if perro.pesos %}
+              <span class="text-nowrap">{{ perro.pesos[0].peso_kg }} kg</span>
+            {% else %}—{% endif %}
+          </td>
           <td>
             {% if ubicacion %}
               <span class="badge badge-{{ ubicacion.tipo.value }} text-white">

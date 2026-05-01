@@ -11,18 +11,17 @@ class Sexo(str, enum.Enum):
 
 
 class EstadoPerro(str, enum.Enum):
-    activo = "activo"
+    libre = "libre"
+    reservado = "reservado"
     adoptado = "adoptado"
     fallecido = "fallecido"
-    reservado = "reservado"
 
 
 class TipoUbicacion(str, enum.Enum):
     refugio = "refugio"
     acogida = "acogida"
     residencia = "residencia"
-    reservado = "reservado"
-    adoptado = "adoptado"
+    casa_adoptiva = "casa_adoptiva"
 
 
 class PerfilVoluntario(str, enum.Enum):
@@ -90,7 +89,8 @@ class Perro(Base):
     num_pasaporte = Column(String(50), unique=True, nullable=True)
     color = Column(String(100), nullable=True)
     fecha_entrada = Column(Date, nullable=False, default=date.today)
-    estado = Column(Enum(EstadoPerro), default=EstadoPerro.activo, nullable=False)
+    estado = Column(Enum(EstadoPerro), default=EstadoPerro.libre, nullable=False)
+    fecha_adopcion = Column(Date, nullable=True)
     notas = Column(Text, nullable=True)
     foto_url = Column(String, nullable=True)
 

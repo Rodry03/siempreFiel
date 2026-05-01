@@ -19,7 +19,7 @@ with activos as (
     left join {{ source('protectora', 'razas') }} r on r.id = p.raza_id
     left join {{ source('protectora', 'ubicaciones') }} u
         on u.perro_id = p.id and u.fecha_fin is null
-    where p.estado = 'activo'
+    where p.estado = 'libre'
       and p.fecha_entrada is not null
 )
 

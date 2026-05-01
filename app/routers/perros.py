@@ -37,8 +37,7 @@ UBICACION_LABELS = {
     "refugio": "Refugio",
     "acogida": "Casa de acogida",
     "residencia": "Residencia canina",
-    "reservado": "Reservado",
-    "adoptado": "Adoptado",
+    "casa_adoptiva": "Casa adoptiva",
 }
 
 
@@ -73,7 +72,7 @@ COLUMNAS_ORDEN = {
 @router.get("/")
 def listar_perros(
     request: Request,
-    estado: str = "activo",
+    estado: str = "activos",
     page: int = 1,
     sort: str = "nombre",
     order: str = "asc",
@@ -84,11 +83,14 @@ def listar_perros(
 ):
     from app.models import RolUsuario
     if request.state.current_user and request.state.current_user.rol == RolUsuario.veterano:
-        estado = "activo"
+        estado = "activos"
         ubicacion = "refugio"
 
     query = db.query(Perro).join(Raza)
-    if estado != "todos":
+    ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
+    if estado == "activos":
+        query = query.filter(Perro.estado.in_(ESTADOS_ACTIVOS))
+    elif estado != "todos":
         try:
             query = query.filter(Perro.estado == EstadoPerro(estado))
         except ValueError:
@@ -104,7 +106,17 @@ def listar_perros(
     if raza_id:
         query = query.filter(Perro.raza_id == raza_id)
 
-    columna = COLUMNAS_ORDEN.get(sort, Perro.nombre)
+    if sort == "peso":
+        peso_sq = (
+            db.query(PesoPerro.perro_id, PesoPerro.peso_kg)
+            .distinct(PesoPerro.perro_id)
+            .order_by(PesoPerro.perro_id, PesoPerro.fecha.desc())
+            .subquery("ultimo_peso")
+        )
+        query = query.outerjoin(peso_sq, peso_sq.c.perro_id == Perro.id)
+        columna = peso_sq.c.peso_kg
+    else:
+        columna = COLUMNAS_ORDEN.get(sort, Perro.nombre)
     dir_fn = desc if order == "desc" else asc
     query = query.order_by(dir_fn(columna))
 
@@ -150,8 +162,9 @@ def crear_perro(
     esterilizado: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
     fecha_entrada: date = Form(...),
-    estado: str = Form("activo"),
+    estado: str = Form("libre"),
     fecha_nacimiento: Optional[date] = Form(None),
+    fecha_adopcion: Optional[date] = Form(None),
     num_chip: Optional[str] = Form(None),
     num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
@@ -167,6 +180,7 @@ def crear_perro(
         ppp=ppp == "on",
         fecha_entrada=fecha_entrada,
         estado=EstadoPerro(estado),
+        fecha_adopcion=fecha_adopcion if estado == "adoptado" else None,
         fecha_nacimiento=fecha_nacimiento,
         num_chip=num_chip or None,
         num_pasaporte=num_pasaporte or None,
@@ -223,8 +237,9 @@ def editar_perro(
     esterilizado: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
     fecha_entrada: date = Form(...),
-    estado: str = Form("activo"),
+    estado: str = Form("libre"),
     fecha_nacimiento: Optional[date] = Form(None),
+    fecha_adopcion: Optional[date] = Form(None),
     num_chip: Optional[str] = Form(None),
     num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
@@ -234,18 +249,42 @@ def editar_perro(
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if not perro:
         return RedirectResponse("/perros/", status_code=303)
+
+    nuevo_estado = EstadoPerro(estado)
+    estado_anterior = perro.estado
+    fecha_adopcion_efectiva = fecha_adopcion if estado == "adoptado" else perro.fecha_adopcion
+
     perro.nombre = nombre.upper()
     perro.raza_id = raza_id
     perro.sexo = Sexo(sexo)
     perro.esterilizado = esterilizado == "on"
     perro.ppp = ppp == "on"
     perro.fecha_entrada = fecha_entrada
-    perro.estado = EstadoPerro(estado)
+    perro.estado = nuevo_estado
     perro.fecha_nacimiento = fecha_nacimiento
+    perro.fecha_adopcion = fecha_adopcion_efectiva
     perro.num_chip = num_chip or None
     perro.num_pasaporte = num_pasaporte or None
     perro.color = color or None
     perro.notas = notas or None
+
+    ubicacion_actual = _ubicacion_actual(perro)
+    hoy = date.today()
+
+    if nuevo_estado == EstadoPerro.adoptado and (
+        ubicacion_actual is None or ubicacion_actual.tipo != TipoUbicacion.casa_adoptiva
+    ):
+        fecha_cambio = fecha_adopcion_efectiva or hoy
+        if ubicacion_actual:
+            ubicacion_actual.fecha_fin = fecha_cambio
+        db.add(Ubicacion(perro_id=perro_id, tipo=TipoUbicacion.casa_adoptiva, fecha_inicio=fecha_cambio))
+
+    elif nuevo_estado != EstadoPerro.adoptado and estado_anterior == EstadoPerro.adoptado and (
+        ubicacion_actual and ubicacion_actual.tipo == TipoUbicacion.casa_adoptiva
+    ):
+        ubicacion_actual.fecha_fin = hoy
+        db.add(Ubicacion(perro_id=perro_id, tipo=TipoUbicacion.refugio, fecha_inicio=hoy))
+
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
@@ -324,14 +363,15 @@ def cambiar_ubicacion(
         telefono_contacto=telefono_contacto or None,
         notas=notas or None,
     ))
-    if tipo in ("adoptado", "reservado"):
-        perro = db.query(Perro).filter(Perro.id == perro_id).first()
-        if perro:
-            perro.estado = EstadoPerro(tipo)
-    elif tipo in ("refugio", "acogida", "residencia"):
-        perro = db.query(Perro).filter(Perro.id == perro_id).first()
-        if perro and perro.estado in (EstadoPerro.reservado, EstadoPerro.adoptado):
-            perro.estado = EstadoPerro.activo
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if perro:
+        if tipo == "casa_adoptiva":
+            perro.estado = EstadoPerro.adoptado
+            if not perro.fecha_adopcion:
+                perro.fecha_adopcion = fecha_inicio
+        elif tipo in ("refugio", "acogida", "residencia"):
+            if perro.estado == EstadoPerro.adoptado:
+                perro.estado = EstadoPerro.libre
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
@@ -356,10 +396,10 @@ def eliminar_ubicacion(perro_id: int, ubicacion_id: int, db: Session = Depends(g
             anterior.fecha_fin = None
             perro = db.query(Perro).filter(Perro.id == perro_id).first()
             if perro:
-                if anterior.tipo in (TipoUbicacion.adoptado, TipoUbicacion.reservado):
-                    perro.estado = EstadoPerro(anterior.tipo.value)
+                if anterior.tipo == TipoUbicacion.casa_adoptiva:
+                    perro.estado = EstadoPerro.adoptado
                 else:
-                    perro.estado = EstadoPerro.activo
+                    perro.estado = EstadoPerro.libre
 
     db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)

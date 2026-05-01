@@ -12,7 +12,7 @@
   <div class="d-flex align-items-center gap-2 flex-wrap">
     <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
     <h2 class="fw-bold mb-0">{{ perro.nombre }}</h2>
-    <span class="badge {% if perro.estado.value == 'activo' %}bg-primary{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
+    <span class="badge {% if perro.estado.value == 'libre' %}bg-primary{% elif perro.estado.value == 'reservado' %}bg-info{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
       {{ perro.estado.value | capitalize }}
     </span>
     {% if perro.ppp %}<span class="badge bg-danger">PPP</span>{% endif %}
@@ -90,6 +90,9 @@
           <tr><th class="text-muted">Chip</th><td>{{ perro.num_chip or '—' }}</td></tr>
           <tr><th class="text-muted">Pasaporte</th><td>{{ perro.num_pasaporte or '—' }}</td></tr>
           <tr><th class="text-muted">Entrada</th><td>{{ perro.fecha_entrada }}</td></tr>
+          {% if perro.fecha_adopcion %}
+          <tr><th class="text-muted">Adopción</th><td>{{ perro.fecha_adopcion }}</td></tr>
+          {% endif %}
           <tr><th class="text-muted">Esterilizado</th><td>
             {% if perro.esterilizado %}<span class="badge bg-success">Sí</span>
             {% else %}<span class="badge bg-danger">No</span>{% endif %}
@@ -290,11 +293,11 @@
             <div class="row g-2">
               <div class="col-sm-4">
                 <label class="form-label small fw-semibold">Fecha inicio *</label>
-                <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
+                <input type="date" name="fecha_inicio" id="celo_fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
               </div>
               <div class="col-sm-4">
                 <label class="form-label small fw-semibold">Fecha fin</label>
-                <input type="date" name="fecha_fin" class="form-control form-control-sm">
+                <input type="date" name="fecha_fin" id="celo_fecha_fin" class="form-control form-control-sm">
               </div>
               <div class="col-sm-4">
                 <label class="form-label small fw-semibold">Notas</label>
@@ -428,5 +431,16 @@
     d.setFullYear(d.getFullYear() + 1);
     document.getElementById('fecha_proxima').value = d.toISOString().split('T')[0];
   });
+
+  const celoInicio = document.getElementById('celo_fecha_inicio');
+  const celoFin = document.getElementById('celo_fecha_fin');
+  function actualizarCeloFin() {
+    if (!celoInicio.value) return;
+    const d = new Date(celoInicio.value);
+    d.setDate(d.getDate() + 15);
+    celoFin.value = d.toISOString().split('T')[0];
+  }
+  celoInicio.addEventListener('change', actualizarCeloFin);
+  actualizarCeloFin();
 </script>
 {% endblock %}

@@ -2,17 +2,15 @@ with adoptados as (
     select
         p.id,
         p.fecha_entrada,
-        u.fecha_inicio                                                        as fecha_adopcion,
-        date_trunc('month', u.fecha_inicio)::date                            as mes,
-        (u.fecha_inicio - p.fecha_entrada)                                   as dias_hasta_adopcion
+        p.fecha_adopcion,
+        date_trunc('month', p.fecha_adopcion)::date       as mes,
+        (p.fecha_adopcion - p.fecha_entrada)              as dias_hasta_adopcion
     from {{ source('protectora', 'perros') }} p
-    inner join {{ source('protectora', 'ubicaciones') }} u
-        on u.perro_id = p.id
-       and u.tipo = 'adoptado'
     where p.estado = 'adoptado'
       and p.fecha_entrada is not null
-      and u.fecha_inicio >= p.fecha_entrada
-      and u.fecha_inicio >= date_trunc('month', current_date - interval '1 year')
+      and p.fecha_adopcion is not null
+      and p.fecha_adopcion >= p.fecha_entrada
+      and p.fecha_adopcion >= date_trunc('month', current_date - interval '1 year')
 )
 
 select

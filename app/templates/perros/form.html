@@ -68,11 +68,17 @@
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Estado</label>
-          <select name="estado" class="form-select">
-            <option value="activo" {% if not perro or perro.estado.value == 'activo' %}selected{% endif %}>Activo</option>
+          <select name="estado" class="form-select" id="selectEstado" onchange="toggleFechaAdopcion()">
+            <option value="libre" {% if not perro or perro.estado.value == 'libre' %}selected{% endif %}>Libre</option>
+            <option value="reservado" {% if perro and perro.estado.value == 'reservado' %}selected{% endif %}>Reservado</option>
             <option value="adoptado" {% if perro and perro.estado.value == 'adoptado' %}selected{% endif %}>Adoptado</option>
             <option value="fallecido" {% if perro and perro.estado.value == 'fallecido' %}selected{% endif %}>Fallecido</option>
           </select>
+        </div>
+        <div class="col-md-6" id="campoFechaAdopcion" {% if not perro or perro.estado.value != 'adoptado' %}style="display:none"{% endif %}>
+          <label class="form-label fw-semibold">Fecha de adopción</label>
+          <input type="date" name="fecha_adopcion" class="form-control"
+            value="{{ perro.fecha_adopcion.isoformat() if perro and perro.fecha_adopcion else '' }}">
         </div>
         <div class="col-md-6 d-flex align-items-center gap-4">
           <div class="form-check mt-4">
@@ -107,4 +113,10 @@
     </form>
   </div>
 </div>
+<script>
+function toggleFechaAdopcion() {
+  const campo = document.getElementById('campoFechaAdopcion');
+  campo.style.display = document.getElementById('selectEstado').value === 'adoptado' ? '' : 'none';
+}
+</script>
 {% endblock %}

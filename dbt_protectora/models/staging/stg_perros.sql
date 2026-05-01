@@ -1,4 +1,4 @@
--- Perros activos con datos limpios
+-- Perros bajo gestión de la protectora (libre o reservado)
 select
     p.id,
     p.nombre,
@@ -9,8 +9,9 @@ select
     p.num_chip,
     p.color,
     p.fecha_entrada,
+    p.fecha_adopcion,
     p.estado,
     p.notas
 from {{ source('protectora', 'perros') }} p
 left join {{ source('protectora', 'razas') }} r on p.raza_id = r.id
-where p.estado = 'activo'
+where p.estado in ('libre', 'reservado')

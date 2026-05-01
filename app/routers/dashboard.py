@@ -48,11 +48,12 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
 
     from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
     from app.routers.turnos import calcular_saldo
-    total_activos = db.query(Perro).filter(Perro.estado == EstadoPerro.activo).count()
+    ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
+    total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
     total_voluntarios = db.query(Voluntario).filter(Voluntario.activo == True).count()
 
     # Distribución de perros activos por ubicación actual (última ubicación de cada perro)
-    perros_activos = db.query(Perro).filter(Perro.estado == EstadoPerro.activo).all()
+    perros_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).all()
     dist_ubicacion = {"refugio": 0, "acogida": 0, "residencia": 0, "sin_ubicacion": 0}
     for perro in perros_activos:
         if perro.ubicaciones:
