@@ -58,7 +58,7 @@ def _calcular_edad(fecha_nacimiento) -> Optional[str]:
     return f"{anos} año{'s' if anos != 1 else ''}"
 
 
-POR_PAGINA = 25
+POR_PAGINA = 35
 
 COLUMNAS_ORDEN = {
     "nombre":        Perro.nombre,
