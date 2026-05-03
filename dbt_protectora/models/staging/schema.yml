@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_perros
-    description: Perros activos en el sistema
+    description: Perros bajo gestión activa de la protectora (estado libre o reservado)
     columns:
       - name: id
         tests: [unique, not_null]
@@ -10,6 +10,8 @@ models:
         tests:
           - not_null
           - dbt_utils.not_empty_string
+      - name: fecha_entrada
+        tests: [not_null]
       - name: sexo
         tests:
           - accepted_values:
@@ -17,7 +19,7 @@ models:
       - name: estado
         tests:
           - accepted_values:
-              values: ['activo', 'adoptado', 'fallecido']
+              values: ['libre', 'reservado']
 
   - name: stg_vacunas
     description: Historial de vacunaciones
@@ -33,15 +35,21 @@ models:
 
   - name: stg_ubicaciones
     description: Historial de ubicaciones de cada perro
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "fecha_fin is null or fecha_fin >= fecha_inicio"
+          severity: warn
     columns:
       - name: id
         tests: [unique, not_null]
       - name: perro_id
         tests: [not_null]
+      - name: fecha_inicio
+        tests: [not_null]
       - name: tipo
         tests:
           - accepted_values:
-              values: ['refugio', 'acogida', 'residencia', 'adoptado']
+              values: ['refugio', 'acogida', 'residencia', 'casa_adoptiva']
 
   - name: stg_voluntarios
     description: Voluntarios de la protectora
@@ -58,6 +66,12 @@ models:
           - dbt_utils.not_empty_string
       - name: email
         tests: [unique, not_null]
+      - name: activo
+        tests: [not_null]
+      - name: perfil
+        tests:
+          - accepted_values:
+              values: ['directiva', 'veterano', 'voluntario', 'guagua', 'eventos', 'colaboradores']
 
   - name: stg_turnos_voluntarios
     description: Registro de turnos por voluntario
@@ -65,6 +79,12 @@ models:
       - name: id
         tests: [unique, not_null]
       - name: voluntario_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_voluntarios')
+              field: id
+      - name: fecha
         tests: [not_null]
       - name: franja
         tests:

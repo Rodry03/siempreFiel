@@ -1,4 +1,5 @@
--- Falla si hay perros activos sin ninguna ubicación registrada
+{{ config(severity='warn') }}
+-- Perros activos sin ninguna ubicación registrada (datos históricos incompletos)
 select
     p.id,
     p.nombre

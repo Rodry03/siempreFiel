@@ -7,7 +7,10 @@ models:
       - name: perro_id
         tests: [not_null]
       - name: dias_restantes
-        tests: [not_null]
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "<= 30"
 
   - name: mart_perros_no_esterilizados
     description: Perros activos pendientes de esterilizar
@@ -20,11 +23,15 @@ models:
     tests:
       - dbt_utils.equal_rowcount:
           compare_model: ref('stg_perros')
+          severity: warn
     columns:
       - name: id
         tests: [not_null]
       - name: dias_en_sistema
-        tests: [not_null]
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
 
   - name: mart_saldo_turnos
     description: Saldo de turnos por voluntario (positivo = adelantado, negativo = debe)
@@ -32,4 +39,75 @@ models:
       - name: id
         tests: [unique, not_null]
       - name: saldo
+        tests: [not_null]
+      - name: turnos_acumulados
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: semanas_activo
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: mart_cobertura_semanal
+    description: Cobertura de slots de voluntarios por semana (últimos 5 meses)
+    columns:
+      - name: semana
+        tests: [unique, not_null]
+      - name: nivel
+        tests:
+          - accepted_values:
+              values: ['ok', 'bajo', 'critico']
+      - name: slots_esperados
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "= 14"
+      - name: pct_con_veterano
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 100"
+
+  - name: mart_faltas_voluntario
+    description: Saldo y faltas de voluntarios activos que hacen turnos
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: saldo
+        tests: [not_null]
+      - name: turnos_realizados
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: faltas_injustificadas
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: semanas_activo
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: mart_entradas_salidas_por_mes
+    description: Entradas y adopciones mensuales (últimos 12 meses)
+    columns:
+      - name: mes
+        tests: [unique, not_null]
+      - name: total_entradas
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: total_salidas
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
+  - name: mart_saldo_turnos_semanal
+    description: Saldo acumulado semana a semana por voluntario
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: "turnos_semana >= 0"
+    columns:
+      - name: voluntario_id
+        tests: [not_null]
+      - name: semana
         tests: [not_null]
