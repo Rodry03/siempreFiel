@@ -397,8 +397,12 @@
             <div class="row g-2">
               <div class="col-md-4">
                 <label class="form-label small fw-semibold">Tipo de vacuna *</label>
-                <input type="text" name="tipo" class="form-control form-control-sm" required
-                  placeholder="Ej: Rabia, Parvovirus…">
+                <select name="tipo" class="form-select form-select-sm" required>
+                  <option value="" disabled selected>Selecciona…</option>
+                  {% for t in tipos_vacuna %}
+                  <option value="{{ t }}">{{ t }}</option>
+                  {% endfor %}
+                </select>
               </div>
               <div class="col-md-3">
                 <label class="form-label small fw-semibold">Fecha administración *</label>
@@ -428,7 +432,7 @@
         <div style="overflow-x:auto;">
         <table class="table table-hover align-middle mb-0" style="min-width:500px;">
           <thead class="table-light">
-            <tr><th>Vacuna</th><th>Administrada</th><th>Próxima dosis</th><th>Veterinario</th><th>Notas</th></tr>
+            <tr><th>Vacuna</th><th>Administrada</th><th>Próxima dosis</th><th>Veterinario</th><th>Notas</th><th></th></tr>
           </thead>
           <tbody>
             {% for v in vacunas %}
@@ -442,6 +446,20 @@
               </td>
               <td>{{ v.veterinario or '—' }}</td>
               <td class="text-muted small">{{ v.notas or '' }}</td>
+              <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                  onclick="abrirEditarVacuna({{ v.id }}, '{{ v.tipo | e }}', '{{ v.fecha_administracion }}', '{{ v.fecha_proxima or '' }}', '{{ (v.veterinario or '') | e }}', '{{ (v.notas or '') | e }}')">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                  data-confirm-form="formEliminarVacuna{{ v.id }}"
+                  data-confirm-title="¿Eliminar vacuna?"
+                  data-confirm-message="Se eliminará el registro de {{ v.tipo }} del {{ v.fecha_administracion }}."
+                  data-confirm-btn-text="Eliminar">
+                  <i class="bi bi-trash"></i>
+                </button>
+                <form id="formEliminarVacuna{{ v.id }}" method="post" action="/perros/{{ perro.id }}/vacuna/{{ v.id }}/eliminar" class="d-none"></form>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -450,6 +468,52 @@
         {% else %}
         <p class="text-muted mb-0">Sin vacunas registradas aún.</p>
         {% endif %}
+
+        <!-- Modal editar vacuna -->
+        <div class="modal fade" id="modalEditarVacuna" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Editar vacuna</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="post" id="formEditarVacuna">
+                <div class="modal-body">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Tipo *</label>
+                      <select name="tipo" id="editVacunaTipo" class="form-select form-select-sm" required>
+                        {% for t in tipos_vacuna %}
+                        <option value="{{ t }}">{{ t }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold">Fecha administración *</label>
+                      <input type="date" name="fecha_administracion" id="editVacunaFechaAdmin" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold">Próxima dosis</label>
+                      <input type="date" name="fecha_proxima" id="editVacunaFechaProxima" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Veterinario</label>
+                      <input type="text" name="veterinario" id="editVacunaVet" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Notas</label>
+                      <input type="text" name="notas" id="editVacunaNotas" class="form-control form-control-sm">
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -462,6 +526,28 @@
     d.setFullYear(d.getFullYear() + 1);
     document.getElementById('fecha_proxima').value = d.toISOString().split('T')[0];
   });
+
+  document.getElementById('editVacunaFechaAdmin').addEventListener('change', function () {
+    if (!this.value) return;
+    const d = new Date(this.value);
+    d.setFullYear(d.getFullYear() + 1);
+    document.getElementById('editVacunaFechaProxima').value = d.toISOString().split('T')[0];
+  });
+
+  function abrirEditarVacuna(id, tipo, fechaAdmin, fechaProxima, vet, notas) {
+    document.getElementById('formEditarVacuna').action = '/perros/{{ perro.id }}/vacuna/' + id + '/editar';
+    const sel = document.getElementById('editVacunaTipo');
+    sel.value = tipo;
+    if (!sel.value) {
+      const opt = new Option(tipo, tipo, true, true);
+      sel.prepend(opt);
+    }
+    document.getElementById('editVacunaFechaAdmin').value = fechaAdmin;
+    document.getElementById('editVacunaFechaProxima').value = fechaProxima;
+    document.getElementById('editVacunaVet').value = vet;
+    document.getElementById('editVacunaNotas').value = notas;
+    new bootstrap.Modal(document.getElementById('modalEditarVacuna')).show();
+  }
 
   const celoInicio = document.getElementById('celo_fecha_inicio');
   const celoFin = document.getElementById('celo_fecha_fin');

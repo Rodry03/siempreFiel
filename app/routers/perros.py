@@ -38,6 +38,19 @@ def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
 
 router = APIRouter(prefix="/perros", dependencies=[Depends(get_current_user)])
 
+TIPOS_VACUNA = [
+    "Polivalente (DHPPI)",
+    "Rabia",
+    "Leptospirosis",
+    "Tos de las perreras (Bordetella)",
+    "Leishmaniasis",
+    "Parvovirosis",
+    "Moquillo",
+    "Hepatitis",
+    "Coronavirus",
+    "Otra",
+]
+
 UBICACION_LABELS = {
     "refugio": "Refugio",
     "acogida": "Casa de acogida",
@@ -263,6 +276,7 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         "ubicacion_labels": UBICACION_LABELS,
         "hoy": date.today().isoformat(),
         "tipos_ubicacion": [t.value for t in TipoUbicacion],
+        "tipos_vacuna": TIPOS_VACUNA,
         "edad": _calcular_edad(perro.fecha_nacimiento),
         "error": error,
     })
@@ -382,6 +396,8 @@ def agregar_vacuna(
     notas: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    if not fecha_proxima:
+        fecha_proxima = fecha_administracion.replace(year=fecha_administracion.year + 1)
     vacuna = Vacuna(
         perro_id=perro_id,
         tipo=tipo,
@@ -392,6 +408,48 @@ def agregar_vacuna(
     )
     db.add(vacuna)
     db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/vacuna/{vacuna_id}/editar", dependencies=[Depends(require_not_veterano)])
+def editar_vacuna(
+    request: Request,
+    perro_id: int,
+    vacuna_id: int,
+    tipo: str = Form(...),
+    fecha_administracion: date = Form(...),
+    fecha_proxima: Optional[date] = Form(None),
+    veterinario: Optional[str] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    vacuna = db.query(Vacuna).filter(Vacuna.id == vacuna_id, Vacuna.perro_id == perro_id).first()
+    if not vacuna:
+        return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+    if not fecha_proxima:
+        fecha_proxima = fecha_administracion.replace(year=fecha_administracion.year + 1)
+    vacuna.tipo = tipo
+    vacuna.fecha_administracion = fecha_administracion
+    vacuna.fecha_proxima = fecha_proxima
+    vacuna.veterinario = veterinario or None
+    vacuna.notas = notas or None
+    db.commit()
+    flash(request, "Vacuna actualizada.")
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/vacuna/{vacuna_id}/eliminar", dependencies=[Depends(require_not_veterano)])
+def eliminar_vacuna(
+    request: Request,
+    perro_id: int,
+    vacuna_id: int,
+    db: Session = Depends(get_db),
+):
+    vacuna = db.query(Vacuna).filter(Vacuna.id == vacuna_id, Vacuna.perro_id == perro_id).first()
+    if vacuna:
+        db.delete(vacuna)
+        db.commit()
+        flash(request, "Vacuna eliminada.", "warning")
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 
