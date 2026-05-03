@@ -52,11 +52,11 @@
   </div>
 </div>
 
-<!-- Gráfico entradas vs salidas -->
-{% if entradas_salidas %}
+<!-- Entradas vs salidas + Conversión visitantes -->
 <div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="card">
+  {% if entradas_salidas %}
+  <div class="col-lg-{% if conversion_visitantes %}7{% else %}12{% endif %}">
+    <div class="card h-100">
       <div class="card-header bg-white border-0 pt-3">
         <span class="fw-semibold"><i class="bi bi-arrow-left-right text-primary me-2"></i>Entradas vs adopciones por mes</span>
       </div>
@@ -65,8 +65,21 @@
       </div>
     </div>
   </div>
+  {% endif %}
+  {% if conversion_visitantes %}
+  <div class="col-lg-{% if entradas_salidas %}5{% else %}12{% endif %}">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-person-check text-success me-2"></i>Conversión visitantes → voluntarios</span>
+      </div>
+      <div class="card-body">
+        <canvas id="chartConversionVisitantes" style="min-height:180px; max-height:260px;"></canvas>
+        <p class="text-muted small mt-2 mb-0">% de visitantes que acaban convirtiéndose en voluntarios cada mes.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 
 <!-- Cobertura semanal de turnos -->
 {% if cobertura_semanal %}
@@ -117,9 +130,26 @@
 </div>
 {% endif %}
 
-<!-- Gráficos -->
+<!-- Evolución saldo semanal -->
+{% if evolucion_saldo %}
 <div class="row g-4 mb-4">
-  <div class="col-lg-8">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>Evolución del saldo medio de turnos por semana</span>
+      </div>
+      <div class="card-body">
+        <canvas id="chartEvolucionSaldo" style="min-height:140px; max-height:220px;"></canvas>
+        <p class="text-muted small mt-2 mb-0">Saldo medio (turnos realizados − esperados) sobre todos los voluntarios activos con turno. Por encima de 0 = van adelantados; por debajo = deben turnos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Gráficos adopción y acogida -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-{% if tiempo_acogida %}6{% else %}8{% endif %}">
     <div class="card h-100">
       <div class="card-header bg-white border-0 pt-3">
         <span class="fw-semibold"><i class="bi bi-clock-history text-success me-2"></i>Tiempo medio hasta adopción (días)</span>
@@ -134,9 +164,25 @@
       </div>
     </div>
   </div>
-  {% if faltas_voluntario %}
-  <div class="col-lg-4">
+  {% if tiempo_acogida %}
+  <div class="col-lg-6">
     <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <span class="fw-semibold"><i class="bi bi-house-heart text-info me-2"></i>Tiempo medio en acogida por mes (días)</span>
+      </div>
+      <div class="card-body">
+        <canvas id="chartTiempoAcogida" height="100"></canvas>
+        <p class="text-muted small mt-2 mb-0">Días de media que los perros estuvieron en acogida antes de volver o ser adoptados, agrupados por mes de salida.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if faltas_voluntario %}
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card">
       <div class="card-header bg-white border-0 pt-3">
         <span class="fw-semibold"><i class="bi bi-person-x text-danger me-2"></i>Faltas y saldo por voluntario</span>
       </div>
@@ -170,8 +216,8 @@
       </div>
     </div>
   </div>
-  {% endif %}
 </div>
+{% endif %}
 
 <div class="row g-4">
   <!-- Vacunas próximas -->
@@ -475,7 +521,7 @@
   </div>
 </div>
 
-{% if entradas_salidas or tiempo_adopcion or cobertura_semanal or total_activos > 0 %}
+{% if entradas_salidas or tiempo_adopcion or cobertura_semanal or tiempo_acogida or conversion_visitantes or evolucion_saldo or total_activos > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 {% if cobertura_semanal %}
@@ -598,6 +644,119 @@ new Chart(document.getElementById('chartTiempoAdopcion'), {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true, ticks: { stepSize: 10 } } }
+  }
+});
+{% endif %}
+
+{% if tiempo_acogida %}
+new Chart(document.getElementById('chartTiempoAcogida'), {
+  type: 'line',
+  data: {
+    labels: {{ tiempo_acogida | map(attribute='mes_label') | list | tojson }},
+    datasets: [{
+      label: 'Días medios',
+      data: {{ tiempo_acogida | map(attribute='dias_medio') | list | tojson }},
+      borderColor: 'rgba(13, 202, 240, 0.9)',
+      backgroundColor: 'rgba(13, 202, 240, 0.1)',
+      borderWidth: 2,
+      pointRadius: 4,
+      fill: true,
+      tension: 0.3,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 5 } } }
+  }
+});
+{% endif %}
+
+{% if conversion_visitantes %}
+new Chart(document.getElementById('chartConversionVisitantes'), {
+  type: 'bar',
+  data: {
+    labels: {{ conversion_visitantes | map(attribute='mes_label') | list | tojson }},
+    datasets: [
+      {
+        label: 'Visitantes',
+        data: {{ conversion_visitantes | map(attribute='total_visitantes') | list | tojson }},
+        backgroundColor: 'rgba(108, 117, 125, 0.4)',
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Convertidos',
+        data: {{ conversion_visitantes | map(attribute='convertidos') | list | tojson }},
+        backgroundColor: 'rgba(25, 135, 84, 0.7)',
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Tasa (%)',
+        type: 'line',
+        data: {{ conversion_visitantes | map(attribute='tasa_conversion') | list | tojson }},
+        borderColor: 'rgba(255, 193, 7, 0.9)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 4,
+        tension: 0.3,
+        yAxisID: 'y2',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      y:  { beginAtZero: true, ticks: { stepSize: 1 }, position: 'left' },
+      y2: { beginAtZero: true, max: 100, position: 'right', grid: { drawOnChartArea: false },
+             ticks: { callback: v => v + '%' } }
+    }
+  }
+});
+{% endif %}
+
+{% if evolucion_saldo %}
+new Chart(document.getElementById('chartEvolucionSaldo'), {
+  type: 'line',
+  data: {
+    labels: {{ evolucion_saldo | map(attribute='semana_label') | list | tojson }},
+    datasets: [
+      {
+        label: 'Saldo medio',
+        data: {{ evolucion_saldo | map(attribute='saldo_medio') | list | tojson }},
+        borderColor: 'rgba(49, 174, 144, 0.9)',
+        backgroundColor: function(ctx) {
+          const v = ctx.raw;
+          return v >= 0 ? 'rgba(25,135,84,0.15)' : 'rgba(220,53,69,0.15)';
+        },
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: true,
+        tension: 0.3,
+      },
+      {
+        label: 'Voluntarios con deuda',
+        data: {{ evolucion_saldo | map(attribute='n_con_deuda') | list | tojson }},
+        borderColor: 'rgba(220, 53, 69, 0.7)',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [4, 4],
+        pointRadius: 2,
+        tension: 0.3,
+        yAxisID: 'y2',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: true, position: 'bottom' } },
+    scales: {
+      y:  { position: 'left',  ticks: { callback: v => (v > 0 ? '+' : '') + v } },
+      y2: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false },
+             ticks: { stepSize: 1 } }
+    }
   }
 });
 {% endif %}

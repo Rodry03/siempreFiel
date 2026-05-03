@@ -25,6 +25,9 @@ _ALLOWED_VIEWS = {
     "mart_entradas_por_mes",
     "mart_saldo_turnos",
     "mart_saldo_turnos_semanal",
+    "mart_tiempo_acogida_mes",
+    "mart_conversion_visitantes",
+    "mart_evolucion_saldo_semanal",
 }
 
 
@@ -63,6 +66,24 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         for r in _query_analytics(db, "mart_cobertura_semanal")
     ]
     faltas_voluntario = _query_analytics(db, "mart_faltas_voluntario")
+    tiempo_acogida = [
+        {**r,
+         "mes": r["mes"].isoformat() if hasattr(r.get("mes"), "isoformat") else str(r.get("mes", "")),
+         "dias_medio": float(r["dias_medio"])}
+        for r in _query_analytics(db, "mart_tiempo_acogida_mes")
+    ]
+    conversion_visitantes = [
+        {**r,
+         "mes": r["mes"].isoformat() if hasattr(r.get("mes"), "isoformat") else str(r.get("mes", "")),
+         "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
+        for r in _query_analytics(db, "mart_conversion_visitantes")
+    ]
+    evolucion_saldo = [
+        {**r,
+         "semana": r["semana"].isoformat() if hasattr(r.get("semana"), "isoformat") else str(r.get("semana", "")),
+         "saldo_medio": float(r["saldo_medio"]) if r.get("saldo_medio") is not None else 0.0}
+        for r in _query_analytics(db, "mart_evolucion_saldo_semanal")
+    ]
 
     from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
     from app.routers.turnos import calcular_saldo
@@ -117,6 +138,9 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "patrones_dificultad": patrones_dificultad,
         "cobertura_semanal": cobertura_semanal,
         "faltas_voluntario": faltas_voluntario,
+        "tiempo_acogida": tiempo_acogida,
+        "conversion_visitantes": conversion_visitantes,
+        "evolucion_saldo": evolucion_saldo,
         "dist_ubicacion": dist_ubicacion,
         "dbt_status": dbt,
     })
@@ -128,7 +152,7 @@ def detalle_mes(
     tipo: str = Query(...),
     db: Session = Depends(get_db),
 ):
-    from app.models import Perro, Ubicacion, TipoUbicacion, Raza
+    from app.models import Perro, Raza
     try:
         mes_date = date.fromisoformat(mes)
     except ValueError:
@@ -142,7 +166,7 @@ def detalle_mes(
                 extract("year", Perro.fecha_entrada) == mes_date.year,
                 extract("month", Perro.fecha_entrada) == mes_date.month,
             )
-            .order_by(Perro.fecha_entrada)
+            .order_by(Perro.fecha_entrada.desc())
             .all()
         )
         items = [
@@ -157,28 +181,28 @@ def detalle_mes(
             for p in perros
         ]
     elif tipo == "adopciones":
-        ubicaciones = (
-            db.query(Ubicacion)
-            .join(Perro, Ubicacion.perro_id == Perro.id)
+        from sqlalchemy import desc
+        perros = (
+            db.query(Perro)
             .join(Raza, Perro.raza_id == Raza.id)
             .filter(
-                Ubicacion.tipo == TipoUbicacion.adoptado,
-                extract("year", Ubicacion.fecha_inicio) == mes_date.year,
-                extract("month", Ubicacion.fecha_inicio) == mes_date.month,
+                Perro.fecha_adopcion.isnot(None),
+                extract("year", Perro.fecha_adopcion) == mes_date.year,
+                extract("month", Perro.fecha_adopcion) == mes_date.month,
             )
-            .order_by(Ubicacion.fecha_inicio)
+            .order_by(desc(Perro.fecha_adopcion))
             .all()
         )
         items = [
             {
-                "id": u.perro.id,
-                "nombre": u.perro.nombre,
-                "raza": u.perro.raza.nombre if u.perro.raza else "—",
-                "sexo": u.perro.sexo.value,
-                "fecha": u.fecha_inicio.isoformat(),
-                "estado": u.perro.estado.value,
+                "id": p.id,
+                "nombre": p.nombre,
+                "raza": p.raza.nombre if p.raza else "—",
+                "sexo": p.sexo.value,
+                "fecha": p.fecha_adopcion.isoformat(),
+                "estado": p.estado.value,
             }
-            for u in ubicaciones
+            for p in perros
         ]
     else:
         return JSONResponse({"error": "tipo inválido"}, status_code=400)

@@ -17,6 +17,8 @@ sources:
         description: Voluntarios de la protectora
       - name: turnos_voluntarios
         description: Registro de turnos por voluntario
+      - name: visitantes
+        description: Pipeline de adopción y acogida
 
   - name: raw
     schema: raw
