@@ -26,9 +26,9 @@ Aplicación web para la gestión interna de la protectora **Siempre Fiel**: regi
 
 ### Perros
 
-- **Perro** — nombre (siempre en mayúsculas), raza (FK), fecha nacimiento, sexo, esterilizado, PPP, chip, pasaporte, color, fecha entrada, **estado**, **fecha_adopcion**, foto (Cloudinary URL), notas
+- **Perro** — nombre (siempre en mayúsculas), raza (FK), fecha nacimiento, sexo, esterilizado, PPP, chip, pasaporte, color, fecha entrada, **estado**, **fecha_adopcion**, **fecha_reserva**, foto (Cloudinary URL), notas
 - **Raza** — tabla normalizada de razas
-- **Vacuna** — tipo, fecha administración, próxima dosis, veterinario, notas
+- **Vacuna** — tipo (desplegable con tipos predefinidos), fecha administración, próxima dosis (auto +1 año), veterinario, notas
 - **Ubicacion** — tipo (`refugio` / `acogida` / `residencia` / `casa_adoptiva`), fecha inicio/fin, contacto, notas
 - **PesoPerro** — fecha, peso en kg, notas
 - **CeloPerro** — fecha inicio, fecha fin, notas
@@ -50,6 +50,10 @@ Estado y ubicación se sincronizan automáticamente:
 - Cambiar ubicación a `casa_adoptiva` → estado pasa a `adoptado`
 - Guardar estado `adoptado` sin `casa_adoptiva` → se crea registro `casa_adoptiva` automáticamente
 - Volver a ubicación física (refugio/acogida/residencia) → estado vuelve a `libre`
+
+#### Auto-adopción de reservados
+
+Los perros con `estado=reservado` pasan automáticamente a `adoptado` al cabo de 30 días. El campo `fecha_reserva` registra cuándo se marcó como reservado. La comprobación se ejecuta cada vez que un usuario junta/admin carga la lista de perros.
 
 ### Voluntarios
 
@@ -102,8 +106,8 @@ protectora/
 │   ├── auth.py              # Autenticación y dependencias de rol
 │   ├── templates_config.py  # Configuración Jinja2
 │   ├── routers/
-│   │   ├── dashboard.py     # Stats, botón dbt (admin), drill-down gráfico por mes
-│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación (incl. edición historial)
+│   │   ├── dashboard.py     # Stats, botón dbt (admin), drill-down entradas/adopciones y conversión visitantes
+│   │   ├── perros.py        # CRUD perros, pesos, celos, vacunas, foto, ubicación, auto-adopción reservados
 │   │   ├── voluntarios.py   # CRUD voluntarios
 │   │   ├── turnos.py        # Perfil voluntario + registro de turnos. Prefix: /voluntarios
 │   │   ├── turnos_admin.py  # Gestión centralizada de turnos (junta/admin). Prefix: /turnos
@@ -112,8 +116,8 @@ protectora/
 │   └── templates/
 │       ├── base.html        # Sidebar (verde #31ae90), Nunito, fondo #eef4f2
 │       ├── login.html       # Fondo gradiente verde marca
-│       ├── dashboard.html   # Charts con drill-down al clicar mes
-│       ├── perros/          # list (35/pág, contador, orden preservado), detail (edición ubicaciones), form
+│       ├── dashboard.html   # Charts con drill-down al clicar mes/barra (entradas, adopciones, visitantes)
+│       ├── perros/          # list (35/pág, tabs, orden preservado), detail (vacunas CRUD, edición ubicaciones), form
 │       ├── voluntarios/     # list, detail (turnos históricos), form
 │       ├── turnos/          # list (vista semanal, CRUD turnos)
 │       ├── visitas/         # list, detail, form
@@ -134,18 +138,22 @@ protectora/
 
 ### Marts
 
-| Mart | Descripción |
-|---|---|
-| `mart_entradas_salidas_por_mes` | Entradas vs adopciones por mes (usa `perros.fecha_adopcion`) |
-| `mart_tiempo_adopcion` | Días medios hasta adopción por mes |
-| `mart_patrones_dificultad` | Días medios hasta adopción por factor (sexo, PPP, edad, esterilizado) |
-| `mart_perros_sin_adoptar` | Perros libres con más tiempo esperando (alertas crítico/atención) |
-| `mart_vacunas_proximas` | Vacunas próximas a vencer o vencidas |
-| `mart_perros_no_esterilizados` | Perros activos sin esterilizar |
-| `mart_tiempo_en_refugio` | Tiempo de estancia en el sistema por perro |
-| `mart_saldo_turnos` | Saldo de turnos por voluntario |
-| `mart_cobertura_semanal` | Cobertura semanal de turnos (con/sin veterano) |
-| `mart_faltas_voluntario` | Faltas e incumplimientos por voluntario |
+| Mart | Descripción | Materialización |
+|---|---|---|
+| `mart_entradas_salidas_por_mes` | Entradas vs adopciones por mes (usa `perros.fecha_adopcion`) | tabla |
+| `mart_tiempo_adopcion` | Días medios hasta adopción por mes | tabla |
+| `mart_patrones_dificultad` | Días medios hasta adopción por factor (sexo, PPP, edad, esterilizado) | tabla |
+| `mart_perros_sin_adoptar` | Perros libres con más tiempo esperando (alertas crítico/atención) | tabla |
+| `mart_vacunas_proximas` | Vacunas próximas a vencer o vencidas (solo activos) | **vista** |
+| `mart_perros_no_esterilizados` | Perros activos sin esterilizar | **vista** |
+| `mart_saldo_turnos` | Saldo de turnos por voluntario | tabla |
+| `mart_cobertura_semanal` | Cobertura semanal de turnos (con/sin veterano) | tabla |
+| `mart_faltas_voluntario` | Faltas e incumplimientos por voluntario | tabla |
+| `mart_tiempo_acogida_mes` | Días medios que los perros pasan en acogida por mes | tabla |
+| `mart_conversion_visitantes` | Tasa de conversión visitante → voluntario por mes | tabla |
+| `mart_evolucion_saldo_semanal` | Saldo medio de turnos agregado por semana | tabla |
+
+Los marts marcados como **vista** reflejan datos en tiempo real sin necesidad de ejecutar `dbt run`.
 
 ## Instalación y arranque
 

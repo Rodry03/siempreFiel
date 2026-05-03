@@ -68,6 +68,7 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run
 - `ppp`: boolean (perro potencialmente peligroso)
 - `foto_url`: Cloudinary URL (nullable)
 - `fecha_adopcion`: date when adopted (nullable). Set automatically when ubicación changes to `casa_adoptiva` or estado set to `adoptado`.
+- `fecha_reserva`: date when estado changed to `reservado` (nullable). Set in `crear_perro`/`editar_perro`, cleared when leaving `reservado`. Used for auto-adoption after 30 days.
 - `estado`: `EstadoPerro` — **libre** (bajo gestión, nadie interesado), **reservado**, **adoptado**, **fallecido**
   - "activo" (bajo gestión) se deriva: `estado in ('libre', 'reservado')`
   - Cambiar ubicación ↔ estado están sincronizados bidireccionalmente (ver lógica abajo)
@@ -75,6 +76,17 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run
   - `reservado` y `adoptado` fueron eliminados de `TipoUbicacion` (eran estados disfrazados de ubicación)
 - `pesos`: one-to-many `PesoPerro` (ordered by fecha desc)
 - `celos`: one-to-many `CeloPerro` (ordered by fecha_inicio desc)
+
+### Auto-adopción de reservados
+- `_auto_adoptar_reservados(db)` en `perros.py`: se llama al cargar `/perros/` (solo junta/admin)
+- Perros con `estado=reservado` y `fecha_reserva <= hoy - 30 días` pasan automáticamente a `adoptado`, se les pone `fecha_adopcion=hoy` y se crea ubicación `casa_adoptiva`
+- Perros sin `fecha_reserva` (anteriores a esta feature) no se tocan
+
+### Vacuna
+- `tipo`: String libre, pero el frontend usa `TIPOS_VACUNA` (lista en `perros.py`) como desplegable
+- `fecha_proxima`: se auto-calcula como `fecha_administracion + 1 año` (JS en detail.html + fallback en servidor)
+- CRUD: `POST /perros/{id}/vacuna`, `POST /perros/{id}/vacuna/{id}/editar`, `POST /perros/{id}/vacuna/{id}/eliminar`
+- Tipos habituales en la protectora: Rabia, Canigen, DPT (Difteria/Pertussis/Tétanos)
 
 ### Sincronización estado ↔ ubicación
 - Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había
@@ -155,8 +167,8 @@ app/
   templates_config.py — Jinja2 setup
   main.py             — FastAPI app, NotAuthorized redirect to /perros/
   routers/
-    dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes (drill-down chart)
-    perros.py         — CRUD perros, photo upload, location tabs, sync estado↔ubicación
+    dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes, GET /dashboard/detalle-conversion (drill-down charts)
+    perros.py         — CRUD perros, photo upload, location tabs, sync estado↔ubicación, auto-adopción reservados, CRUD vacunas
     voluntarios.py    — CRUD voluntarios
     turnos.py         — Detalle voluntario + registro/eliminación de turnos desde perfil. Prefix: /voluntarios
     turnos_admin.py   — Gestión centralizada de turnos (junta/admin). Prefix: /turnos. CRUD + filtros semana/voluntario/estado
@@ -165,10 +177,10 @@ app/
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
     login.html        — Login form (with logo). Fondo gradiente verde marca
-    dashboard.html    — Stat cards + charts + dbt button. Cobertura semanal: tabla primero, gráfico debajo. Drill-down entradas/adopciones
+    dashboard.html    — Stat cards + charts + dbt button. Drill-down en entradas/adopciones y conversión visitantes. Gráficos: entradas/salidas, conversión visitantes, cobertura semanal, evolución saldo, tiempo adopción, tiempo acogida.
     perros/
       list.html       — Tabs: En refugio / En acogida / Reservados / Adoptados / Todos. 35 por página. Contador. Ordenación preservada al paginar.
-      detail.html     — Photo, edit/delete, pesos, celos, vacunas. Ubicaciones: cambio + edición individual (modal lápiz en historial y ubicación actual)
+      detail.html     — Photo, edit/delete, pesos, celos, vacunas (select tipo, auto fecha_proxima, editar/borrar). Ubicaciones: cambio + edición individual. Botón atrás usa history.back().
       form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
     voluntarios/
       list.html       — Active volunteers
@@ -193,6 +205,11 @@ dbt_protectora/
       mart_tiempo_adopcion           — usa perros.fecha_adopcion
       mart_patrones_dificultad       — usa perros.fecha_adopcion
       mart_perros_sin_adoptar        — filtra estado='libre'
+      mart_vacunas_proximas          — materializado como VIEW (tiempo real, no tabla)
+      mart_perros_no_esterilizados   — materializado como VIEW (tiempo real, no tabla)
+      mart_tiempo_acogida_mes        — días medios en acogida por mes
+      mart_conversion_visitantes     — tasa conversión visitante→voluntario por mes
+      mart_evolucion_saldo_semanal   — saldo medio de turnos semana a semana
 ```
 
 ---
@@ -236,6 +253,11 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 11. **Edición de ubicaciones individuales:** `POST /perros/{id}/ubicacion/{ubicacion_id}/editar` permite corregir fecha_inicio, tipo, contacto, etc. de cualquier registro del historial. Sincroniza estado del perro si la ubicación editada es la activa (sin fecha_fin).
 12. **Turnos admin separado de perfil voluntario:** `/turnos/` (junta/admin) para CRUD centralizado con filtros. El perfil del voluntario solo muestra el historial.
 13. **Color de marca:** `#31ae90` (verde protectora). Sidebar, login y fondo de página usan esta paleta.
+14. **dbt materialización mixta:** Marts de datos históricos = `table`. Marts que deben reflejar estado actual en tiempo real (`mart_vacunas_proximas`, `mart_perros_no_esterilizados`) = `view` con `{{ config(materialized='view') }}`.
+15. **Auto-adopción reservados:** Se dispara en cada carga de `/perros/` (no en background). Requiere `fecha_reserva` en el perro; perros sin ese campo no se procesan.
+16. **Drill-down charts:** Entradas/adopciones → `/dashboard/detalle-mes?mes=&tipo=`. Conversión visitantes → `/dashboard/detalle-conversion?mes=&tipo=`. La línea de tasa (%) no tiene drill-down.
+17. **dbt run logging:** Errores se loguean con `logging.getLogger(__name__)` en `dashboard.py` y las últimas 20 líneas del output se muestran en flash al admin.
+18. **Botón atrás en detalle perro:** Usa `history.back()` para respetar filtros activos (tab adoptados, acogida, etc.). Fallback a `/perros/` si JS desactivado.
 
 ---
 
@@ -258,5 +280,9 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 **PostgreSQL enum change:** Cannot rename or add values with a simple UPDATE. Use `ALTER TYPE` DDL. Cannot DROP enum values — recreate type if needed.
 
 **dbt run timeout:** If it takes >180s, increase timeout in `dashboard.py:ejecutar_dbt()`.
+
+**Adopciones en drill-down no cargaban:** El filtro usaba `TipoUbicacion.adoptado` que ya no existe. Corregido a `Perro.fecha_adopcion` (consistente con los marts).
+
+**Vacunas con fecha_proxima vacía (datos históricos):** Corregido con `UPDATE vacunas SET fecha_proxima = fecha_administracion + INTERVAL '1 year' WHERE fecha_proxima IS NULL`.
 
 **Badge invisible (mismo color que fondo):** Añadir `.badge-{tipo}` en `base.html` con el color correspondiente.
