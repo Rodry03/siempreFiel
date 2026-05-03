@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
@@ -74,6 +74,35 @@ COLUMNAS_ORDEN = {
     "dias":          Perro.fecha_entrada,
 }
 
+def _auto_adoptar_reservados(db: Session) -> None:
+    """Adopta automáticamente perros reservados hace más de 30 días."""
+    limite = date.today() - timedelta(days=30)
+    reservados = (
+        db.query(Perro)
+        .filter(
+            Perro.estado == EstadoPerro.reservado,
+            Perro.fecha_reserva.isnot(None),
+            Perro.fecha_reserva <= limite,
+        )
+        .all()
+    )
+    if not reservados:
+        return
+    hoy = date.today()
+    for perro in reservados:
+        perro.estado = EstadoPerro.adoptado
+        if not perro.fecha_adopcion:
+            perro.fecha_adopcion = hoy
+        perro.fecha_reserva = None
+        ub_actual = _ubicacion_actual(perro)
+        if ub_actual and ub_actual.tipo != TipoUbicacion.casa_adoptiva:
+            ub_actual.fecha_fin = hoy
+            db.add(Ubicacion(perro_id=perro.id, tipo=TipoUbicacion.casa_adoptiva, fecha_inicio=hoy))
+        elif ub_actual is None:
+            db.add(Ubicacion(perro_id=perro.id, tipo=TipoUbicacion.casa_adoptiva, fecha_inicio=hoy))
+    db.commit()
+
+
 @router.get("/")
 def listar_perros(
     request: Request,
@@ -90,6 +119,8 @@ def listar_perros(
     if request.state.current_user and request.state.current_user.rol == RolUsuario.veterano:
         estado = "activos"
         ubicacion = "refugio"
+    else:
+        _auto_adoptar_reservados(db)
 
     query = db.query(Perro).join(Raza)
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
@@ -195,6 +226,7 @@ def crear_perro(
         fecha_entrada=fecha_entrada,
         estado=estado_efectivo,
         fecha_adopcion=fecha_adopcion_efectiva or (fecha_entrada if estado_efectivo == EstadoPerro.adoptado else None),
+        fecha_reserva=fecha_entrada if estado_efectivo == EstadoPerro.reservado else None,
         fecha_nacimiento=fecha_nacimiento,
         num_chip=num_chip or None,
         num_pasaporte=num_pasaporte or None,
@@ -275,6 +307,11 @@ def editar_perro(
     nuevo_estado = EstadoPerro(estado)
     estado_anterior = perro.estado
     fecha_adopcion_efectiva = fecha_adopcion if estado == "adoptado" else perro.fecha_adopcion
+
+    if nuevo_estado == EstadoPerro.reservado and estado_anterior != EstadoPerro.reservado:
+        perro.fecha_reserva = date.today()
+    elif nuevo_estado != EstadoPerro.reservado:
+        perro.fecha_reserva = None
 
     perro.nombre = nombre.upper()
     perro.raza_id = raza_id

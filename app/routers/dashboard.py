@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 from datetime import date
@@ -7,7 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, extract
 from app.database import get_db
 from app.templates_config import templates
-from app.auth import get_current_user, require_not_veterano, require_admin
+from app.auth import get_current_user, require_not_veterano, require_admin, flash
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
@@ -47,7 +50,6 @@ def _query_analytics(db: Session, view: str) -> list[dict]:
 def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     vacunas_proximas = _query_analytics(db, "mart_vacunas_proximas")
     no_esterilizados = _query_analytics(db, "mart_perros_no_esterilizados")
-    tiempo_refugio = _query_analytics(db, "mart_tiempo_en_refugio")
 
     entradas_salidas = [
         {**r, "mes": r["mes"].isoformat() if hasattr(r.get("mes"), "isoformat") else str(r.get("mes", ""))}
@@ -127,7 +129,6 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     return templates.TemplateResponse(request, "dashboard.html", {
         "vacunas_proximas": vacunas_proximas,
         "no_esterilizados": no_esterilizados,
-        "tiempo_refugio": tiempo_refugio,
         "total_activos": total_activos,
         "total_voluntarios": total_voluntarios,
         "voluntarios_top": voluntarios_top,
@@ -210,18 +211,66 @@ def detalle_mes(
     return JSONResponse({"items": items})
 
 
+@router.get("/dashboard/detalle-conversion")
+def detalle_conversion(
+    mes: str = Query(...),
+    tipo: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    from app.models import Visitante, EstadoVisitante
+    try:
+        mes_date = date.fromisoformat(mes)
+    except ValueError:
+        return JSONResponse({"error": "mes inválido"}, status_code=400)
+
+    query = db.query(Visitante).filter(
+        extract("year", Visitante.fecha_contacto) == mes_date.year,
+        extract("month", Visitante.fecha_contacto) == mes_date.month,
+    )
+    if tipo == "convertidos":
+        query = query.filter(Visitante.estado == EstadoVisitante.se_convirtio)
+    elif tipo != "todos":
+        return JSONResponse({"error": "tipo inválido"}, status_code=400)
+
+    visitantes = query.order_by(Visitante.fecha_contacto.desc()).all()
+    items = [
+        {
+            "id": v.id,
+            "nombre": f"{v.nombre} {v.apellido}",
+            "email": v.email or "—",
+            "telefono": v.telefono or "—",
+            "fecha": v.fecha_contacto.isoformat(),
+            "estado": v.estado.value,
+        }
+        for v in visitantes
+    ]
+    return JSONResponse({"items": items})
+
+
 @router.post("/dbt-run", dependencies=[Depends(require_admin)])
-def ejecutar_dbt():
+def ejecutar_dbt(request: Request):
     dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
     try:
         result = subprocess.run(
             ["dbt", "run"],
             cwd=dbt_dir,
             capture_output=True,
+            text=True,
             timeout=180,
             env={**os.environ},
         )
-        status = "ok" if result.returncode == 0 else "error"
-    except Exception:
-        status = "error"
-    return RedirectResponse(f"/?dbt={status}", status_code=303)
+        if result.returncode == 0:
+            logger.info("dbt run OK:\n%s", result.stdout)
+            flash(request, "Analytics actualizados correctamente.", "success")
+        else:
+            output = (result.stderr or result.stdout or "Sin salida").strip()
+            last_lines = "\n".join(output.splitlines()[-20:])
+            logger.error("dbt run FAILED (code %d):\n%s", result.returncode, output)
+            flash(request, f"Error al ejecutar dbt run:\n{last_lines}", "danger")
+    except subprocess.TimeoutExpired:
+        logger.error("dbt run timeout (>180s)")
+        flash(request, "dbt run superó el tiempo límite (180s).", "danger")
+    except Exception as e:
+        logger.exception("dbt run excepción: %s", e)
+        flash(request, f"Error inesperado al ejecutar dbt: {e}", "danger")
+    return RedirectResponse("/", status_code=303)

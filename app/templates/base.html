@@ -219,7 +219,7 @@
         {% elif f.category == 'danger' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
         {% elif f.category == 'warning' %}<i class="bi bi-exclamation-circle-fill me-2"></i>
         {% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
-        {{ f.message }}
+        <span style="white-space: pre-wrap;">{{ f.message }}</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
       {% endfor %}
