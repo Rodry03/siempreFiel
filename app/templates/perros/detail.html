@@ -10,7 +10,7 @@
 {% endif %}
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div class="d-flex align-items-center gap-2 flex-wrap">
-    <a href="/perros/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <a href="/perros/" class="btn btn-sm btn-outline-secondary" onclick="history.back(); return false;"><i class="bi bi-arrow-left"></i></a>
     <h2 class="fw-bold mb-0">{{ perro.nombre }}</h2>
     <span class="badge {% if perro.estado.value == 'libre' %}bg-primary{% elif perro.estado.value == 'reservado' %}bg-info{% elif perro.estado.value == 'adoptado' %}bg-success{% else %}bg-secondary{% endif %}">
       {{ perro.estado.value | capitalize }}
