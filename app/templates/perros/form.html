@@ -104,6 +104,29 @@
         </div>
       </div>
 
+      {% if not perro %}
+      <hr class="my-3">
+      <h6 class="fw-semibold text-muted mb-3">Ubicación inicial</h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select name="ubicacion_tipo" class="form-select" id="selectUbicacion" onchange="toggleContactoUb()">
+            {% for t in tipos_ubicacion %}
+            <option value="{{ t }}" {% if t == 'refugio' %}selected{% endif %}>{{ ubicacion_labels[t] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6" id="campoNombreContactoUb" style="display:none">
+          <label class="form-label fw-semibold">Nombre contacto</label>
+          <input type="text" name="nombre_contacto_ub" class="form-control">
+        </div>
+        <div class="col-md-6" id="campoTelefonoContactoUb" style="display:none">
+          <label class="form-label fw-semibold">Teléfono contacto</label>
+          <input type="text" name="telefono_contacto_ub" class="form-control">
+        </div>
+      </div>
+      {% endif %}
+
       <div class="mt-4 d-flex gap-2">
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-check-lg me-1"></i>{% if perro %}Guardar cambios{% else %}Crear perro{% endif %}
@@ -117,6 +140,13 @@
 function toggleFechaAdopcion() {
   const campo = document.getElementById('campoFechaAdopcion');
   campo.style.display = document.getElementById('selectEstado').value === 'adoptado' ? '' : 'none';
+}
+function toggleContactoUb() {
+  const vis = document.getElementById('selectUbicacion') && document.getElementById('selectUbicacion').value !== 'refugio';
+  ['campoNombreContactoUb', 'campoTelefonoContactoUb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = vis ? '' : 'none';
+  });
 }
 </script>
 {% endblock %}

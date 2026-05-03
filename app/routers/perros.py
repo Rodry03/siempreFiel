@@ -150,6 +150,8 @@ def form_nuevo_perro(request: Request, db: Session = Depends(get_db)):
         "sexos": [s.value for s in Sexo],
         "razas": db.query(Raza).order_by(Raza.nombre).all(),
         "hoy": date.today().isoformat(),
+        "tipos_ubicacion": [t.value for t in TipoUbicacion],
+        "ubicacion_labels": UBICACION_LABELS,
     })
 
 
@@ -170,8 +172,15 @@ def crear_perro(
     color: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     foto: Optional[UploadFile] = File(None),
+    ubicacion_tipo: str = Form("refugio"),
+    nombre_contacto_ub: Optional[str] = Form(None),
+    telefono_contacto_ub: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    tipo_ub = TipoUbicacion(ubicacion_tipo)
+    estado_efectivo = EstadoPerro.adoptado if tipo_ub == TipoUbicacion.casa_adoptiva else EstadoPerro(estado)
+    fecha_adopcion_efectiva = fecha_adopcion if estado_efectivo == EstadoPerro.adoptado else None
+
     perro = Perro(
         nombre=nombre.upper(),
         raza_id=raza_id,
@@ -179,8 +188,8 @@ def crear_perro(
         esterilizado=esterilizado == "on",
         ppp=ppp == "on",
         fecha_entrada=fecha_entrada,
-        estado=EstadoPerro(estado),
-        fecha_adopcion=fecha_adopcion if estado == "adoptado" else None,
+        estado=estado_efectivo,
+        fecha_adopcion=fecha_adopcion_efectiva or (fecha_entrada if estado_efectivo == EstadoPerro.adoptado else None),
         fecha_nacimiento=fecha_nacimiento,
         num_chip=num_chip or None,
         num_pasaporte=num_pasaporte or None,
@@ -190,7 +199,13 @@ def crear_perro(
     db.add(perro)
     db.flush()
     perro.foto_url = _subir_foto(foto, perro.id)
-    db.add(Ubicacion(perro_id=perro.id, tipo=TipoUbicacion.refugio, fecha_inicio=fecha_entrada))
+    db.add(Ubicacion(
+        perro_id=perro.id,
+        tipo=tipo_ub,
+        fecha_inicio=fecha_entrada,
+        nombre_contacto=nombre_contacto_ub or None,
+        telefono_contacto=telefono_contacto_ub or None,
+    ))
     db.commit()
     return RedirectResponse(f"/perros/{perro.id}", status_code=303)
 
