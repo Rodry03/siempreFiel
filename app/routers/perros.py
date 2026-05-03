@@ -39,11 +39,12 @@ def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
 router = APIRouter(prefix="/perros", dependencies=[Depends(get_current_user)])
 
 TIPOS_VACUNA = [
-    "Polivalente (DHPPI)",
     "Rabia",
+    "Canigen",
+    "DPT (Difteria, Pertussis, Tetanos)",
     "Leptospirosis",
-    "Tos de las perreras (Bordetella)",
     "Leishmaniasis",
+    "Tos de las perreras (Bordetella)",
     "Parvovirosis",
     "Moquillo",
     "Hepatitis",
