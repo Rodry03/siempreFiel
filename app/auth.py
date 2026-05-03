@@ -1,6 +1,5 @@
 from passlib.context import CryptContext
 from fastapi import Depends, Request
-from starlette.middleware.base import BaseHTTPMiddleware
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -48,20 +47,28 @@ def require_not_veterano(request: Request):
     return user
 
 
-class CurrentUserMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        from app.database import SessionLocal
-        from app.models import Usuario
-        request.state.current_user = None
-        user_id = request.session.get("user_id")
-        if user_id:
-            db = SessionLocal()
-            try:
-                user = db.query(Usuario).filter(
-                    Usuario.id == user_id,
-                    Usuario.activo == True,
-                ).first()
-                request.state.current_user = user
-            finally:
-                db.close()
-        return await call_next(request)
+class CurrentUserMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            state = scope.setdefault("state", {})
+            state["current_user"] = None
+            session = scope.get("session", {})
+            user_id = session.get("user_id")
+            if user_id:
+                from app.database import SessionLocal
+                from app.models import Usuario
+                db = SessionLocal()
+                try:
+                    user = db.query(Usuario).filter(
+                        Usuario.id == user_id,
+                        Usuario.activo == True,
+                    ).first()
+                    state["current_user"] = user
+                except Exception:
+                    pass
+                finally:
+                    db.close()
+        await self.app(scope, receive, send)

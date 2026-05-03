@@ -158,21 +158,24 @@ app/
     dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes (drill-down chart)
     perros.py         — CRUD perros, photo upload, location tabs, sync estado↔ubicación
     voluntarios.py    — CRUD voluntarios
-    turnos.py         — Turno registration, saldo calculation, KPIs
+    turnos.py         — Detalle voluntario + registro/eliminación de turnos desde perfil. Prefix: /voluntarios
+    turnos_admin.py   — Gestión centralizada de turnos (junta/admin). Prefix: /turnos. CRUD + filtros semana/voluntario/estado
     visitas.py        — CRUD visitantes, pipeline estados, convertir a voluntario
     usuarios.py       — User management (admin-only)
   templates/
-    base.html         — Sidebar, role-gated menu items, badge-* CSS (incluye badge-casa_adoptiva)
-    login.html        — Login form (with logo)
-    dashboard.html    — Stat cards + charts + dbt button. Chart "Entradas vs adopciones" tiene drill-down: clic en barra abre modal con perros del mes
+    base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
+    login.html        — Login form (with logo). Fondo gradiente verde marca
+    dashboard.html    — Stat cards + charts + dbt button. Cobertura semanal: tabla primero, gráfico debajo. Drill-down entradas/adopciones
     perros/
-      list.html       — Tabs: En refugio / En acogida (estado=activos) / Reservados / Adoptados / Todos. Columna Peso ordenable.
-      detail.html     — Photo, edit/delete/location change (hidden for veterano), pesos, celos (fecha_fin default +15d), vacunas
+      list.html       — Tabs: En refugio / En acogida / Reservados / Adoptados / Todos. 35 por página. Contador. Ordenación preservada al paginar.
+      detail.html     — Photo, edit/delete, pesos, celos, vacunas. Ubicaciones: cambio + edición individual (modal lápiz en historial y ubicación actual)
       form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
     voluntarios/
       list.html       — Active volunteers
-      detail.html     — Profile + turnos (KPIs: time as volunteer, total turnos done)
+      detail.html     — Profile + turnos históricos (solo lectura; edición en /turnos/)
       form.html       — Create/edit (label now says "Apellidos", not "Apellido")
+    turnos/
+      list.html       — Vista semanal con nav ◀▶, filtros voluntario/estado, modal editar, modal añadir, eliminar
     visitas/
       list.html       — Filtros por estado, tabla con color por estado
       detail.html     — Detalle visitante + botón convertir a voluntario
@@ -230,6 +233,9 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 8. **Estado vs ubicación separados:** `estado` = interés/adopción (libre/reservado/adoptado/fallecido). `TipoUbicacion` = lugar físico (refugio/acogida/residencia/casa_adoptiva). "Activo" se deriva de `estado in ('libre', 'reservado')`. Sincronización bidireccional automática entre estado y ubicación.
 9. **fecha_adopcion en Perro:** Fecha de adopción guardada directamente en `perros.fecha_adopcion` (no en ubicaciones). Permite que los perros devueltos sigan en el sistema. Los marts dbt la usan para analytics de adopciones.
 10. **Tabs de ubicación física usan estado=activos:** Las pestañas "En refugio" y "En acogida" muestran tanto `libre` como `reservado` para reflejar la ubicación real del perro independientemente de su estado de interés.
+11. **Edición de ubicaciones individuales:** `POST /perros/{id}/ubicacion/{ubicacion_id}/editar` permite corregir fecha_inicio, tipo, contacto, etc. de cualquier registro del historial. Sincroniza estado del perro si la ubicación editada es la activa (sin fecha_fin).
+12. **Turnos admin separado de perfil voluntario:** `/turnos/` (junta/admin) para CRUD centralizado con filtros. El perfil del voluntario solo muestra el historial.
+13. **Color de marca:** `#31ae90` (verde protectora). Sidebar, login y fondo de página usan esta paleta.
 
 ---
 

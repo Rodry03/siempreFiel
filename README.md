@@ -103,17 +103,19 @@ protectora/
 │   ├── templates_config.py  # Configuración Jinja2
 │   ├── routers/
 │   │   ├── dashboard.py     # Stats, botón dbt (admin), drill-down gráfico por mes
-│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación, sync estado↔ubicación
+│   │   ├── perros.py        # CRUD perros, pesos, celos, foto, ubicación (incl. edición historial)
 │   │   ├── voluntarios.py   # CRUD voluntarios
-│   │   ├── turnos.py        # Registro de turnos y cálculo de saldo
+│   │   ├── turnos.py        # Perfil voluntario + registro de turnos. Prefix: /voluntarios
+│   │   ├── turnos_admin.py  # Gestión centralizada de turnos (junta/admin). Prefix: /turnos
 │   │   ├── visitas.py       # Pipeline visitantes
 │   │   └── usuarios.py      # Gestión de usuarios (admin)
 │   └── templates/
-│       ├── base.html
-│       ├── login.html
+│       ├── base.html        # Sidebar (verde #31ae90), Nunito, fondo #eef4f2
+│       ├── login.html       # Fondo gradiente verde marca
 │       ├── dashboard.html   # Charts con drill-down al clicar mes
-│       ├── perros/          # list (peso ordenable), detail (pesos + celos), form
-│       ├── voluntarios/     # list, detail, form
+│       ├── perros/          # list (35/pág, contador, orden preservado), detail (edición ubicaciones), form
+│       ├── voluntarios/     # list, detail (turnos históricos), form
+│       ├── turnos/          # list (vista semanal, CRUD turnos)
 │       ├── visitas/         # list, detail, form
 │       └── usuarios/        # list, form
 └── dbt_protectora/

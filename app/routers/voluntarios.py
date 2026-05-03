@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.database import get_db
-from app.models import Voluntario, PerfilVoluntario, EstadoContrato
+from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea
 from app.templates_config import templates
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "contracts", "contrato_voluntario.docx")
@@ -351,6 +351,8 @@ def dar_de_baja(voluntario_id: int, db: Session = Depends(get_db)):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         voluntario.activo = False
+        db.query(GrupoTarea).filter(GrupoTarea.capitan_id == voluntario_id).update({"capitan_id": None})
+        db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
         db.commit()
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
