@@ -216,7 +216,7 @@
                   data-notas="{{ u.notas or '' }}">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <form id="form-ubi-{{ u.id }}" method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar"></form>
+                <form id="form-ubi-{{ u.id }}" method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar" class="d-none"></form>
                 <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;"
                         data-confirm-form="form-ubi-{{ u.id }}"
                         data-confirm-title="¿Eliminar ubicación?"
@@ -282,7 +282,7 @@
               <td class="text-muted small">{{ p.notas or '' }}</td>
               <td>
                 {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-                <form id="form-peso-{{ p.id }}" method="post" action="/perros/{{ perro.id }}/peso/{{ p.id }}/eliminar"></form>
+                <form id="form-peso-{{ p.id }}" method="post" action="/perros/{{ perro.id }}/peso/{{ p.id }}/eliminar" class="d-none"></form>
                 <button type="button" class="btn btn-sm btn-outline-danger"
                         data-confirm-form="form-peso-{{ p.id }}"
                         data-confirm-title="¿Eliminar peso?"
@@ -359,7 +359,7 @@
               <td class="text-muted small">{{ c.notas or '' }}</td>
               <td>
                 {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-                <form id="form-celo-{{ c.id }}" method="post" action="/perros/{{ perro.id }}/celo/{{ c.id }}/eliminar"></form>
+                <form id="form-celo-{{ c.id }}" method="post" action="/perros/{{ perro.id }}/celo/{{ c.id }}/eliminar" class="d-none"></form>
                 <button type="button" class="btn btn-sm btn-outline-danger"
                         data-confirm-form="form-celo-{{ c.id }}"
                         data-confirm-title="¿Eliminar celo?"

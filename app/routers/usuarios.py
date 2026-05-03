@@ -136,3 +136,20 @@ def editar_usuario(
         }))
     flash(request, "Cambios guardados.")
     return RedirectResponse("/usuarios/", status_code=303)
+
+
+@router.post("/{usuario_id}/eliminar")
+def eliminar_usuario(
+    request: Request,
+    usuario_id: int,
+    current_user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario or usuario.id == current_user.id:
+        return RedirectResponse("/usuarios/", status_code=303)
+    nombre = usuario.nombre
+    db.delete(usuario)
+    db.commit()
+    flash(request, f"Usuario {nombre} eliminado.", "warning")
+    return RedirectResponse("/usuarios/", status_code=303)

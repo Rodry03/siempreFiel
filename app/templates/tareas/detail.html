@@ -141,7 +141,7 @@
               <td class="text-muted small">{{ m.voluntario.perfil.value }}</td>
               <td class="text-end">
                 {% if not es_veterano %}
-                <form id="form-miembro-{{ m.voluntario.id }}" method="post" action="/tareas/{{ grupo.id }}/miembro/{{ m.voluntario.id }}/eliminar"></form>
+                <form id="form-miembro-{{ m.voluntario.id }}" method="post" action="/tareas/{{ grupo.id }}/miembro/{{ m.voluntario.id }}/eliminar" class="d-none"></form>
                 <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;"
                         data-confirm-form="form-miembro-{{ m.voluntario.id }}"
                         data-confirm-title="¿Quitar del grupo?"
