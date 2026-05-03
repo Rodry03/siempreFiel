@@ -216,12 +216,13 @@
                   data-notas="{{ u.notas or '' }}">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <form method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar"
-                      onsubmit="return confirm('¿Eliminar esta entrada del historial?')">
-                  <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </form>
+                <form id="form-ubi-{{ u.id }}" method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar"></form>
+                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;"
+                        data-confirm-form="form-ubi-{{ u.id }}"
+                        data-confirm-title="¿Eliminar ubicación?"
+                        data-confirm-message="¿Eliminar esta entrada del historial?">
+                  <i class="bi bi-trash"></i>
+                </button>
               </td>
               {% endif %}
             </tr>
@@ -281,10 +282,13 @@
               <td class="text-muted small">{{ p.notas or '' }}</td>
               <td>
                 {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-                <form method="post" action="/perros/{{ perro.id }}/peso/{{ p.id }}/eliminar"
-                      onsubmit="return confirm('¿Eliminar este registro de peso?')">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
+                <form id="form-peso-{{ p.id }}" method="post" action="/perros/{{ perro.id }}/peso/{{ p.id }}/eliminar"></form>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        data-confirm-form="form-peso-{{ p.id }}"
+                        data-confirm-title="¿Eliminar peso?"
+                        data-confirm-message="¿Eliminar este registro de peso?">
+                  <i class="bi bi-trash"></i>
+                </button>
                 {% endif %}
               </td>
             </tr>
@@ -355,10 +359,13 @@
               <td class="text-muted small">{{ c.notas or '' }}</td>
               <td>
                 {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
-                <form method="post" action="/perros/{{ perro.id }}/celo/{{ c.id }}/eliminar"
-                      onsubmit="return confirm('¿Eliminar este registro de celo?')">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
+                <form id="form-celo-{{ c.id }}" method="post" action="/perros/{{ perro.id }}/celo/{{ c.id }}/eliminar"></form>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        data-confirm-form="form-celo-{{ c.id }}"
+                        data-confirm-title="¿Eliminar celo?"
+                        data-confirm-message="¿Eliminar este registro de celo?">
+                  <i class="bi bi-trash"></i>
+                </button>
                 {% endif %}
               </td>
             </tr>

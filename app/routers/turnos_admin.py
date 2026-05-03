@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_not_veterano
+from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
 from app.models import TurnoVoluntario, Voluntario, FranjaTurno, EstadoTurno, PerfilVoluntario
 from app.templates_config import templates
@@ -80,6 +80,7 @@ def lista_turnos(
 
 @router.post("/{turno_id}/editar")
 def editar_turno(
+    request: Request,
     turno_id: int,
     fecha: date = Form(...),
     franja: str = Form(...),
@@ -97,6 +98,7 @@ def editar_turno(
         turno.estado = EstadoTurno(estado)
         turno.notas = notas or None
         db.commit()
+        flash(request, "Turno actualizado.")
     return RedirectResponse(
         _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
         status_code=303,
@@ -105,6 +107,7 @@ def editar_turno(
 
 @router.post("/nuevo")
 def crear_turno(
+    request: Request,
     voluntario_id: int = Form(...),
     fecha: date = Form(...),
     franja: str = Form(...),
@@ -125,6 +128,7 @@ def crear_turno(
             notas=notas or None,
         ))
         db.commit()
+        flash(request, "Turno añadido.")
     return RedirectResponse(
         _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
         status_code=303,
@@ -133,6 +137,7 @@ def crear_turno(
 
 @router.post("/{turno_id}/eliminar")
 def eliminar_turno_admin(
+    request: Request,
     turno_id: int,
     semana: str = Form(""),
     voluntario_id_filtro: str = Form(""),
@@ -143,6 +148,7 @@ def eliminar_turno_admin(
     if turno:
         db.delete(turno)
         db.commit()
+        flash(request, "Turno eliminado.", "warning")
     return RedirectResponse(
         _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
         status_code=303,

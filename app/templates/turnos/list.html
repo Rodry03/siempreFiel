@@ -99,15 +99,17 @@
               data-notas="{{ t.notas or '' }}">
               <i class="bi bi-pencil"></i>
             </button>
-            <form method="post" action="/turnos/{{ t.id }}/eliminar" class="d-inline"
-                  onsubmit="return confirm('¿Eliminar este turno?')">
+            <form id="form-turno-{{ t.id }}" method="post" action="/turnos/{{ t.id }}/eliminar">
               <input type="hidden" name="semana" value="{{ semana }}">
               <input type="hidden" name="voluntario_id_filtro" value="{{ voluntario_id_filtro }}">
               <input type="hidden" name="estado_filtro" value="{{ estado_filtro }}">
-              <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
-                <i class="bi bi-trash"></i>
-              </button>
             </form>
+            <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;"
+                    data-confirm-form="form-turno-{{ t.id }}"
+                    data-confirm-title="¿Eliminar turno?"
+                    data-confirm-message="¿Eliminar este turno?">
+              <i class="bi bi-trash"></i>
+            </button>
           </td>
         </tr>
         {% endfor %}

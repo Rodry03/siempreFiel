@@ -12,7 +12,25 @@ from app.auth import get_current_user, require_not_veterano, require_admin
 router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
 
+_ALLOWED_VIEWS = {
+    "mart_vacunas_proximas",
+    "mart_perros_no_esterilizados",
+    "mart_tiempo_en_refugio",
+    "mart_entradas_salidas_por_mes",
+    "mart_tiempo_adopcion",
+    "mart_perros_sin_adoptar",
+    "mart_patrones_dificultad",
+    "mart_cobertura_semanal",
+    "mart_faltas_voluntario",
+    "mart_entradas_por_mes",
+    "mart_saldo_turnos",
+    "mart_saldo_turnos_semanal",
+}
+
+
 def _query_analytics(db: Session, view: str) -> list[dict]:
+    if view not in _ALLOWED_VIEWS:
+        raise ValueError(f"Vista no permitida: {view}")
     try:
         result = db.execute(text(f"SELECT * FROM analytics.{view}"))
         columns = result.keys()

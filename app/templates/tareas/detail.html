@@ -141,12 +141,13 @@
               <td class="text-muted small">{{ m.voluntario.perfil.value }}</td>
               <td class="text-end">
                 {% if not es_veterano %}
-                <form method="post" action="/tareas/{{ grupo.id }}/miembro/{{ m.voluntario.id }}/eliminar"
-                      onsubmit="return confirm('¿Quitar a {{ m.voluntario.nombre }} del grupo?')" class="d-inline">
-                  <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;">
-                    <i class="bi bi-x-lg"></i>
-                  </button>
-                </form>
+                <form id="form-miembro-{{ m.voluntario.id }}" method="post" action="/tareas/{{ grupo.id }}/miembro/{{ m.voluntario.id }}/eliminar"></form>
+                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:.75rem;"
+                        data-confirm-form="form-miembro-{{ m.voluntario.id }}"
+                        data-confirm-title="¿Quitar del grupo?"
+                        data-confirm-message="¿Quitar a {{ m.voluntario.nombre }} del grupo?">
+                  <i class="bi bi-x-lg"></i>
+                </button>
                 {% endif %}
               </td>
             </tr>

@@ -1,5 +1,6 @@
 from passlib.context import CryptContext
 from fastapi import Depends, Request
+from typing import Optional
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -45,6 +46,12 @@ def require_not_veterano(request: Request):
     if user.rol == RolUsuario.veterano:
         raise NotAuthorized()
     return user
+
+
+def flash(request: Request, message: str, category: str = "success") -> None:
+    msgs = request.session.get("_flash", [])
+    msgs.append({"category": category, "message": message})
+    request.session["_flash"] = msgs
 
 
 class CurrentUserMiddleware:

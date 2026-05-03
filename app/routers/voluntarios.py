@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from datetime import date
 from docx import Document as DocxDocument
 from fastapi import APIRouter, Depends, Form, Request
-from app.auth import get_current_user, require_not_veterano
+from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -228,6 +228,7 @@ def crear_voluntario(
         db.rollback()
         return templates.TemplateResponse(request, "voluntarios/form.html",
             _contexto_form({"voluntario": voluntario, "error": "El email o DNI ya está registrado."}))
+    flash(request, f"Voluntario {voluntario.nombre} {voluntario.apellido} creado correctamente.")
     return RedirectResponse("/voluntarios/", status_code=303)
 
 
@@ -289,6 +290,7 @@ def editar_voluntario(
         db.rollback()
         return templates.TemplateResponse(request, "voluntarios/form.html",
             _contexto_form({"voluntario": voluntario, "error": "El email o DNI ya está registrado."}))
+    flash(request, "Cambios guardados.")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
@@ -347,22 +349,24 @@ def generar_contrato(voluntario_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{voluntario_id}/dar-de-baja")
-def dar_de_baja(voluntario_id: int, db: Session = Depends(get_db)):
+def dar_de_baja(request: Request, voluntario_id: int, db: Session = Depends(get_db)):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         voluntario.activo = False
         db.query(GrupoTarea).filter(GrupoTarea.capitan_id == voluntario_id).update({"capitan_id": None})
         db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
         db.commit()
+        flash(request, f"{voluntario.nombre} {voluntario.apellido} dado/a de baja.", "warning")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
 @router.post("/{voluntario_id}/reactivar")
-def reactivar(voluntario_id: int, db: Session = Depends(get_db)):
+def reactivar(request: Request, voluntario_id: int, db: Session = Depends(get_db)):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         voluntario.activo = True
         db.commit()
+        flash(request, f"{voluntario.nombre} {voluntario.apellido} reactivado/a.")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 

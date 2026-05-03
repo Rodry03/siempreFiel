@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.models import Usuario, RolUsuario, Voluntario, PerfilVoluntario
-from app.auth import get_current_user, require_admin, hash_password
+from app.auth import get_current_user, require_admin, hash_password, flash
 from app.templates_config import templates
 
 router = APIRouter(prefix="/usuarios")
@@ -82,6 +82,7 @@ def crear_usuario(
             "current_user": current_user,
             "error": "El nombre de usuario ya existe.",
         }))
+    flash(request, f"Usuario {usuario.nombre} creado correctamente.")
     return RedirectResponse("/usuarios/", status_code=303)
 
 
@@ -133,4 +134,5 @@ def editar_usuario(
             "current_user": current_user,
             "error": "El nombre de usuario ya existe.",
         }))
+    flash(request, "Cambios guardados.")
     return RedirectResponse("/usuarios/", status_code=303)

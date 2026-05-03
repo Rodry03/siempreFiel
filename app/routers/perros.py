@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from app.auth import get_current_user, require_not_veterano
+from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
@@ -13,6 +13,9 @@ import cloudinary
 import cloudinary.uploader
 
 
+_MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
+
+
 def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
     if not file or not file.filename:
         return None
@@ -21,7 +24,9 @@ def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
         api_key=os.environ.get("CLOUDINARY_API_KEY"),
         api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
     )
-    contents = file.file.read()
+    contents = file.file.read(_MAX_FOTO_BYTES + 1)
+    if len(contents) > _MAX_FOTO_BYTES:
+        return None
     result = cloudinary.uploader.upload(
         contents,
         folder="protectora",
@@ -207,6 +212,7 @@ def crear_perro(
         telefono_contacto=telefono_contacto_ub or None,
     ))
     db.commit()
+    flash(request, f"Perro {perro.nombre} creado correctamente.")
     return RedirectResponse(f"/perros/{perro.id}", status_code=303)
 
 
@@ -245,6 +251,7 @@ def form_editar_perro(request: Request, perro_id: int, db: Session = Depends(get
 
 @router.post("/{perro_id}/editar", dependencies=[Depends(require_not_veterano)])
 def editar_perro(
+    request: Request,
     perro_id: int,
     nombre: str = Form(...),
     raza_id: int = Form(...),
@@ -301,6 +308,7 @@ def editar_perro(
         db.add(Ubicacion(perro_id=perro_id, tipo=TipoUbicacion.refugio, fecha_inicio=hoy))
 
     db.commit()
+    flash(request, "Cambios guardados.")
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 
@@ -317,11 +325,13 @@ def subir_foto(perro_id: int, foto: UploadFile = File(...), db: Session = Depend
 
 
 @router.post("/{perro_id}/eliminar", dependencies=[Depends(require_not_veterano)])
-def eliminar_perro(perro_id: int, db: Session = Depends(get_db)):
+def eliminar_perro(request: Request, perro_id: int, db: Session = Depends(get_db)):
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if perro:
+        nombre = perro.nombre
         db.delete(perro)
         db.commit()
+        flash(request, f"Perro {nombre} eliminado.", "warning")
     return RedirectResponse("/perros/", status_code=303)
 
 
@@ -350,6 +360,7 @@ def agregar_vacuna(
 
 @router.post("/{perro_id}/ubicacion", dependencies=[Depends(require_not_veterano)])
 def cambiar_ubicacion(
+    request: Request,
     perro_id: int,
     tipo: str = Form(...),
     fecha_inicio: date = Form(...),
@@ -388,6 +399,7 @@ def cambiar_ubicacion(
             if perro.estado == EstadoPerro.adoptado:
                 perro.estado = EstadoPerro.libre
     db.commit()
+    flash(request, "Ubicación actualizada.")
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)
 
 

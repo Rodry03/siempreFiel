@@ -24,12 +24,14 @@
       <i class="bi bi-file-earmark-pdf me-1"></i>Generar contrato
     </a>
     {% if voluntario.activo %}
-    <form method="post" action="/voluntarios/{{ voluntario.id }}/dar-de-baja"
-          onsubmit="return confirm('¿Dar de baja a {{ voluntario.nombre }}? Seguirá en el sistema pero no aparecerá en el listado activo.')">
-      <button type="submit" class="btn btn-sm btn-outline-danger">
-        <i class="bi bi-person-dash me-1"></i>Dar de baja
-      </button>
-    </form>
+    <form id="form-baja" method="post" action="/voluntarios/{{ voluntario.id }}/dar-de-baja"></form>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            data-confirm-form="form-baja"
+            data-confirm-title="¿Dar de baja?"
+            data-confirm-message="¿Dar de baja a {{ voluntario.nombre }}? Seguirá en el sistema pero no aparecerá en el listado activo."
+            data-confirm-btn-text="Dar de baja">
+      <i class="bi bi-person-dash me-1"></i>Dar de baja
+    </button>
     {% else %}
     <form method="post" action="/voluntarios/{{ voluntario.id }}/reactivar">
       <button type="submit" class="btn btn-sm btn-outline-success">

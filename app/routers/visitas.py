@@ -1,6 +1,6 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Form, Request
-from app.auth import get_current_user, require_not_veterano
+from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -102,6 +102,7 @@ def crear_visitante(
             "visitante": visitante,
             "error": "El email ya está registrado.",
         })
+    flash(request, f"Visitante {visitante.nombre} {visitante.apellido} añadido.")
     return RedirectResponse("/visitas/", status_code=303)
 
 
@@ -161,6 +162,7 @@ def editar_visitante(
             "visitante": visitante,
             "error": "El email ya está registrado.",
         })
+    flash(request, "Cambios guardados.")
     return RedirectResponse(f"/visitas/{visitante_id}", status_code=303)
 
 

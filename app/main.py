@@ -2,7 +2,9 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
+from app.templates_config import templates
 from app.database import init_db
 from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas
 from app.routers import login as login_router
@@ -10,12 +12,22 @@ from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
 
 app = FastAPI(title="Siempre Fiel")
 
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key:
+    import sys
+    if "pytest" not in sys.modules:
+        raise RuntimeError("SECRET_KEY no está configurada. Genera una con: python -c \"import secrets; print(secrets.token_hex(32))\"")
+    _secret_key = "test-only-secret"
+
 # SessionMiddleware debe ir primero (más exterior) para que CurrentUserMiddleware
 # pueda leer request.session
 app.add_middleware(CurrentUserMiddleware)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY", "dev-secret-change-in-production"),
+    secret_key=_secret_key,
+    https_only=os.getenv("ENVIRONMENT") == "production",
+    same_site="lax",
+    max_age=8 * 3600,
 )
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -29,6 +41,14 @@ app.include_router(turnos_admin.router)
 app.include_router(visitas.router)
 app.include_router(usuarios.router)
 app.include_router(tareas.router)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse(request, "404.html", {}, status_code=404)
+    from fastapi.exception_handlers import http_exception_handler as _default
+    return await _default(request, exc)
 
 
 @app.exception_handler(NotAuthenticated)

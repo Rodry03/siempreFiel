@@ -213,6 +213,16 @@
 
     <!-- Contenido principal -->
     <div class="col content">
+      {% for f in get_flashes(request) %}
+      <div class="alert alert-{{ f.category }} alert-dismissible fade show mb-4" role="alert">
+        {% if f.category == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+        {% elif f.category == 'danger' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+        {% elif f.category == 'warning' %}<i class="bi bi-exclamation-circle-fill me-2"></i>
+        {% else %}<i class="bi bi-info-circle-fill me-2"></i>{% endif %}
+        {{ f.message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
       {% block content %}{% endblock %}
     </div>
 
@@ -220,5 +230,56 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Modal genérico de confirmación de borrado -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-1">
+        <h6 class="modal-title fw-bold" id="modalConfirmarTitulo"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-muted small pt-0" id="modalConfirmarMensaje"></div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-danger" id="btnModalConfirmar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var _modal = null;
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-confirm-form]');
+    if (!btn) return;
+    var form = document.getElementById(btn.dataset.confirmForm);
+    if (!form) return;
+    document.getElementById('modalConfirmarTitulo').textContent = btn.dataset.confirmTitle || '¿Confirmar?';
+    document.getElementById('modalConfirmarMensaje').textContent = btn.dataset.confirmMessage || '';
+    var cb = document.getElementById('btnModalConfirmar');
+    cb.textContent = btn.dataset.confirmBtnText || 'Eliminar';
+    cb.className = 'btn btn-sm ' + (btn.dataset.confirmBtnClass || 'btn-danger');
+    cb.onclick = function() { form.submit(); };
+    if (!_modal) _modal = new bootstrap.Modal(document.getElementById('modalConfirmar'));
+    _modal.show();
+  });
+})();
+document.addEventListener('submit', function(e) {
+  const form = e.target;
+  if (form.method.toLowerCase() !== 'post') return;
+  const btn = form.querySelector('button[type="submit"]');
+  if (!btn) return;
+  btn.disabled = true;
+  const icon = btn.querySelector('i');
+  if (icon) icon.className = 'spinner-border spinner-border-sm me-1';
+});
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) {
+    document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = false);
+  }
+});
+</script>
 </body>
 </html>
