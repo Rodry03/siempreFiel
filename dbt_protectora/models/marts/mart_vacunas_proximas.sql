@@ -1,3 +1,5 @@
+{{ config(materialized='view') }}
+
 -- Perros con vacunas que vencen en los próximos 30 días
 with vacunas as (
     select * from {{ ref('stg_vacunas') }}

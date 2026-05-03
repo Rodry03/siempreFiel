@@ -1,3 +1,5 @@
+{{ config(materialized='view') }}
+
 with perros as (
     select * from {{ ref('int_perros_con_ubicacion') }}
 )
