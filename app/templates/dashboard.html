@@ -206,7 +206,13 @@
                 <td><a href="/perros/{{ p.id }}" class="text-decoration-none fw-semibold">{{ p.nombre }}</a></td>
                 <td>{{ p.raza }}</td>
                 <td>{{ p.sexo }}</td>
-                <td><span class="badge badge-{{ p.ubicacion_actual }} text-white">{{ p.ubicacion_actual }}</span></td>
+                <td>
+                  {% if p.ubicacion_actual %}
+                  <span class="badge badge-{{ p.ubicacion_actual }} text-white">{{ p.ubicacion_actual | replace('_', ' ') }}</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Desconocida</span>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -241,8 +247,8 @@
                 <td class="text-muted">{{ i + 1 }}</td>
                 <td class="fw-semibold">{{ entry.voluntario.nombre }} {{ entry.voluntario.apellido }}</td>
                 <td>
-                  {% set colors = {"directiva": "danger", "veterano": "warning", "voluntario": "success", "guagua": "primary", "eventos": "info", "colaboradores": "secondary"} %}
-                  <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">{{ entry.voluntario.perfil.value | capitalize }}</span>
+                  {% set colors = {"directiva": "danger", "apoyo_en_junta": "dark", "veterano": "warning", "voluntario": "success", "guagua": "primary", "eventos": "info", "colaboradores": "secondary"} %}
+                  <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">{{ entry.voluntario.perfil.value | replace('_', ' ') | title }}</span>
                 </td>
                 <td>{{ entry.voluntario.fecha_alta }}</td>
                 <td><span class="badge bg-secondary">{{ entry.dias }}d</span></td>
@@ -283,8 +289,8 @@
                   </a>
                 </td>
                 <td>
-                  {% set colors = {"directiva": "danger", "veterano": "warning", "voluntario": "success", "guagua": "primary", "eventos": "info", "colaboradores": "secondary"} %}
-                  <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">{{ entry.voluntario.perfil.value | capitalize }}</span>
+                  {% set colors = {"directiva": "danger", "apoyo_en_junta": "dark", "veterano": "warning", "voluntario": "success", "guagua": "primary", "eventos": "info", "colaboradores": "secondary"} %}
+                  <span class="badge bg-{{ colors[entry.voluntario.perfil.value] }}">{{ entry.voluntario.perfil.value | replace('_', ' ') | title }}</span>
                 </td>
                 <td>
                   <span class="badge {% if debe > 10 %}bg-danger{% else %}bg-warning text-dark{% endif %}">

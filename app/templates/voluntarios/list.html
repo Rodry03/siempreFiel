@@ -41,9 +41,20 @@
     {% if voluntarios %}
     <table class="table table-hover align-middle mb-0" style="min-width:650px;">
       <thead class="table-light">
+        {% macro sort_link(col, label) %}
+          {% set next_order = 'desc' if (sort == col and order == 'asc') else 'asc' %}
+          {% set icon = ' ↑' if (sort == col and order == 'asc') else (' ↓' if (sort == col and order == 'desc') else '') %}
+          <a href="/voluntarios/?perfil={{ perfil_filtro }}&sort={{ col }}&order={{ next_order }}{% if bajas %}&bajas=true{% endif %}"
+             class="text-decoration-none text-dark fw-semibold">{{ label }}{{ icon }}</a>
+        {% endmacro %}
         <tr>
-          <th>Nombre</th><th>Email</th><th>Teléfono</th>
-          <th>Perfil</th><th>Alta</th><th>Estado</th><th>PPP</th><th></th>
+          <th>{{ sort_link('nombre', 'Nombre') }}</th>
+          <th>{{ sort_link('apellido', 'Apellidos') }}</th>
+          <th>{{ sort_link('email', 'Email') }}</th>
+          <th>Teléfono</th>
+          <th>{{ sort_link('perfil', 'Perfil') }}</th>
+          <th>{{ sort_link('fecha_alta', 'Alta') }}</th>
+          <th>Estado</th><th>PPP</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -51,9 +62,10 @@
         <tr>
           <td class="fw-semibold">
             <a href="/voluntarios/{{ v.id }}" class="text-decoration-none text-dark">
-              {{ v.nombre }} {{ v.apellido }}
+              {{ v.nombre }}
             </a>
           </td>
+          <td>{{ v.apellido }}</td>
           <td>{{ v.email }}</td>
           <td>{{ v.telefono or '—' }}</td>
           <td>

@@ -126,7 +126,14 @@ PERFIL_COLORS = {
 
 
 @router.get("/")
-def listar_voluntarios(request: Request, perfil: str = "todos", bajas: bool = False, db: Session = Depends(get_db)):
+def listar_voluntarios(
+    request: Request,
+    perfil: str = "todos",
+    bajas: bool = False,
+    sort: str = "nombre",
+    order: str = "asc",
+    db: Session = Depends(get_db),
+):
     query = db.query(Voluntario)
     if not bajas:
         query = query.filter(Voluntario.activo == True)
@@ -135,14 +142,26 @@ def listar_voluntarios(request: Request, perfil: str = "todos", bajas: bool = Fa
             query = query.filter(Voluntario.perfil == PerfilVoluntario(perfil))
         except ValueError:
             pass
-    voluntarios = query.order_by(Voluntario.apellido, Voluntario.nombre).all()
+
+    _cols = {
+        "nombre": Voluntario.nombre,
+        "apellido": Voluntario.apellido,
+        "email": Voluntario.email,
+        "perfil": Voluntario.perfil,
+        "fecha_alta": Voluntario.fecha_alta,
+    }
+    col = _cols.get(sort, Voluntario.nombre)
+    query = query.order_by(col.desc() if order == "desc" else col.asc())
+
     return templates.TemplateResponse(request, "voluntarios/list.html", {
-        "voluntarios": voluntarios,
+        "voluntarios": query.all(),
         "perfil_filtro": perfil,
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,
         "bajas": bajas,
+        "sort": sort,
+        "order": order,
     })
 
 
