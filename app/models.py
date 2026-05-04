@@ -253,6 +253,19 @@ class TurnoMensual(Base):
     __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_turno_mensual"),)
 
 
+class NotaGestion(Base):
+    __tablename__ = "notas_gestion"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    texto          = Column(Text, nullable=False)
+    fecha_limite   = Column(Date, nullable=True)
+    encargado_id   = Column(Integer, ForeignKey("voluntarios.id"), nullable=True)
+    hecha          = Column(Boolean, default=False, nullable=False)
+    fecha_creacion = Column(Date, nullable=False, default=date.today)
+
+    encargado = relationship("Voluntario", foreign_keys=[encargado_id])
+
+
 class PesoPerro(Base):
     __tablename__ = "pesos_perro"
 

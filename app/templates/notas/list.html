@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Notas de gestión{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0"><i class="bi bi-journal-check me-2"></i>Notas de gestión</h2>
+</div>
+
+<!-- Formulario nueva nota -->
+<div class="card mb-4">
+  <div class="card-header bg-white fw-semibold border-0 pt-3">
+    <i class="bi bi-plus-circle me-2"></i>Nueva tarea
+  </div>
+  <div class="card-body">
+    <form method="post" action="/notas/nueva">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold">Descripción *</label>
+          <input type="text" name="texto" class="form-control" placeholder="Ej: Llamar al veterinario…" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Fecha límite</label>
+          <input type="date" name="fecha_limite" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Encargado/a</label>
+          <select name="encargado_id" class="form-select">
+            <option value="">— Sin asignar —</option>
+            {% for v in encargados %}
+            <option value="{{ v.id }}">{{ v.nombre }} {{ v.apellido }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-lg me-1"></i>Añadir
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tareas pendientes -->
+<div class="card mb-4">
+  <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-hourglass-split me-2 text-warning"></i>Pendientes
+      <span class="badge bg-secondary ms-1">{{ pendientes | length }}</span>
+    </span>
+  </div>
+  <div class="card-body p-0">
+    {% if pendientes %}
+    <ul class="list-group list-group-flush">
+      {% for n in pendientes %}
+      {% set vencida = n.fecha_limite and n.fecha_limite < hoy %}
+      {% set hoy_mismo = n.fecha_limite and n.fecha_limite == hoy %}
+      <li class="list-group-item d-flex align-items-start gap-3 py-3
+        {% if vencida %}border-start border-danger border-3{% elif hoy_mismo %}border-start border-warning border-3{% endif %}">
+        <!-- Botón completar -->
+        <form method="post" action="/notas/{{ n.id }}/completar" class="mt-1">
+          <button type="submit" class="btn btn-sm btn-outline-success rounded-circle p-0"
+                  style="width:26px;height:26px;" title="Marcar como hecha">
+            <i class="bi bi-check-lg"></i>
+          </button>
+        </form>
+        <!-- Contenido -->
+        <div class="flex-grow-1">
+          <div class="fw-semibold">{{ n.texto }}</div>
+          <div class="d-flex gap-3 mt-1 flex-wrap">
+            {% if n.fecha_limite %}
+            <span class="small {% if vencida %}text-danger fw-semibold{% elif hoy_mismo %}text-warning fw-semibold{% else %}text-muted{% endif %}">
+              <i class="bi bi-calendar-event me-1"></i>
+              {% if vencida %}Venció el {% elif hoy_mismo %}Hoy — {% else %}Antes del {% endif %}
+              {{ n.fecha_limite.strftime('%d/%m/%Y') }}
+            </span>
+            {% endif %}
+            {% if n.encargado %}
+            <span class="small text-muted">
+              <i class="bi bi-person me-1"></i>{{ n.encargado.nombre }} {{ n.encargado.apellido }}
+            </span>
+            {% endif %}
+            <span class="small text-muted">
+              <i class="bi bi-clock me-1"></i>Añadida el {{ n.fecha_creacion.strftime('%d/%m/%Y') }}
+            </span>
+          </div>
+        </div>
+        <!-- Eliminar -->
+        <form method="post" action="/notas/{{ n.id }}/eliminar"
+              onsubmit="return confirm('¿Eliminar esta tarea?')" class="mt-1">
+          <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-0"
+                  style="width:26px;height:26px;">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted text-center py-4 mb-0">Sin tareas pendientes. ¡Todo al día!</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tareas completadas -->
+{% if hechas %}
+<div class="card">
+  <div class="card-header bg-white border-0 pt-3" style="cursor:pointer;"
+       data-bs-toggle="collapse" data-bs-target="#hechasCollapse">
+    <span class="fw-semibold text-muted">
+      <i class="bi bi-check-circle me-2 text-success"></i>Completadas
+      <span class="badge bg-success ms-1">{{ hechas | length }}</span>
+      <i class="bi bi-chevron-down ms-2 small"></i>
+    </span>
+  </div>
+  <div class="collapse" id="hechasCollapse">
+    <ul class="list-group list-group-flush">
+      {% for n in hechas %}
+      <li class="list-group-item d-flex align-items-start gap-3 py-3 opacity-60">
+        <!-- Botón deshacer -->
+        <form method="post" action="/notas/{{ n.id }}/completar" class="mt-1">
+          <button type="submit" class="btn btn-sm btn-success rounded-circle p-0"
+                  style="width:26px;height:26px;" title="Marcar como pendiente">
+            <i class="bi bi-check-lg"></i>
+          </button>
+        </form>
+        <div class="flex-grow-1">
+          <div class="text-decoration-line-through text-muted">{{ n.texto }}</div>
+          <div class="d-flex gap-3 mt-1 flex-wrap">
+            {% if n.fecha_limite %}
+            <span class="small text-muted">
+              <i class="bi bi-calendar-event me-1"></i>{{ n.fecha_limite.strftime('%d/%m/%Y') }}
+            </span>
+            {% endif %}
+            {% if n.encargado %}
+            <span class="small text-muted">
+              <i class="bi bi-person me-1"></i>{{ n.encargado.nombre }} {{ n.encargado.apellido }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <form method="post" action="/notas/{{ n.id }}/eliminar"
+              onsubmit="return confirm('¿Eliminar esta tarea?')" class="mt-1">
+          <button type="submit" class="btn btn-sm btn-outline-secondary rounded-circle p-0"
+                  style="width:26px;height:26px;">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -120,8 +120,14 @@
       </a>
       {% endif %}
       <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
-        <i class="bi bi-clipboard-check me-2"></i>Tareas
+        <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
       </a>
+      {% set _u = request.state.current_user %}
+      {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
+      <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">
+        <i class="bi bi-journal-check me-2"></i>Notas
+      </a>
+      {% endif %}
       {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
       <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
         <i class="bi bi-shield-lock me-2"></i>Usuarios
@@ -182,8 +188,14 @@
         </a>
         {% endif %}
         <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
-          <i class="bi bi-clipboard-check me-2"></i>Tareas
+          <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
         </a>
+        {% set _u = request.state.current_user %}
+        {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
+        <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">
+          <i class="bi bi-journal-check me-2"></i>Notas
+        </a>
+        {% endif %}
         {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
         <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
           <i class="bi bi-shield-lock me-2"></i>Usuarios

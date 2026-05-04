@@ -48,6 +48,20 @@ def require_not_veterano(request: Request):
     return user
 
 
+def require_directiva(request: Request):
+    user = getattr(request.state, "current_user", None)
+    if not user:
+        raise NotAuthenticated()
+    from app.models import RolUsuario, PerfilVoluntario
+    if user.rol == RolUsuario.admin:
+        return user
+    if user.voluntario and user.voluntario.perfil in (
+        PerfilVoluntario.directiva, PerfilVoluntario.apoyo_en_junta
+    ):
+        return user
+    raise NotAuthorized()
+
+
 def flash(request: Request, message: str, category: str = "success") -> None:
     msgs = request.session.get("_flash", [])
     msgs.append({"category": category, "message": message})
@@ -67,9 +81,12 @@ class CurrentUserMiddleware:
             if user_id:
                 from app.database import SessionLocal
                 from app.models import Usuario
+                from sqlalchemy.orm import joinedload
                 db = SessionLocal()
                 try:
-                    user = db.query(Usuario).filter(
+                    user = db.query(Usuario).options(
+                        joinedload(Usuario.voluntario)
+                    ).filter(
                         Usuario.id == user_id,
                         Usuario.activo == True,
                     ).first()
