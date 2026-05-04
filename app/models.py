@@ -1,5 +1,5 @@
 from datetime import date
-from sqlalchemy import Boolean, Column, Date, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
@@ -155,6 +155,7 @@ class Voluntario(Base):
     notas = Column(Text, nullable=True)
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
+    turnos_mensuales = relationship("TurnoMensual", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoMensual.mes.desc()")
 
 
 class GrupoTarea(Base):
@@ -235,6 +236,19 @@ class TurnoVoluntario(Base):
     notas = Column(Text, nullable=True)
 
     voluntario = relationship("Voluntario", back_populates="turnos")
+
+
+class TurnoMensual(Base):
+    __tablename__ = "turnos_mensuales"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+    mes           = Column(Date, nullable=False)
+    turnos        = Column(Float, nullable=False, default=0.0)
+
+    voluntario = relationship("Voluntario", back_populates="turnos_mensuales")
+
+    __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_turno_mensual"),)
 
 
 class PesoPerro(Base):

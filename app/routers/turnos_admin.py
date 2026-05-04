@@ -1,13 +1,13 @@
-from datetime import date, timedelta
-from fastapi import APIRouter, Depends, Form, Request
+from datetime import date
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
-from app.models import TurnoVoluntario, Voluntario, FranjaTurno, EstadoTurno, PerfilVoluntario
+from app.models import TurnoMensual, Voluntario
+from app.routers.turnos import PERFIL_LABELS, PERFIL_COLORS, PERFILES_SIN_TURNOS, MESES_ES, calcular_saldo
 from app.templates_config import templates
-from app.routers.turnos import FRANJA_LABELS, ESTADO_LABELS, ESTADO_COLORS, PERFILES_SIN_TURNOS
 
 router = APIRouter(
     prefix="/turnos",
@@ -15,143 +15,98 @@ router = APIRouter(
 )
 
 
-def _redirect_turnos(semana: str, voluntario_id_filtro: str, estado_filtro: str) -> str:
-    params = f"semana={semana}"
-    if voluntario_id_filtro:
-        params += f"&voluntario_id={voluntario_id_filtro}"
-    if estado_filtro:
-        params += f"&estado={estado_filtro}"
-    return f"/turnos/?{params}"
+def _mes_anterior(mes: date) -> date:
+    if mes.month == 1:
+        return date(mes.year - 1, 12, 1)
+    return date(mes.year, mes.month - 1, 1)
+
+
+def _mes_siguiente(mes: date) -> date:
+    if mes.month == 12:
+        return date(mes.year + 1, 1, 1)
+    return date(mes.year, mes.month + 1, 1)
 
 
 @router.get("/")
-def lista_turnos(
+def listar_turnos(
     request: Request,
-    semana: Optional[str] = None,
-    voluntario_id: Optional[str] = None,
-    estado: Optional[str] = None,
+    mes: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     hoy = date.today()
-    if semana:
-        base = date.fromisoformat(semana)
-        lunes = base - timedelta(days=base.weekday())
+    if mes:
+        try:
+            mes_date = date.fromisoformat(mes + "-01")
+        except ValueError:
+            mes_date = _mes_anterior(date(hoy.year, hoy.month, 1))
     else:
-        lunes = hoy - timedelta(days=hoy.weekday())
-    domingo = lunes + timedelta(days=6)
+        mes_date = _mes_anterior(date(hoy.year, hoy.month, 1))
 
-    voluntario_id_int = int(voluntario_id) if voluntario_id else None
-
-    query = db.query(TurnoVoluntario).filter(
-        TurnoVoluntario.fecha >= lunes,
-        TurnoVoluntario.fecha <= domingo,
+    voluntarios = (
+        db.query(Voluntario)
+        .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
+        .order_by(Voluntario.apellido, Voluntario.nombre)
+        .all()
     )
-    if voluntario_id_int:
-        query = query.filter(TurnoVoluntario.voluntario_id == voluntario_id_int)
-    if estado:
-        query = query.filter(TurnoVoluntario.estado == EstadoTurno(estado))
 
-    turnos = query.order_by(TurnoVoluntario.fecha, TurnoVoluntario.franja).all()
+    turnos_mes = {
+        t.voluntario_id: t
+        for t in db.query(TurnoMensual).filter(TurnoMensual.mes == mes_date).all()
+    }
 
-    voluntarios = db.query(Voluntario).filter(
-        Voluntario.activo == True,
-        Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)),
-    ).order_by(Voluntario.nombre).all()
-
-    semana_anterior = (lunes - timedelta(days=7)).isoformat()
-    semana_siguiente = (lunes + timedelta(days=7)).isoformat()
+    voluntarios_data = [
+        {"voluntario": v, "saldo": calcular_saldo(v)}
+        for v in voluntarios
+    ]
 
     return templates.TemplateResponse(request, "turnos/list.html", {
-        "turnos": turnos,
-        "voluntarios": voluntarios,
-        "franja_labels": FRANJA_LABELS,
-        "estado_labels": ESTADO_LABELS,
-        "estado_colors": ESTADO_COLORS,
-        "estados": [e.value for e in EstadoTurno],
-        "franjas": [f.value for f in FranjaTurno],
-        "lunes": lunes,
-        "domingo": domingo,
-        "semana": lunes.isoformat(),
-        "semana_anterior": semana_anterior,
-        "semana_siguiente": semana_siguiente,
-        "voluntario_id_filtro": voluntario_id_int or "",
-        "estado_filtro": estado or "",
-        "hoy": hoy.isoformat(),
+        "mes": mes_date,
+        "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
+        "mes_anterior": _mes_anterior(mes_date).strftime("%Y-%m"),
+        "mes_siguiente": _mes_siguiente(mes_date).strftime("%Y-%m"),
+        "voluntarios_data": voluntarios_data,
+        "turnos_mes": turnos_mes,
+        "perfil_labels": PERFIL_LABELS,
+        "perfil_colors": PERFIL_COLORS,
     })
 
 
-@router.post("/{turno_id}/editar")
-def editar_turno(
+@router.post("/guardar")
+async def guardar_turnos_mes(
     request: Request,
-    turno_id: int,
-    fecha: date = Form(...),
-    franja: str = Form(...),
-    estado: str = Form(...),
-    notas: Optional[str] = Form(None),
-    semana: str = Form(""),
-    voluntario_id_filtro: str = Form(""),
-    estado_filtro: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    turno = db.query(TurnoVoluntario).filter(TurnoVoluntario.id == turno_id).first()
-    if turno:
-        turno.fecha = fecha
-        turno.franja = FranjaTurno(franja)
-        turno.estado = EstadoTurno(estado)
-        turno.notas = notas or None
-        db.commit()
-        flash(request, "Turno actualizado.")
-    return RedirectResponse(
-        _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
-        status_code=303,
-    )
+    form = await request.form()
+    mes_str = form.get("mes")
+    try:
+        mes_date = date.fromisoformat(mes_str)
+    except (ValueError, TypeError):
+        flash(request, "Mes inválido.", "danger")
+        return RedirectResponse("/turnos/", status_code=303)
 
+    for key, value in form.multi_items():
+        if not key.startswith("turnos_"):
+            continue
+        try:
+            voluntario_id = int(key[len("turnos_"):])
+            turnos_val = float(value) if value else 0.0
+        except (ValueError, IndexError):
+            continue
 
-@router.post("/nuevo")
-def crear_turno(
-    request: Request,
-    voluntario_id: int = Form(...),
-    fecha: date = Form(...),
-    franja: str = Form(...),
-    estado: str = Form(...),
-    notas: Optional[str] = Form(None),
-    semana: str = Form(""),
-    voluntario_id_filtro: str = Form(""),
-    estado_filtro: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
-    if voluntario:
-        db.add(TurnoVoluntario(
-            voluntario_id=voluntario_id,
-            fecha=fecha,
-            franja=FranjaTurno(franja),
-            estado=EstadoTurno(estado),
-            notas=notas or None,
-        ))
-        db.commit()
-        flash(request, "Turno añadido.")
-    return RedirectResponse(
-        _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
-        status_code=303,
-    )
+        existing = db.query(TurnoMensual).filter(
+            TurnoMensual.voluntario_id == voluntario_id,
+            TurnoMensual.mes == mes_date,
+        ).first()
 
+        if existing:
+            existing.turnos = turnos_val
+        else:
+            db.add(TurnoMensual(
+                voluntario_id=voluntario_id,
+                mes=mes_date,
+                turnos=turnos_val,
+            ))
 
-@router.post("/{turno_id}/eliminar")
-def eliminar_turno_admin(
-    request: Request,
-    turno_id: int,
-    semana: str = Form(""),
-    voluntario_id_filtro: str = Form(""),
-    estado_filtro: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    turno = db.query(TurnoVoluntario).filter(TurnoVoluntario.id == turno_id).first()
-    if turno:
-        db.delete(turno)
-        db.commit()
-        flash(request, "Turno eliminado.", "warning")
-    return RedirectResponse(
-        _redirect_turnos(semana, voluntario_id_filtro, estado_filtro),
-        status_code=303,
-    )
+    db.commit()
+    flash(request, f"Turnos de {MESES_ES[mes_date.month]} {mes_date.year} guardados.")
+    return RedirectResponse(f"/turnos/?mes={mes_date.strftime('%Y-%m')}", status_code=303)
