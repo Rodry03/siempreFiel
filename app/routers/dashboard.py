@@ -5,7 +5,8 @@ from datetime import date
 from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text, extract
+from sqlalchemy import text, extract, func
+from calendar import monthrange
 from app.database import get_db
 from app.templates_config import templates
 from app.auth import get_current_user, require_not_veterano, require_admin, flash
@@ -23,14 +24,10 @@ _ALLOWED_VIEWS = {
     "mart_tiempo_adopcion",
     "mart_perros_sin_adoptar",
     "mart_patrones_dificultad",
-    "mart_cobertura_semanal",
-    "mart_faltas_voluntario",
     "mart_entradas_por_mes",
     "mart_saldo_turnos",
-    "mart_saldo_turnos_semanal",
     "mart_tiempo_acogida_mes",
     "mart_conversion_visitantes",
-    "mart_evolucion_saldo_semanal",
 }
 
 
@@ -61,13 +58,6 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     ]
     perros_sin_adoptar = _query_analytics(db, "mart_perros_sin_adoptar")
     patrones_dificultad = _query_analytics(db, "mart_patrones_dificultad")
-    cobertura_semanal = [
-        {**r,
-         "pct_con_veterano": float(r["pct_con_veterano"]),
-         "pct_completos":    float(r["pct_completos"])}
-        for r in _query_analytics(db, "mart_cobertura_semanal")
-    ]
-    faltas_voluntario = _query_analytics(db, "mart_faltas_voluntario")
     tiempo_acogida = [
         {**r,
          "mes": r["mes"].isoformat() if hasattr(r.get("mes"), "isoformat") else str(r.get("mes", "")),
@@ -80,14 +70,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    evolucion_saldo = [
-        {**r,
-         "semana": r["semana"].isoformat() if hasattr(r.get("semana"), "isoformat") else str(r.get("semana", "")),
-         "saldo_medio": float(r["saldo_medio"]) if r.get("saldo_medio") is not None else 0.0}
-        for r in _query_analytics(db, "mart_evolucion_saldo_semanal")
-    ]
-
-    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
+    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion, TurnoMensual
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
@@ -126,6 +109,46 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         key=lambda x: x["saldo"]
     )[:10]
 
+    from app.routers.turnos import MESES_ES, FECHA_INICIO_TURNOS
+    voluntarios_con_turnos = (
+        db.query(Voluntario)
+        .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
+        .all()
+    )
+    all_tm = db.query(TurnoMensual).filter(
+        TurnoMensual.voluntario_id.in_([v.id for v in voluntarios_con_turnos])
+    ).all()
+    tm_by_vol = {}
+    for t in all_tm:
+        tm_by_vol.setdefault(t.voluntario_id, []).append(t)
+
+    meses_list = sorted(set(t.mes for t in all_tm))
+
+    cobertura_mensual = []
+    evolucion_saldo_mensual = []
+    for mes_date in meses_list:
+        total = sum(t.turnos for t in all_tm if t.mes == mes_date)
+        cobertura_mensual.append({
+            "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
+            "total_turnos": total,
+        })
+        _, last_num = monthrange(mes_date.year, mes_date.month)
+        last_day = date(mes_date.year, mes_date.month, last_num)
+        saldos = []
+        for v in voluntarios_con_turnos:
+            fecha_inicio = max(FECHA_INICIO_TURNOS, v.fecha_alta)
+            if fecha_inicio > last_day:
+                continue
+            semanas = (last_day - fecha_inicio).days // 7
+            turnos_hasta = sum(t.turnos for t in tm_by_vol.get(v.id, []) if t.mes <= mes_date)
+            saldos.append(v.deuda_inicial + turnos_hasta - semanas)
+        if saldos:
+            evolucion_saldo_mensual.append({
+                "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
+                "saldo_medio": round(sum(saldos) / len(saldos), 2),
+                "n_con_deuda": sum(1 for s in saldos if s < 0),
+            })
+
     return templates.TemplateResponse(request, "dashboard.html", {
         "vacunas_proximas": vacunas_proximas,
         "no_esterilizados": no_esterilizados,
@@ -137,11 +160,10 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "tiempo_adopcion": tiempo_adopcion,
         "perros_sin_adoptar": perros_sin_adoptar,
         "patrones_dificultad": patrones_dificultad,
-        "cobertura_semanal": cobertura_semanal,
-        "faltas_voluntario": faltas_voluntario,
+        "cobertura_mensual": cobertura_mensual,
         "tiempo_acogida": tiempo_acogida,
         "conversion_visitantes": conversion_visitantes,
-        "evolucion_saldo": evolucion_saldo,
+        "evolucion_saldo_mensual": evolucion_saldo_mensual,
         "dist_ubicacion": dist_ubicacion,
         "dbt_status": dbt,
     })
@@ -250,14 +272,29 @@ def detalle_conversion(
 @router.post("/dbt-run", dependencies=[Depends(require_admin)])
 def ejecutar_dbt(request: Request):
     dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
+    env = {**os.environ}
     try:
+        deps = subprocess.run(
+            ["dbt", "deps"],
+            cwd=dbt_dir,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+        if deps.returncode != 0:
+            output = (deps.stderr or deps.stdout or "Sin salida").strip()
+            logger.error("dbt deps FAILED:\n%s", output)
+            flash(request, f"Error al instalar dependencias dbt:\n{output[-500:]}", "danger")
+            return RedirectResponse("/", status_code=303)
+
         result = subprocess.run(
             ["dbt", "run"],
             cwd=dbt_dir,
             capture_output=True,
             text=True,
             timeout=180,
-            env={**os.environ},
+            env=env,
         )
         if result.returncode == 0:
             logger.info("dbt run OK:\n%s", result.stdout)
@@ -268,8 +305,8 @@ def ejecutar_dbt(request: Request):
             logger.error("dbt run FAILED (code %d):\n%s", result.returncode, output)
             flash(request, f"Error al ejecutar dbt run:\n{last_lines}", "danger")
     except subprocess.TimeoutExpired:
-        logger.error("dbt run timeout (>180s)")
-        flash(request, "dbt run superó el tiempo límite (180s).", "danger")
+        logger.error("dbt run timeout")
+        flash(request, "dbt run superó el tiempo límite.", "danger")
     except Exception as e:
         logger.exception("dbt run excepción: %s", e)
         flash(request, f"Error inesperado al ejecutar dbt: {e}", "danger")
