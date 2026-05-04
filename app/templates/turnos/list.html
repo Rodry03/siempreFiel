@@ -28,6 +28,7 @@
             <th>Perfil</th>
             <th style="width:160px">Turnos realizados</th>
             <th style="width:110px" class="text-center">Saldo actual</th>
+            <th style="width:140px" class="text-center">Recuperar cuanto antes</th>
           </tr>
         </thead>
         <tbody>
@@ -51,9 +52,17 @@
                      value="{{ '%.1f'|format(turnos_mes[v.id].turnos) if v.id in turnos_mes else '0' }}"
                      min="0" step="0.5" style="width:100px;">
             </td>
-            <td class="text-center fw-semibold
-              {% if saldo > 0 %}text-success{% elif saldo < 0 %}text-danger{% else %}text-muted{% endif %}">
-              {% if saldo > 0 %}+{% endif %}{{ "%.1f"|format(saldo) }}
+            <td class="text-center">
+              <input type="number" name="saldo_{{ v.id }}"
+                     class="form-control form-control-sm text-center"
+                     value="{{ "%.1f"|format(saldo) }}"
+                     step="0.5" style="width:100px; margin: 0 auto;">
+            </td>
+            <td class="text-center">
+              <input type="number" name="recuperar_urgentes_{{ v.id }}"
+                     class="form-control form-control-sm text-center"
+                     value="{{ v.recuperar_turnos_urgentes }}"
+                     min="0" style="width:100px; margin: 0 auto;">
             </td>
           </tr>
           {% endfor %}

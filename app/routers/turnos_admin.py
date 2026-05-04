@@ -45,7 +45,7 @@ def listar_turnos(
     voluntarios = (
         db.query(Voluntario)
         .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
-        .order_by(Voluntario.apellido, Voluntario.nombre)
+        .order_by(Voluntario.nombre, Voluntario.apellido)
         .all()
     )
 
@@ -85,27 +85,48 @@ async def guardar_turnos_mes(
         return RedirectResponse("/turnos/", status_code=303)
 
     for key, value in form.multi_items():
-        if not key.startswith("turnos_"):
-            continue
-        try:
-            voluntario_id = int(key[len("turnos_"):])
-            turnos_val = float(value) if value else 0.0
-        except (ValueError, IndexError):
-            continue
+        if key.startswith("turnos_"):
+            try:
+                voluntario_id = int(key[len("turnos_"):])
+                turnos_val = float(value) if value else 0.0
+            except (ValueError, IndexError):
+                continue
 
-        existing = db.query(TurnoMensual).filter(
-            TurnoMensual.voluntario_id == voluntario_id,
-            TurnoMensual.mes == mes_date,
-        ).first()
+            existing = db.query(TurnoMensual).filter(
+                TurnoMensual.voluntario_id == voluntario_id,
+                TurnoMensual.mes == mes_date,
+            ).first()
 
-        if existing:
-            existing.turnos = turnos_val
-        else:
-            db.add(TurnoMensual(
-                voluntario_id=voluntario_id,
-                mes=mes_date,
-                turnos=turnos_val,
-            ))
+            if existing:
+                existing.turnos = turnos_val
+            else:
+                db.add(TurnoMensual(
+                    voluntario_id=voluntario_id,
+                    mes=mes_date,
+                    turnos=turnos_val,
+                ))
+        
+        elif key.startswith("recuperar_urgentes_"):
+            try:
+                voluntario_id = int(key[len("recuperar_urgentes_"):])
+                recuperar_val = int(value) if value else 0
+            except (ValueError, IndexError):
+                continue
+            
+            voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+            if voluntario:
+                voluntario.recuperar_turnos_urgentes = recuperar_val
+        
+        elif key.startswith("saldo_"):
+            try:
+                voluntario_id = int(key[len("saldo_"):])
+                saldo_val = float(value) if value else None
+            except (ValueError, IndexError):
+                continue
+            
+            voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+            if voluntario:
+                voluntario.saldo_manual = saldo_val
 
     db.commit()
     flash(request, f"Turnos de {MESES_ES[mes_date.month]} {mes_date.year} guardados.")

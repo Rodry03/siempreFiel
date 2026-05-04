@@ -57,9 +57,13 @@ def calcular_tiempo_voluntario(fecha_alta) -> str:
 
 
 def calcular_saldo(voluntario: Voluntario) -> float:
+    # Si hay saldo manual, usarlo; si no, calcular
+    if voluntario.saldo_manual is not None:
+        return voluntario.saldo_manual
     fecha_inicio = max(FECHA_INICIO_TURNOS, voluntario.fecha_alta)
     semanas_activo = (date.today() - fecha_inicio).days // 7
-    turnos_acumulados = sum(t.turnos for t in voluntario.turnos_mensuales)
+    # Solo contar turnos a partir de FECHA_INICIO_TURNOS
+    turnos_acumulados = sum(t.turnos for t in voluntario.turnos_mensuales if t.mes >= FECHA_INICIO_TURNOS)
     return voluntario.deuda_inicial + turnos_acumulados - semanas_activo
 
 

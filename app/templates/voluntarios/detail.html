@@ -187,9 +187,11 @@
     <div class="card">
       <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
         <span><i class="bi bi-calendar-check me-2"></i>Turnos por mes</span>
+        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
         <a href="/turnos/" class="btn btn-sm btn-outline-secondary">
           <i class="bi bi-pencil me-1"></i>Gestionar
         </a>
+        {% endif %}
       </div>
       <div class="card-body p-0">
         {% if voluntario.turnos_mensuales %}
