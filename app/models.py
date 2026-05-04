@@ -207,6 +207,8 @@ class Usuario(Base):
     activo = Column(Boolean, default=True, nullable=False)
     voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=True)
 
+    voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
+
 
 class Visitante(Base):
     __tablename__ = "visitantes"

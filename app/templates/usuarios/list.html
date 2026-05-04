@@ -11,7 +11,7 @@
   <div class="card-body p-0">
     <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
-        <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr>
+        <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Voluntario</th><th></th></tr>
       </thead>
       <tbody>
         {% for u in usuarios %}
@@ -24,6 +24,15 @@
               <span class="badge bg-success">Activo</span>
             {% else %}
               <span class="badge bg-secondary">Inactivo</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.voluntario %}
+              <a href="/voluntarios/{{ u.voluntario.id }}" class="text-decoration-none">
+                {{ u.voluntario.nombre }} {{ u.voluntario.apellido }}
+              </a>
+            {% else %}
+              <span class="text-muted small">—</span>
             {% endif %}
           </td>
           <td class="text-end">
