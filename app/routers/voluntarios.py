@@ -107,6 +107,7 @@ def debug_soffice():
 
 PERFIL_LABELS = {
     "directiva": "Directiva",
+    "apoyo_en_junta": "Apoyo en Junta",
     "veterano": "Veterano",
     "voluntario": "Voluntario",
     "guagua": "Guagua",
@@ -115,6 +116,7 @@ PERFIL_LABELS = {
 }
 PERFIL_COLORS = {
     "directiva": "danger",
+    "apoyo_en_junta": "dark",
     "veterano": "warning",
     "voluntario": "success",
     "guagua": "primary",

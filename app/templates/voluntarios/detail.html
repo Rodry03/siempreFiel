@@ -120,12 +120,14 @@
           <div class="fs-5 fw-bold text-primary">{{ tiempo_voluntario }}</div>
         </div>
       </div>
+      {% if hace_turnos %}
       <div class="col-6">
         <div class="card border-0 bg-light text-center py-3">
           <div class="text-muted small mb-1">Turnos realizados</div>
           <div class="fs-5 fw-bold text-success">{{ "%.1f"|format(total_turnos) }}</div>
         </div>
       </div>
+      {% endif %}
     </div>
 
     {% if hace_turnos %}
@@ -180,6 +182,7 @@
   </div>
 
   <!-- Turnos -->
+  {% if hace_turnos %}
   <div class="col-md-8">
     <div class="card">
       <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
@@ -266,5 +269,6 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 {% endblock %}

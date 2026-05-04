@@ -28,7 +28,7 @@ def _redirect_turnos(semana: str, voluntario_id_filtro: str, estado_filtro: str)
 def lista_turnos(
     request: Request,
     semana: Optional[str] = None,
-    voluntario_id: Optional[int] = None,
+    voluntario_id: Optional[str] = None,
     estado: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -40,12 +40,14 @@ def lista_turnos(
         lunes = hoy - timedelta(days=hoy.weekday())
     domingo = lunes + timedelta(days=6)
 
+    voluntario_id_int = int(voluntario_id) if voluntario_id else None
+
     query = db.query(TurnoVoluntario).filter(
         TurnoVoluntario.fecha >= lunes,
         TurnoVoluntario.fecha <= domingo,
     )
-    if voluntario_id:
-        query = query.filter(TurnoVoluntario.voluntario_id == voluntario_id)
+    if voluntario_id_int:
+        query = query.filter(TurnoVoluntario.voluntario_id == voluntario_id_int)
     if estado:
         query = query.filter(TurnoVoluntario.estado == EstadoTurno(estado))
 
@@ -72,7 +74,7 @@ def lista_turnos(
         "semana": lunes.isoformat(),
         "semana_anterior": semana_anterior,
         "semana_siguiente": semana_siguiente,
-        "voluntario_id_filtro": voluntario_id or "",
+        "voluntario_id_filtro": voluntario_id_int or "",
         "estado_filtro": estado or "",
         "hoy": hoy.isoformat(),
     })

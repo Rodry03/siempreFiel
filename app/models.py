@@ -26,6 +26,7 @@ class TipoUbicacion(str, enum.Enum):
 
 class PerfilVoluntario(str, enum.Enum):
     directiva = "directiva"
+    apoyo_en_junta = "apoyo_en_junta"
     veterano = "veterano"
     voluntario = "voluntario"
     guagua = "guagua"
