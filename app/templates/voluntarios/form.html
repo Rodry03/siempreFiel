@@ -122,7 +122,14 @@
         </div>
 
         <div class="col-12"><hr class="my-1"></div>
-        <div class="col-12">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Saldo inicial de turnos</label>
+          <input type="number" name="deuda_inicial" class="form-control" step="0.5"
+            value="{{ voluntario.deuda_inicial if voluntario else 0 }}"
+            placeholder="0">
+          <div class="form-text">Negativo = debe turnos. Ej: -3</div>
+        </div>
+        <div class="col-md-8">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ voluntario.notas if voluntario and voluntario.notas else '' }}</textarea>
         </div>

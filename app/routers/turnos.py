@@ -42,7 +42,7 @@ MESES_ES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
 
-FECHA_INICIO_TURNOS = date(2026, 4, 1)
+FECHA_INICIO_TURNOS = date(2026, 5, 1)
 
 
 def calcular_tiempo_voluntario(fecha_alta) -> str:
@@ -60,7 +60,7 @@ def calcular_saldo(voluntario: Voluntario) -> float:
     fecha_inicio = max(FECHA_INICIO_TURNOS, voluntario.fecha_alta)
     semanas_activo = (date.today() - fecha_inicio).days // 7
     turnos_acumulados = sum(t.turnos for t in voluntario.turnos_mensuales)
-    return turnos_acumulados - semanas_activo
+    return voluntario.deuda_inicial + turnos_acumulados - semanas_activo
 
 
 @router.get("/{voluntario_id}")

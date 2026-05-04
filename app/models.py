@@ -154,6 +154,8 @@ class Voluntario(Base):
     teaming = Column(Boolean, default=False, nullable=False)
     notas = Column(Text, nullable=True)
 
+    deuda_inicial = Column(Float, default=0.0, nullable=False)
+
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
     turnos_mensuales = relationship("TurnoMensual", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoMensual.mes.desc()")
 

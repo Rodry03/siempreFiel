@@ -202,6 +202,7 @@ def crear_voluntario(
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    deuda_inicial: Optional[float] = Form(None),
     db: Session = Depends(get_db),
 ):
     voluntario = Voluntario(
@@ -222,6 +223,7 @@ def crear_voluntario(
         contrato_estado=EstadoContrato(contrato_estado) if contrato_estado else None,
         teaming=teaming == "on",
         notas=notas or None,
+        deuda_inicial=deuda_inicial or 0.0,
     )
     db.add(voluntario)
     try:
@@ -264,6 +266,7 @@ def editar_voluntario(
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    deuda_inicial: Optional[float] = Form(None),
     db: Session = Depends(get_db),
 ):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
@@ -286,6 +289,7 @@ def editar_voluntario(
     voluntario.contrato_estado = EstadoContrato(contrato_estado) if contrato_estado else None
     voluntario.teaming = teaming == "on"
     voluntario.notas = notas or None
+    voluntario.deuda_inicial = deuda_inicial or 0.0
     try:
         db.commit()
     except IntegrityError:
