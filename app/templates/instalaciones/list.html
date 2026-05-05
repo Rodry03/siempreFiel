@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Instalaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <h2 class="mb-0">Instalaciones</h2>
+  <a href="/instalaciones/nueva" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nueva incidencia
+  </a>
+</div>
+
+<!-- Filtros -->
+<div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
+  <div class="btn-group flex-wrap" role="group">
+    <a href="/instalaciones/?estado=activo&prioridad={{ prioridad_filtro }}"
+       class="btn btn-sm {% if estado_filtro == 'activo' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+      Activos
+    </a>
+    {% for e in estados %}
+    <a href="/instalaciones/?estado={{ e }}&prioridad={{ prioridad_filtro }}"
+       class="btn btn-sm {% if estado_filtro == e %}btn-{{ estado_colors[e] }}{% else %}btn-outline-{{ estado_colors[e] }}{% endif %}">
+      {{ estado_labels[e] }}
+    </a>
+    {% endfor %}
+    <a href="/instalaciones/?estado=todos&prioridad={{ prioridad_filtro }}"
+       class="btn btn-sm {% if estado_filtro == 'todos' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+      Todos
+    </a>
+  </div>
+
+  <div class="btn-group flex-wrap ms-md-3" role="group">
+    <a href="/instalaciones/?estado={{ estado_filtro }}&prioridad=todas"
+       class="btn btn-sm {% if prioridad_filtro == 'todas' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+      Todas las prioridades
+    </a>
+    {% for p in prioridades %}
+    <a href="/instalaciones/?estado={{ estado_filtro }}&prioridad={{ p }}"
+       class="btn btn-sm {% if prioridad_filtro == p %}btn-{{ prioridad_colors[p] }}{% else %}btn-outline-{{ prioridad_colors[p] }}{% endif %}">
+      {{ prioridad_labels[p] }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if incidencias %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Título</th>
+          <th>Zona</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th>Fecha reporte</th>
+          <th>Reportado por</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in incidencias %}
+        <tr>
+          <td>
+            <a href="/instalaciones/{{ inc.id }}" class="text-decoration-none text-dark fw-semibold">
+              {{ inc.titulo }}
+            </a>
+          </td>
+          <td class="text-muted">{{ inc.zona or '—' }}</td>
+          <td>
+            <span class="badge bg-{{ prioridad_colors[inc.prioridad.value] }}">
+              {{ prioridad_labels[inc.prioridad.value] }}
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-{{ estado_colors[inc.estado.value] }}">
+              {{ estado_labels[inc.estado.value] }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ inc.fecha_reporte.strftime('%d/%m/%Y') }}</td>
+          <td class="text-muted small">{{ inc.reportado_por or '—' }}</td>
+          <td class="text-end">
+            <a href="/instalaciones/{{ inc.id }}/editar" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-tools fs-1 d-block mb-3 opacity-25"></i>
+  <p class="mb-1">No hay incidencias registradas.</p>
+  <a href="/instalaciones/nueva">Registrar la primera</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -118,6 +118,9 @@
       <a class="nav-link {% if '/turnos' in request.url.path %}active{% endif %}" href="/turnos/">
         <i class="bi bi-calendar-check me-2"></i>Turnos
       </a>
+      <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
+        <i class="bi bi-tools me-2"></i>Instalaciones
+      </a>
       {% endif %}
       <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
         <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
@@ -185,6 +188,9 @@
         </a>
         <a class="nav-link {% if '/turnos' in request.url.path %}active{% endif %}" href="/turnos/">
           <i class="bi bi-calendar-check me-2"></i>Turnos
+        </a>
+        <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
+          <i class="bi bi-tools me-2"></i>Instalaciones
         </a>
         {% endif %}
         <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">

@@ -67,6 +67,19 @@ class EstadoTurno(str, enum.Enum):
     no_apuntado = "no_apuntado"
 
 
+class PrioridadIncidencia(str, enum.Enum):
+    baja = "baja"
+    media = "media"
+    alta = "alta"
+    urgente = "urgente"
+
+
+class EstadoIncidencia(str, enum.Enum):
+    pendiente = "pendiente"
+    en_proceso = "en_proceso"
+    resuelto = "resuelto"
+
+
 class Raza(Base):
     __tablename__ = "razas"
 
@@ -290,3 +303,20 @@ class CeloPerro(Base):
     notas = Column(Text, nullable=True)
 
     perro = relationship("Perro", back_populates="celos")
+
+
+class IncidenciaInstalacion(Base):
+    __tablename__ = "incidencias_instalacion"
+
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String(200), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    zona = Column(String(100), nullable=True)
+    prioridad = Column(Enum(PrioridadIncidencia), nullable=False, default=PrioridadIncidencia.media)
+    estado = Column(Enum(EstadoIncidencia), nullable=False, default=EstadoIncidencia.pendiente)
+    fecha_reporte = Column(Date, nullable=False, default=date.today)
+    reportado_por = Column(String(150), nullable=True)
+    fecha_resolucion = Column(Date, nullable=True)
+    resuelto_por = Column(String(150), nullable=True)
+    notas_resolucion = Column(Text, nullable=True)
+    coste = Column(Float, nullable=True)

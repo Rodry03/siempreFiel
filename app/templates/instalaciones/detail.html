@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ incidencia.titulo }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/instalaciones/" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div class="flex-grow-1">
+    <h2 class="mb-1">{{ incidencia.titulo }}</h2>
+    <div class="d-flex gap-2 flex-wrap">
+      <span class="badge bg-{{ prioridad_colors[incidencia.prioridad.value] }}">
+        {{ prioridad_labels[incidencia.prioridad.value] }}
+      </span>
+      <span class="badge bg-{{ estado_colors[incidencia.estado.value] }}">
+        {{ estado_labels[incidencia.estado.value] }}
+      </span>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/instalaciones/{{ incidencia.id }}/editar" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+    <form id="form-eliminar-{{ incidencia.id }}" method="post"
+          action="/instalaciones/{{ incidencia.id }}/eliminar" class="d-none"></form>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            data-confirm-form="form-eliminar-{{ incidencia.id }}"
+            data-confirm-title="¿Eliminar incidencia?"
+            data-confirm-message="Se eliminará '{{ incidencia.titulo }}' permanentemente.">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+</div>
+
+<div class="row g-4" style="max-width:760px;">
+
+  <!-- Información general -->
+  <div class="col-12">
+    <div class="card p-4">
+      <h6 class="text-muted text-uppercase small fw-semibold mb-3">Información</h6>
+      <div class="row g-3">
+        {% if incidencia.zona %}
+        <div class="col-md-6">
+          <div class="text-muted small">Zona</div>
+          <div class="fw-semibold">{{ incidencia.zona }}</div>
+        </div>
+        {% endif %}
+        <div class="col-md-6">
+          <div class="text-muted small">Fecha de reporte</div>
+          <div class="fw-semibold">{{ incidencia.fecha_reporte.strftime('%d/%m/%Y') }}</div>
+        </div>
+        {% if incidencia.reportado_por %}
+        <div class="col-md-6">
+          <div class="text-muted small">Reportado por</div>
+          <div class="fw-semibold">{{ incidencia.reportado_por }}</div>
+        </div>
+        {% endif %}
+        {% if incidencia.descripcion %}
+        <div class="col-12">
+          <div class="text-muted small">Descripción</div>
+          <div style="white-space: pre-wrap;">{{ incidencia.descripcion }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Resolución (solo si resuelto) -->
+  {% if incidencia.estado.value == 'resuelto' %}
+  <div class="col-12">
+    <div class="card p-4 border-success border-opacity-25">
+      <h6 class="text-success text-uppercase small fw-semibold mb-3">
+        <i class="bi bi-check-circle me-1"></i>Resolución
+      </h6>
+      <div class="row g-3">
+        {% if incidencia.fecha_resolucion %}
+        <div class="col-md-6">
+          <div class="text-muted small">Fecha de resolución</div>
+          <div class="fw-semibold">{{ incidencia.fecha_resolucion.strftime('%d/%m/%Y') }}</div>
+        </div>
+        {% endif %}
+        {% if incidencia.resuelto_por %}
+        <div class="col-md-6">
+          <div class="text-muted small">Resuelto por</div>
+          <div class="fw-semibold">{{ incidencia.resuelto_por }}</div>
+        </div>
+        {% endif %}
+        {% if incidencia.coste is not none %}
+        <div class="col-md-6">
+          <div class="text-muted small">Coste</div>
+          <div class="fw-semibold">{{ '%.2f'|format(incidencia.coste) }} €</div>
+        </div>
+        {% endif %}
+        {% if incidencia.notas_resolucion %}
+        <div class="col-12">
+          <div class="text-muted small">Notas de resolución</div>
+          <div style="white-space: pre-wrap;">{{ incidencia.notas_resolucion }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <!-- Acceso rápido para resolver -->
+  <div class="col-12">
+    <a href="/instalaciones/{{ incidencia.id }}/editar" class="btn btn-success">
+      <i class="bi bi-check-circle me-1"></i>Marcar como resuelta
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

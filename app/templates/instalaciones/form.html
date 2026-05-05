@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}{% if incidencia %}Editar incidencia{% else %}Nueva incidencia{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="{% if incidencia %}/instalaciones/{{ incidencia.id }}{% else %}/instalaciones/{% endif %}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h2 class="mb-0">{% if incidencia %}Editar incidencia{% else %}Nueva incidencia{% endif %}</h2>
+</div>
+
+<div class="card p-4" style="max-width:720px;">
+  <form method="post"
+        action="{% if incidencia %}/instalaciones/{{ incidencia.id }}/editar{% else %}/instalaciones/nueva{% endif %}">
+    <div class="row g-3">
+
+      <!-- Título -->
+      <div class="col-12">
+        <label class="form-label fw-semibold">Título *</label>
+        <input type="text" name="titulo" class="form-control" required
+               value="{{ incidencia.titulo if incidencia else '' }}"
+               placeholder="Ej. Valla rota en sector norte">
+      </div>
+
+      <!-- Zona -->
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Zona</label>
+        <input type="text" name="zona" class="form-control" list="zonas-sugeridas"
+               value="{{ incidencia.zona if incidencia and incidencia.zona else '' }}"
+               placeholder="Ej. Perrera 3, Almacén, Entrada…">
+        <datalist id="zonas-sugeridas">
+          <option value="Entrada principal">
+          <option value="Recepción">
+          <option value="Perrera 1">
+          <option value="Perrera 2">
+          <option value="Perrera 3">
+          <option value="Zona de paseo">
+          <option value="Almacén">
+          <option value="Baños">
+          <option value="Vestuarios">
+          <option value="Parking">
+          <option value="Valla perimetral">
+          <option value="Zona veterinaria">
+        </datalist>
+      </div>
+
+      <!-- Prioridad -->
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Prioridad *</label>
+        <select name="prioridad" class="form-select" required>
+          {% for p in prioridades %}
+          <option value="{{ p }}"
+            {% if incidencia and incidencia.prioridad.value == p %}selected
+            {% elif not incidencia and p == 'media' %}selected{% endif %}>
+            {{ prioridad_labels[p] }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Estado -->
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Estado *</label>
+        <select name="estado" id="estado" class="form-select" required>
+          {% for e in estados %}
+          <option value="{{ e }}"
+            {% if incidencia and incidencia.estado.value == e %}selected
+            {% elif not incidencia and e == 'pendiente' %}selected{% endif %}>
+            {{ estado_labels[e] }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Fecha reporte -->
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Fecha de reporte *</label>
+        <input type="date" name="fecha_reporte" class="form-control" required
+               value="{{ incidencia.fecha_reporte.isoformat() if incidencia else hoy.isoformat() }}">
+      </div>
+
+      <!-- Reportado por -->
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Reportado por</label>
+        <select name="reportado_por" class="form-select">
+          <option value="">— Sin especificar —</option>
+          {% for v in voluntarios %}
+          {% set nombre_completo = v.nombre ~ ' ' ~ v.apellido %}
+          <option value="{{ nombre_completo }}"
+            {% if incidencia and incidencia.reportado_por == nombre_completo %}selected{% endif %}>
+            {{ nombre_completo }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Descripción -->
+      <div class="col-12">
+        <label class="form-label fw-semibold">Descripción</label>
+        <textarea name="descripcion" class="form-control" rows="3"
+                  placeholder="Detalle del deterioro o problema…">{{ incidencia.descripcion if incidencia and incidencia.descripcion else '' }}</textarea>
+      </div>
+
+      <!-- Sección resolución (visible solo si estado=resuelto) -->
+      <div class="col-12" id="resolucion-section" style="display:none;">
+        <hr class="my-1">
+        <h6 class="text-success mb-3"><i class="bi bi-check-circle me-1"></i>Datos de resolución</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha de resolución</label>
+            <input type="date" name="fecha_resolucion" class="form-control"
+                   value="{{ incidencia.fecha_resolucion.isoformat() if incidencia and incidencia.fecha_resolucion else hoy.isoformat() }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Resuelto por</label>
+            <input type="text" name="resuelto_por" class="form-control"
+                   value="{{ incidencia.resuelto_por if incidencia and incidencia.resuelto_por else '' }}"
+                   placeholder="Quién lo arregló">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Coste (€)</label>
+            <input type="number" name="coste" class="form-control" step="0.01" min="0"
+                   value="{{ '%.2f'|format(incidencia.coste) if incidencia and incidencia.coste is not none else '' }}"
+                   placeholder="0.00">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Notas de resolución</label>
+            <textarea name="notas_resolucion" class="form-control" rows="2"
+                      placeholder="Cómo se resolvió, materiales usados…">{{ incidencia.notas_resolucion if incidencia and incidencia.notas_resolucion else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>
+        {% if incidencia %}Guardar cambios{% else %}Registrar incidencia{% endif %}
+      </button>
+      <a href="{% if incidencia %}/instalaciones/{{ incidencia.id }}{% else %}/instalaciones/{% endif %}"
+         class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var estadoSel = document.getElementById('estado');
+  var seccion = document.getElementById('resolucion-section');
+  function toggle() {
+    seccion.style.display = estadoSel.value === 'resuelto' ? 'block' : 'none';
+  }
+  estadoSel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
+{% endblock %}
