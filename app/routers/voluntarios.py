@@ -7,12 +7,12 @@ import tempfile
 logger = logging.getLogger(__name__)
 from datetime import date
 from docx import Document as DocxDocument
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import Optional
+from typing import List, Optional
 from app.database import get_db
 from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea
 from app.templates_config import templates
@@ -128,7 +128,7 @@ PERFIL_COLORS = {
 @router.get("/")
 def listar_voluntarios(
     request: Request,
-    perfil: str = "todos",
+    perfil: List[str] = Query(default=[]),
     bajas: bool = False,
     sort: str = "nombre",
     order: str = "asc",
@@ -137,11 +137,10 @@ def listar_voluntarios(
     query = db.query(Voluntario)
     if not bajas:
         query = query.filter(Voluntario.activo == True)
-    if perfil != "todos":
-        try:
-            query = query.filter(Voluntario.perfil == PerfilVoluntario(perfil))
-        except ValueError:
-            pass
+    valores_validos = {p.value for p in PerfilVoluntario}
+    perfiles_filtro = [p for p in perfil if p in valores_validos]
+    if perfiles_filtro:
+        query = query.filter(Voluntario.perfil.in_(perfiles_filtro))
 
     _cols = {
         "nombre": Voluntario.nombre,
@@ -153,9 +152,12 @@ def listar_voluntarios(
     col = _cols.get(sort, Voluntario.nombre)
     query = query.order_by(col.desc() if order == "desc" else col.asc())
 
+    perfil_qs = "&".join(f"perfil={p}" for p in perfiles_filtro)
+
     return templates.TemplateResponse(request, "voluntarios/list.html", {
         "voluntarios": query.all(),
-        "perfil_filtro": perfil,
+        "perfil_filtro": perfiles_filtro,
+        "perfil_qs": perfil_qs,
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,

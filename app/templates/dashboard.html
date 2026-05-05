@@ -75,8 +75,8 @@
   {% endif %}
 </div>
 
-<!-- Cobertura mensual de turnos -->
-{% if cobertura_mensual %}
+<!-- Cobertura mensual de turnos (oculto temporalmente) -->
+{% if false and cobertura_mensual %}
 <div class="row g-4 mb-4">
   <div class="col-12">
     <div class="card">
@@ -85,7 +85,7 @@
       </div>
       <div class="card-body">
         <canvas id="chartCobertura" style="min-height:140px; max-height:220px;"></canvas>
-        <p class="text-muted small mt-2 mb-0">Total de turnos realizados entre todos los voluntarios activos, por mes.</p>
+        <p class="text-muted small mt-2 mb-0">Turnos realizados vs esperados (días del mes × 2 franjas). La línea amarilla muestra el % de cobertura.</p>
       </div>
     </div>
   </div>
@@ -98,11 +98,11 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header bg-white border-0 pt-3">
-        <span class="fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>Evolución del saldo medio de turnos por mes</span>
+        <span class="fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>Evolución de la deuda de turnos por mes</span>
       </div>
       <div class="card-body">
         <canvas id="chartEvolucionSaldo" style="min-height:140px; max-height:220px;"></canvas>
-        <p class="text-muted small mt-2 mb-0">Saldo medio (turnos realizados − esperados) sobre todos los voluntarios activos con turno. Por encima de 0 = van adelantados; por debajo = deben turnos.</p>
+        <p class="text-muted small mt-2 mb-0">Total de turnos adeudados (suma de los saldos negativos) y número de voluntarios con deuda cada mes. Si la línea sube, la deuda del grupo crece.</p>
       </div>
     </div>
   </div>
@@ -445,17 +445,50 @@ new Chart(document.getElementById('chartCobertura'), {
   type: 'bar',
   data: {
     labels: {{ cobertura_mensual | map(attribute='mes_label') | list | tojson }},
-    datasets: [{
-      label: 'Turnos realizados',
-      data: {{ cobertura_mensual | map(attribute='total_turnos') | list | tojson }},
-      backgroundColor: 'rgba(49, 174, 144, 0.6)',
-      borderRadius: 4,
-    }]
+    datasets: [
+      {
+        label: 'Realizados',
+        data: {{ cobertura_mensual | map(attribute='total_realizados') | list | tojson }},
+        backgroundColor: 'rgba(49, 174, 144, 0.7)',
+        borderRadius: 4,
+        order: 2,
+      },
+      {
+        label: 'Esperados',
+        data: {{ cobertura_mensual | map(attribute='esperados') | list | tojson }},
+        backgroundColor: 'rgba(108, 117, 125, 0.25)',
+        borderColor: 'rgba(108, 117, 125, 0.6)',
+        borderWidth: 1,
+        borderRadius: 4,
+        order: 3,
+      },
+      {
+        label: '% cobertura',
+        type: 'line',
+        data: {{ cobertura_mensual | map(attribute='porcentaje') | list | tojson }},
+        borderColor: 'rgba(255, 193, 7, 0.9)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 4,
+        tension: 0.3,
+        yAxisID: 'y2',
+        order: 1,
+      }
+    ]
   },
   options: {
     responsive: true,
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      y:  { beginAtZero: true, ticks: { stepSize: 1 }, position: 'left' },
+      y2: {
+        beginAtZero: true,
+        position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { callback: v => v + '%' },
+        suggestedMax: 120,
+      }
+    }
   }
 });
 {% endif %}
@@ -677,26 +710,24 @@ new Chart(document.getElementById('chartEvolucionSaldo'), {
     labels: {{ evolucion_saldo_mensual | map(attribute='mes_label') | list | tojson }},
     datasets: [
       {
-        label: 'Saldo medio',
-        data: {{ evolucion_saldo_mensual | map(attribute='saldo_medio') | list | tojson }},
-        borderColor: 'rgba(49, 174, 144, 0.9)',
-        backgroundColor: function(ctx) {
-          const v = ctx.raw;
-          return v >= 0 ? 'rgba(25,135,84,0.15)' : 'rgba(220,53,69,0.15)';
-        },
+        label: 'Turnos adeudados',
+        data: {{ evolucion_saldo_mensual | map(attribute='deuda_total') | list | tojson }},
+        borderColor: 'rgba(220, 53, 69, 0.9)',
+        backgroundColor: 'rgba(220, 53, 69, 0.1)',
         borderWidth: 2,
-        pointRadius: 3,
+        pointRadius: 4,
         fill: true,
         tension: 0.3,
+        yAxisID: 'y',
       },
       {
         label: 'Voluntarios con deuda',
         data: {{ evolucion_saldo_mensual | map(attribute='n_con_deuda') | list | tojson }},
-        borderColor: 'rgba(220, 53, 69, 0.7)',
+        borderColor: 'rgba(255, 193, 7, 0.9)',
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderDash: [4, 4],
-        pointRadius: 2,
+        borderDash: [5, 4],
+        pointRadius: 3,
         tension: 0.3,
         yAxisID: 'y2',
       }
@@ -706,9 +737,9 @@ new Chart(document.getElementById('chartEvolucionSaldo'), {
     responsive: true,
     plugins: { legend: { display: true, position: 'bottom' } },
     scales: {
-      y:  { position: 'left',  ticks: { callback: v => (v > 0 ? '+' : '') + v } },
-      y2: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false },
-             ticks: { stepSize: 1 } }
+      y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'Turnos' } },
+      y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false },
+             ticks: { stepSize: 1 }, title: { display: true, text: 'Voluntarios' } }
     }
   }
 });

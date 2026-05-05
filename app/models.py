@@ -168,7 +168,7 @@ class Voluntario(Base):
     notas = Column(Text, nullable=True)
 
     deuda_inicial = Column(Float, default=0.0, nullable=False)
-    recuperar_turnos_urgentes = Column(Integer, default=0, nullable=False)
+    recuperar_turnos_urgentes = Column(Float, default=0.0, nullable=False)
     saldo_manual = Column(Float, nullable=True)
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
@@ -303,6 +303,19 @@ class CeloPerro(Base):
     notas = Column(Text, nullable=True)
 
     perro = relationship("Perro", back_populates="celos")
+
+
+class SaldoMensual(Base):
+    __tablename__ = "saldos_mensuales"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+    mes           = Column(Date, nullable=False)
+    saldo         = Column(Float, nullable=False)
+
+    voluntario = relationship("Voluntario")
+
+    __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_saldo_mensual"),)
 
 
 class IncidenciaInstalacion(Base):

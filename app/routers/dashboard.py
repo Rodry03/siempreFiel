@@ -99,7 +99,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
             .all()
     ]
 
-    from app.routers.turnos import PERFILES_SIN_TURNOS
+    from app.routers.turnos import PERFILES_SIN_TURNOS, MESES_ES
     top_deudores = sorted(
         [{"voluntario": v, "saldo": calcular_saldo(v)}
          for v in db.query(Voluntario)
@@ -109,7 +109,19 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         key=lambda x: x["saldo"]
     )[:10]
 
-    from app.routers.turnos import MESES_ES, FECHA_INICIO_TURNOS
+    from app.models import SaldoMensual
+    saldo_historico = db.query(SaldoMensual).order_by(SaldoMensual.mes).all()
+    saldos_por_mes = {}
+    for s in saldo_historico:
+        saldos_por_mes.setdefault(s.mes, []).append(s.saldo)
+    evolucion_saldo_mensual = [
+        {
+            "mes_label": f"{MESES_ES[m.month]} {m.year}",
+            "deuda_total": round(sum(abs(s) for s in saldos if s < 0), 1),
+            "n_con_deuda": sum(1 for s in saldos if s < 0),
+        }
+        for m, saldos in sorted(saldos_por_mes.items())
+    ]
     voluntarios_con_turnos = (
         db.query(Voluntario)
         .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
@@ -125,29 +137,17 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     meses_list = sorted(set(t.mes for t in all_tm))
 
     cobertura_mensual = []
-    evolucion_saldo_mensual = []
     for mes_date in meses_list:
-        total = sum(t.turnos for t in all_tm if t.mes == mes_date)
+        total_realizados = sum(t.turnos for t in all_tm if t.mes == mes_date)
+        dias_mes = monthrange(mes_date.year, mes_date.month)[1]
+        esperados = dias_mes * 2
+        porcentaje = round(total_realizados / esperados * 100, 1)
         cobertura_mensual.append({
             "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
-            "total_turnos": total,
+            "total_realizados": total_realizados,
+            "esperados": esperados,
+            "porcentaje": porcentaje,
         })
-        _, last_num = monthrange(mes_date.year, mes_date.month)
-        last_day = date(mes_date.year, mes_date.month, last_num)
-        saldos = []
-        for v in voluntarios_con_turnos:
-            fecha_inicio = max(FECHA_INICIO_TURNOS, v.fecha_alta)
-            if fecha_inicio > last_day:
-                continue
-            semanas = (last_day - fecha_inicio).days // 7
-            turnos_hasta = sum(t.turnos for t in tm_by_vol.get(v.id, []) if t.mes <= mes_date)
-            saldos.append(v.deuda_inicial + turnos_hasta - semanas)
-        if saldos:
-            evolucion_saldo_mensual.append({
-                "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
-                "saldo_medio": round(sum(saldos) / len(saldos), 2),
-                "n_con_deuda": sum(1 for s in saldos if s < 0),
-            })
 
     return templates.TemplateResponse(request, "dashboard.html", {
         "vacunas_proximas": vacunas_proximas,

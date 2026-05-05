@@ -24,15 +24,26 @@
 <!-- Filtros por perfil -->
 {% if not bajas %}
 <div class="mb-3">
-  <div class="d-flex flex-wrap gap-1">
-    <a href="/voluntarios/?perfil=todos" class="btn btn-sm {% if perfil_filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
+  <form id="filtro-perfil" method="get" action="/voluntarios/" class="d-flex flex-wrap gap-2 align-items-center">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="order" value="{{ order }}">
+    <span class="text-muted small me-1">Perfil:</span>
     {% for p in perfiles %}
-    <a href="/voluntarios/?perfil={{ p }}"
-       class="btn btn-sm {% if perfil_filtro == p %}btn-{{ perfil_colors[p] }}{% else %}btn-outline-{{ perfil_colors[p] }}{% endif %}">
-      {{ perfil_labels[p] }}
-    </a>
+    <div class="form-check form-check-inline me-0">
+      <input class="form-check-input" type="checkbox" name="perfil" value="{{ p }}"
+             id="perfil-{{ p }}" {% if p in perfil_filtro %}checked{% endif %}
+             onchange="document.getElementById('filtro-perfil').submit()">
+      <label class="form-check-label" for="perfil-{{ p }}">
+        <span class="badge bg-{{ perfil_colors[p] }}">{{ perfil_labels[p] }}</span>
+      </label>
+    </div>
     {% endfor %}
-  </div>
+    {% if perfil_filtro %}
+    <a href="/voluntarios/?sort={{ sort }}&order={{ order }}" class="btn btn-sm btn-outline-secondary ms-1">
+      <i class="bi bi-x-lg me-1"></i>Limpiar
+    </a>
+    {% endif %}
+  </form>
 </div>
 {% endif %}
 
@@ -44,7 +55,7 @@
         {% macro sort_link(col, label) %}
           {% set next_order = 'desc' if (sort == col and order == 'asc') else 'asc' %}
           {% set icon = ' ↑' if (sort == col and order == 'asc') else (' ↓' if (sort == col and order == 'desc') else '') %}
-          <a href="/voluntarios/?perfil={{ perfil_filtro }}&sort={{ col }}&order={{ next_order }}{% if bajas %}&bajas=true{% endif %}"
+          <a href="/voluntarios/?{% if perfil_qs %}{{ perfil_qs }}&{% endif %}sort={{ col }}&order={{ next_order }}{% if bajas %}&bajas=true{% endif %}"
              class="text-decoration-none text-dark fw-semibold">{{ label }}{{ icon }}</a>
         {% endmacro %}
         <tr>

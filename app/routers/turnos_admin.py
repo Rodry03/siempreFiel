@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
-from app.models import TurnoMensual, Voluntario
+from app.models import TurnoMensual, Voluntario, SaldoMensual
 from app.routers.turnos import PERFIL_LABELS, PERFIL_COLORS, PERFILES_SIN_TURNOS, MESES_ES, calcular_saldo
 from app.templates_config import templates
 
@@ -109,7 +109,7 @@ async def guardar_turnos_mes(
         elif key.startswith("recuperar_urgentes_"):
             try:
                 voluntario_id = int(key[len("recuperar_urgentes_"):])
-                recuperar_val = int(value) if value else 0
+                recuperar_val = float(value) if value else 0.0
             except (ValueError, IndexError):
                 continue
             
@@ -123,10 +123,23 @@ async def guardar_turnos_mes(
                 saldo_val = float(value) if value else None
             except (ValueError, IndexError):
                 continue
-            
+
             voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
             if voluntario:
                 voluntario.saldo_manual = saldo_val
+                if saldo_val is not None:
+                    snapshot = db.query(SaldoMensual).filter(
+                        SaldoMensual.voluntario_id == voluntario_id,
+                        SaldoMensual.mes == mes_date,
+                    ).first()
+                    if snapshot:
+                        snapshot.saldo = saldo_val
+                    else:
+                        db.add(SaldoMensual(
+                            voluntario_id=voluntario_id,
+                            mes=mes_date,
+                            saldo=saldo_val,
+                        ))
 
     db.commit()
     flash(request, f"Turnos de {MESES_ES[mes_date.month]} {mes_date.year} guardados.")
