@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Editar mis datos{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/voluntarios/{{ voluntario.id }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h2 class="mb-0">Editar mis datos</h2>
+</div>
+
+<div class="card p-4" style="max-width:560px;">
+  <form method="post" action="/voluntarios/{{ voluntario.id }}/editar-datos">
+    <div class="row g-3">
+
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">DNI</label>
+        <input type="text" name="dni" class="form-control"
+               value="{{ voluntario.dni if voluntario.dni else '' }}"
+               placeholder="12345678A">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Email *</label>
+        <input type="email" name="email" class="form-control" required
+               value="{{ voluntario.email if voluntario.email else '' }}">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label fw-semibold">Dirección</label>
+        <input type="text" name="direccion" class="form-control"
+               value="{{ voluntario.direccion if voluntario.direccion else '' }}"
+               placeholder="Calle, número, piso…">
+      </div>
+
+      <div class="col-md-5">
+        <label class="form-label fw-semibold">Ciudad</label>
+        <input type="text" name="ciudad" class="form-control"
+               value="{{ voluntario.ciudad if voluntario.ciudad else '' }}">
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Provincia</label>
+        <input type="text" name="provincia" class="form-control"
+               value="{{ voluntario.provincia if voluntario.provincia else '' }}">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label fw-semibold">Código postal</label>
+        <input type="text" name="codigo_postal" class="form-control"
+               value="{{ voluntario.codigo_postal if voluntario.codigo_postal else '' }}">
+      </div>
+
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>Guardar cambios
+      </button>
+      <a href="/voluntarios/{{ voluntario.id }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

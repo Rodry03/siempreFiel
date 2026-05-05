@@ -1,8 +1,10 @@
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.auth import get_current_user, require_not_veterano
+from typing import Optional
+from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
 from app.models import Voluntario, TurnoMensual, PerfilVoluntario
 from app.routers.voluntarios import CONTRATO_LABELS, CONTRATO_COLORS
@@ -110,3 +112,54 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "semana_actual": semana_actual,
         "meses_es": MESES_ES,
     })
+
+
+def _solo_propio(request, voluntario_id: int):
+    from app.models import RolUsuario
+    from app.auth import NotAuthorized
+    u = request.state.current_user
+    if u.rol != RolUsuario.veterano or u.voluntario_id != voluntario_id:
+        raise NotAuthorized()
+
+
+@router.get("/{voluntario_id}/editar-datos")
+def form_editar_datos(request: Request, voluntario_id: int, db: Session = Depends(get_db)):
+    _solo_propio(request, voluntario_id)
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if not voluntario:
+        return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+    return templates.TemplateResponse(request, "voluntarios/editar_datos.html", {
+        "voluntario": voluntario,
+    })
+
+
+@router.post("/{voluntario_id}/editar-datos")
+def editar_datos(
+    request: Request,
+    voluntario_id: int,
+    dni: Optional[str] = Form(None),
+    email: str = Form(...),
+    direccion: Optional[str] = Form(None),
+    ciudad: Optional[str] = Form(None),
+    provincia: Optional[str] = Form(None),
+    codigo_postal: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    _solo_propio(request, voluntario_id)
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if not voluntario:
+        return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+    voluntario.dni = dni or None
+    voluntario.email = email
+    voluntario.direccion = direccion or None
+    voluntario.ciudad = ciudad or None
+    voluntario.provincia = provincia or None
+    voluntario.codigo_postal = codigo_postal or None
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        flash(request, "El DNI o email ya está en uso por otro voluntario.", "danger")
+        return RedirectResponse(f"/voluntarios/{voluntario_id}/editar-datos", status_code=303)
+    flash(request, "Datos actualizados correctamente.")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)

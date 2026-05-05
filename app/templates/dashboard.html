@@ -75,17 +75,17 @@
   {% endif %}
 </div>
 
-<!-- Cobertura mensual de turnos (oculto temporalmente) -->
-{% if false and cobertura_mensual %}
+<!-- Cobertura mensual de turnos -->
+{% if cobertura_mensual %}
 <div class="row g-4 mb-4">
   <div class="col-12">
     <div class="card">
       <div class="card-header bg-white border-0 pt-3">
-        <span class="fw-semibold"><i class="bi bi-calendar-check text-primary me-2"></i>Cobertura mensual de turnos</span>
+        <span class="fw-semibold"><i class="bi bi-calendar-check text-primary me-2"></i>Turnos sin cubrir por mes (aprox.)</span>
       </div>
       <div class="card-body">
         <canvas id="chartCobertura" style="min-height:140px; max-height:220px;"></canvas>
-        <p class="text-muted small mt-2 mb-0">Turnos realizados vs esperados (días del mes × 2 franjas). La línea amarilla muestra el % de cobertura.</p>
+        <p class="text-muted small mt-2 mb-0">Turnos esperados (días × 2 franjas) menos los realizados. Mide si el refugio tiene sus turnos cubiertos, independientemente del saldo individual de cada voluntario.</p>
       </div>
     </div>
   </div>
@@ -447,32 +447,16 @@ new Chart(document.getElementById('chartCobertura'), {
     labels: {{ cobertura_mensual | map(attribute='mes_label') | list | tojson }},
     datasets: [
       {
-        label: 'Realizados',
+        label: 'Sin cubrir',
+        data: {{ cobertura_mensual | map(attribute='sin_cubrir') | list | tojson }},
+        backgroundColor: 'rgba(220, 53, 69, 0.6)',
+        borderRadius: 4,
+      },
+      {
+        label: 'Cubiertos',
         data: {{ cobertura_mensual | map(attribute='total_realizados') | list | tojson }},
-        backgroundColor: 'rgba(49, 174, 144, 0.7)',
+        backgroundColor: 'rgba(49, 174, 144, 0.5)',
         borderRadius: 4,
-        order: 2,
-      },
-      {
-        label: 'Esperados',
-        data: {{ cobertura_mensual | map(attribute='esperados') | list | tojson }},
-        backgroundColor: 'rgba(108, 117, 125, 0.25)',
-        borderColor: 'rgba(108, 117, 125, 0.6)',
-        borderWidth: 1,
-        borderRadius: 4,
-        order: 3,
-      },
-      {
-        label: '% cobertura',
-        type: 'line',
-        data: {{ cobertura_mensual | map(attribute='porcentaje') | list | tojson }},
-        borderColor: 'rgba(255, 193, 7, 0.9)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 4,
-        tension: 0.3,
-        yAxisID: 'y2',
-        order: 1,
       }
     ]
   },
@@ -480,14 +464,8 @@ new Chart(document.getElementById('chartCobertura'), {
     responsive: true,
     plugins: { legend: { position: 'bottom' } },
     scales: {
-      y:  { beginAtZero: true, ticks: { stepSize: 1 }, position: 'left' },
-      y2: {
-        beginAtZero: true,
-        position: 'right',
-        grid: { drawOnChartArea: false },
-        ticks: { callback: v => v + '%' },
-        suggestedMax: 120,
-      }
+      x: { stacked: true },
+      y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
     }
   }
 });

@@ -15,7 +15,14 @@
       <span class="badge bg-secondary">Baja</span>
     {% endif %}
   </div>
-  {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+  {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+  {% if es_veterano %}
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/voluntarios/{{ voluntario.id }}/editar-datos" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i>Editar mis datos
+    </a>
+  </div>
+  {% else %}
   <div class="d-flex gap-2 flex-wrap">
     <a href="/voluntarios/{{ voluntario.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
@@ -52,6 +59,9 @@
       </div>
       <div class="card-body">
         <table class="table table-sm table-borderless mb-0">
+          {% if voluntario.dni %}
+          <tr><th class="text-muted" style="width:40%">DNI</th><td>{{ voluntario.dni }}</td></tr>
+          {% endif %}
           <tr><th class="text-muted" style="width:40%">Email</th><td>{{ voluntario.email }}</td></tr>
           <tr><th class="text-muted">Teléfono</th><td>{{ voluntario.telefono or '—' }}</td></tr>
           <tr><th class="text-muted">Alta</th><td>{{ voluntario.fecha_alta }}</td></tr>
@@ -90,11 +100,16 @@
               <span class="text-muted">Pendiente</span>
             {% endif %}
           </td></tr>
-          {% if voluntario.notas %}
+          {% if voluntario.notas and not es_veterano %}
           <tr><th class="text-muted">Notas</th><td>{{ voluntario.notas }}</td></tr>
           {% endif %}
+          {% if hace_turnos and voluntario.recuperar_turnos_urgentes %}
+          <tr><th class="text-muted">Recuperar urgente</th><td>
+            <span class="badge bg-warning text-dark">{{ '%.1f'|format(voluntario.recuperar_turnos_urgentes) }} turno{% if voluntario.recuperar_turnos_urgentes != 1.0 %}s{% endif %}</span>
+          </td></tr>
+          {% endif %}
         </table>
-        {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
+        {% if not es_veterano %}
         <hr class="my-2">
         <form method="post" action="/voluntarios/{{ voluntario.id }}/cambiar-perfil" class="d-flex gap-2 align-items-center">
           <label class="small text-muted mb-0 text-nowrap">Cambiar perfil:</label>

@@ -146,6 +146,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
             "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
             "total_realizados": total_realizados,
             "esperados": esperados,
+            "sin_cubrir": max(0, esperados - total_realizados),
             "porcentaje": porcentaje,
         })
 
