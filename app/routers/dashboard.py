@@ -28,6 +28,7 @@ _ALLOWED_VIEWS = {
     "mart_saldo_turnos",
     "mart_tiempo_acogida_mes",
     "mart_conversion_visitantes",
+    "mart_perros_urgentes_adopcion",
 }
 
 
@@ -57,6 +58,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         for r in _query_analytics(db, "mart_tiempo_adopcion")
     ]
     perros_sin_adoptar = _query_analytics(db, "mart_perros_sin_adoptar")
+    perros_urgentes_adopcion = _query_analytics(db, "mart_perros_urgentes_adopcion")
     patrones_dificultad = _query_analytics(db, "mart_patrones_dificultad")
     tiempo_acogida = [
         {**r,
@@ -160,6 +162,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "entradas_salidas": entradas_salidas,
         "tiempo_adopcion": tiempo_adopcion,
         "perros_sin_adoptar": perros_sin_adoptar,
+        "perros_urgentes_adopcion": perros_urgentes_adopcion,
         "patrones_dificultad": patrones_dificultad,
         "cobertura_mensual": cobertura_mensual,
         "tiempo_acogida": tiempo_acogida,
