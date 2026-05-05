@@ -207,12 +207,12 @@ def crear_voluntario(
     nombre: str = Form(...),
     apellido: str = Form(...),
     dni: Optional[str] = Form(None),
-    email: str = Form(...),
+    email: Optional[str] = Form(None),
     perfil: str = Form(...),
     fecha_alta: date = Form(...),
     activo: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
-    telefono: Optional[str] = Form(None),
+    telefono: str = Form(...),
     direccion: Optional[str] = Form(None),
     ciudad: Optional[str] = Form(None),
     provincia: Optional[str] = Form(None),
@@ -224,16 +224,17 @@ def crear_voluntario(
     deuda_inicial: Optional[float] = Form(None),
     db: Session = Depends(get_db),
 ):
+    email_final = email or f"{nombre}{apellido}@siemprefiel.com"
     voluntario = Voluntario(
         nombre=nombre,
         apellido=apellido,
         dni=dni or None,
-        email=email,
+        email=email_final,
         perfil=PerfilVoluntario(perfil),
         fecha_alta=fecha_alta,
         activo=activo == "on",
         ppp=ppp == "on",
-        telefono=telefono or None,
+        telefono=telefono,
         direccion=direccion or None,
         ciudad=ciudad or None,
         provincia=provincia or None,
@@ -271,12 +272,12 @@ def editar_voluntario(
     nombre: str = Form(...),
     apellido: str = Form(...),
     dni: Optional[str] = Form(None),
-    email: str = Form(...),
+    email: Optional[str] = Form(None),
     perfil: str = Form(...),
     fecha_alta: date = Form(...),
     activo: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
-    telefono: Optional[str] = Form(None),
+    telefono: str = Form(...),
     direccion: Optional[str] = Form(None),
     ciudad: Optional[str] = Form(None),
     provincia: Optional[str] = Form(None),
@@ -291,15 +292,16 @@ def editar_voluntario(
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if not voluntario:
         return RedirectResponse("/voluntarios/", status_code=303)
+    email_final = email or f"{nombre}{apellido}@siemprefiel.com"
     voluntario.nombre = nombre
     voluntario.apellido = apellido
     voluntario.dni = dni or None
-    voluntario.email = email
+    voluntario.email = email_final
     voluntario.perfil = PerfilVoluntario(perfil)
     voluntario.fecha_alta = fecha_alta
     voluntario.activo = activo == "on"
     voluntario.ppp = ppp == "on"
-    voluntario.telefono = telefono or None
+    voluntario.telefono = telefono
     voluntario.direccion = direccion or None
     voluntario.ciudad = ciudad or None
     voluntario.provincia = provincia or None

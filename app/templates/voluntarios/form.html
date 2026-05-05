@@ -32,20 +32,21 @@
             value="{{ voluntario.dni if voluntario and voluntario.dni else '' }}">
         </div>
         <div class="col-md-8">
-          <label class="form-label fw-semibold">Email *</label>
-          <input type="email" name="email" class="form-control" required
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control"
             value="{{ voluntario.email if voluntario else (prefill.email if prefill else '') }}">
+          <div class="form-text">Si está vacío, se generará automáticamente: nombre+apellido@siemprefiel.com</div>
         </div>
         <div class="col-md-4">
-          <label class="form-label fw-semibold">Teléfono</label>
-          <input type="text" name="telefono" class="form-control"
+          <label class="form-label fw-semibold">Teléfono *</label>
+          <input type="tel" name="telefono" class="form-control" required
             value="{{ voluntario.telefono if voluntario and voluntario.telefono else (prefill.telefono if prefill else '') }}">
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Perfil *</label>
           <select name="perfil" class="form-select" required>
             {% for p in perfiles %}
-            <option value="{{ p }}" {% if voluntario and voluntario.perfil.value == p %}selected{% endif %}>
+            <option value="{{ p }}" {% if (voluntario and voluntario.perfil.value == p) or (not voluntario and p == 'voluntario') %}selected{% endif %}>
               {{ perfil_labels[p] }}
             </option>
             {% endfor %}
