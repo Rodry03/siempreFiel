@@ -63,7 +63,7 @@
               </span>
             </td>
             <td class="text-nowrap">
-              {{ s.fecha_inicio.strftime("%d/%m/%Y %H:%M") }}
+              {{ (s.fecha_inicio | madrid).strftime("%d/%m/%Y %H:%M") }}
             </td>
             <td class="text-muted">{{ s.duracion }}</td>
             <td class="font-monospace small text-muted">{{ s.ip }}</td>
