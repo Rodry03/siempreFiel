@@ -1,5 +1,5 @@
-from datetime import date
-from sqlalchemy import Boolean, Column, Date, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from datetime import date, datetime
+from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
@@ -316,6 +316,19 @@ class SaldoMensual(Base):
     voluntario = relationship("Voluntario")
 
     __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_saldo_mensual"),)
+
+
+class SesionUsuario(Base):
+    __tablename__ = "sesiones_usuario"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    fecha_inicio = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fecha_fin = Column(DateTime, nullable=True)
+    ip = Column(String(50), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    usuario = relationship("Usuario")
 
 
 class IncidenciaInstalacion(Base):

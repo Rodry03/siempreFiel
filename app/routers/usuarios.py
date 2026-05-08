@@ -1,11 +1,25 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
-from app.models import Usuario, RolUsuario, Voluntario, PerfilVoluntario
+from app.models import Usuario, RolUsuario, Voluntario, PerfilVoluntario, SesionUsuario
 from app.auth import get_current_user, require_admin, hash_password, flash
 from app.templates_config import templates
+
+SESSION_MAX_AGE = timedelta(hours=8)
+
+
+def _fmt_duracion(td: timedelta) -> str:
+    total = int(td.total_seconds())
+    if total < 0:
+        total = 0
+    h, rem = divmod(total, 3600)
+    m = rem // 60
+    if h > 0:
+        return f"{h}h {m}m"
+    return f"{m}m"
 
 router = APIRouter(prefix="/usuarios")
 
@@ -153,3 +167,48 @@ def eliminar_usuario(
     db.commit()
     flash(request, f"Usuario {nombre} eliminado.", "warning")
     return RedirectResponse("/usuarios/", status_code=303)
+
+
+@router.get("/sesiones")
+def listar_sesiones(
+    request: Request,
+    current_user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    sesiones_raw = (
+        db.query(SesionUsuario)
+        .order_by(SesionUsuario.fecha_inicio.desc())
+        .limit(200)
+        .all()
+    )
+    ahora = datetime.utcnow()
+    sesiones = []
+    activas = 0
+    for s in sesiones_raw:
+        if s.fecha_fin:
+            estado = "cerrada"
+            duracion = _fmt_duracion(s.fecha_fin - s.fecha_inicio)
+        elif ahora - s.fecha_inicio > SESSION_MAX_AGE:
+            estado = "expirada"
+            duracion = _fmt_duracion(SESSION_MAX_AGE)
+        else:
+            estado = "activa"
+            duracion = _fmt_duracion(ahora - s.fecha_inicio)
+            activas += 1
+        sesiones.append({
+            "id": s.id,
+            "usuario": s.usuario,
+            "fecha_inicio": s.fecha_inicio,
+            "fecha_fin": s.fecha_fin,
+            "ip": s.ip or "—",
+            "user_agent": (s.user_agent or "")[:80],
+            "estado": estado,
+            "duracion": duracion,
+        })
+    return templates.TemplateResponse(request, "usuarios/sesiones.html", {
+        "sesiones": sesiones,
+        "activas": activas,
+        "current_user": current_user,
+        "rol_labels": ROL_LABELS,
+        "rol_colors": ROL_COLORS,
+    })
