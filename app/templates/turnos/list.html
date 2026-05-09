@@ -5,19 +5,36 @@
   <h2 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Gestión de turnos</h2>
 </div>
 
+{% set pqs = '&perfil=' ~ perfil_filtro if perfil_filtro else '' %}
+
 <!-- Navegación semana -->
-<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
-  <a href="/turnos/?semana={{ semana_anterior }}" class="btn btn-outline-secondary btn-sm">
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <a href="/turnos/?semana={{ semana_anterior }}{{ pqs }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-chevron-left"></i>
   </a>
   <input type="date" class="form-control form-control-sm" style="width:auto;"
          value="{{ semana.isoformat() }}"
-         onchange="window.location.href='/turnos/?semana='+this.value">
+         onchange="window.location.href='/turnos/?semana='+this.value+'{{ pqs }}'">
   <span class="text-muted small">{{ semana_label }}</span>
-  <a href="/turnos/?semana={{ semana_siguiente }}" class="btn btn-outline-secondary btn-sm">
+  <a href="/turnos/?semana={{ semana_siguiente }}{{ pqs }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-chevron-right"></i>
   </a>
-  <a href="/turnos/" class="btn btn-sm btn-outline-secondary ms-2">Hoy</a>
+  <a href="/turnos/{{ '?perfil=' ~ perfil_filtro if perfil_filtro else '' }}" class="btn btn-sm btn-outline-secondary ms-2">Hoy</a>
+</div>
+
+<!-- Filtro perfil -->
+<div class="d-flex flex-wrap gap-2 align-items-center mb-4">
+  <span class="text-muted small me-1">Perfil:</span>
+  <a href="/turnos/?semana={{ semana.isoformat() }}"
+     class="btn btn-sm {{ 'btn-secondary' if not perfil_filtro else 'btn-outline-secondary' }}">
+    Todos
+  </a>
+  {% for p in perfiles_con_turnos %}
+  <a href="/turnos/?semana={{ semana.isoformat() }}&perfil={{ p }}"
+     class="btn btn-sm {{ ('btn-' ~ perfil_colors[p]) if perfil_filtro == p else ('btn-outline-' ~ perfil_colors[p]) }}">
+    {{ perfil_labels[p] }}
+  </a>
+  {% endfor %}
 </div>
 
 <div class="card">
@@ -57,6 +74,7 @@
                 {{ dias_labels[t.fecha.weekday()] }} {{ franja_labels[t.franja.value] }}{% if es_medio %} ½{% endif %}
                 <form method="post" action="/turnos/{{ t.id }}/eliminar" class="d-inline m-0 p-0">
                   <input type="hidden" name="semana" value="{{ semana.isoformat() }}">
+                  <input type="hidden" name="perfil_filtro" value="{{ perfil_filtro }}">
                   <button type="submit" class="btn p-0 m-0 {{ 'text-dark' if es_medio else 'text-white' }} border-0 bg-transparent"
                           style="font-size:0.9em; line-height:1; opacity:0.75;"
                           title="Eliminar turno">×</button>
@@ -74,9 +92,9 @@
           </td>
           <td class="text-center text-muted">{{ item.total_valor }}</td>
           <td class="text-center">
-            {% set s = item.saldo | int %}
+            {% set s = item.saldo %}
             <span class="fw-bold {% if s > 0 %}text-success{% elif s < 0 %}text-danger{% else %}text-secondary{% endif %}">
-              {% if s > 0 %}+{% endif %}{{ s }}
+              {% if s > 0 %}+{% endif %}{{ "%.1f"|format(s) }}
             </span>
           </td>
         </tr>
@@ -97,6 +115,7 @@
       <form method="post" action="/turnos/anadir">
         <div class="modal-body">
           <input type="hidden" name="semana" value="{{ semana.isoformat() }}">
+          <input type="hidden" name="perfil_filtro" value="{{ perfil_filtro }}">
           <input type="hidden" name="voluntario_id" id="modal-vol-id">
           <p class="fw-semibold mb-3" id="modal-vol-nombre"></p>
 

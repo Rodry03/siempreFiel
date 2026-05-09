@@ -80,12 +80,20 @@
 <div class="row g-4 mb-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header bg-white border-0 pt-3">
-        <span class="fw-semibold"><i class="bi bi-calendar-check text-primary me-2"></i>Turnos sin cubrir por mes (aprox.)</span>
+      <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-calendar-check text-primary me-2"></i>Cobertura semanal de turnos</span>
+        {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
+        <form method="post" action="/dbt-run-model">
+          <input type="hidden" name="model" value="mart_cobertura_semanal">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Actualizar cobertura">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </form>
+        {% endif %}
       </div>
       <div class="card-body">
         <canvas id="chartCobertura" style="min-height:140px; max-height:220px;"></canvas>
-        <p class="text-muted small mt-2 mb-0">Turnos esperados (días × 2 franjas) menos los realizados. Mide si el refugio tiene sus turnos cubiertos, independientemente del saldo individual de cada voluntario.</p>
+        <p class="text-muted small mt-2 mb-0">De los 14 slots semanales (7 días × 2 franjas), cuántos tienen al menos un veterano presente. Los slots sin cubrir son aquellos sin ningún veterano.</p>
       </div>
     </div>
   </div>
@@ -98,11 +106,11 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header bg-white border-0 pt-3">
-        <span class="fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>Evolución de la deuda de turnos por mes</span>
+        <span class="fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>Evolución del saldo de turnos semanal</span>
       </div>
       <div class="card-body">
         <canvas id="chartEvolucionSaldo" style="min-height:140px; max-height:220px;"></canvas>
-        <p class="text-muted small mt-2 mb-0">Total de turnos adeudados (suma de los saldos negativos) y número de voluntarios con deuda cada mes. Si la línea sube, la deuda del grupo crece.</p>
+        <p class="text-muted small mt-2 mb-0">Saldo medio del grupo (positivo = adelantados, negativo = en deuda) y número de voluntarios con saldo negativo cada semana.</p>
       </div>
     </div>
   </div>
@@ -504,17 +512,17 @@
 new Chart(document.getElementById('chartCobertura'), {
   type: 'bar',
   data: {
-    labels: {{ cobertura_mensual | map(attribute='mes_label') | list | tojson }},
+    labels: {{ cobertura_mensual | map(attribute='semana_label') | list | tojson }},
     datasets: [
       {
         label: 'Sin cubrir',
-        data: {{ cobertura_mensual | map(attribute='sin_cubrir') | list | tojson }},
+        data: {{ cobertura_mensual | map(attribute='slots_sin_cubrir') | list | tojson }},
         backgroundColor: 'rgba(220, 53, 69, 0.6)',
         borderRadius: 4,
       },
       {
-        label: 'Cubiertos',
-        data: {{ cobertura_mensual | map(attribute='total_realizados') | list | tojson }},
+        label: 'Con veterano',
+        data: {{ cobertura_mensual | map(attribute='slots_con_veterano') | list | tojson }},
         backgroundColor: 'rgba(49, 174, 144, 0.5)',
         borderRadius: 4,
       }
@@ -525,7 +533,7 @@ new Chart(document.getElementById('chartCobertura'), {
     plugins: { legend: { position: 'bottom' } },
     scales: {
       x: { stacked: true },
-      y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
+      y: { stacked: true, beginAtZero: true, max: 14, ticks: { stepSize: 2 } }
     }
   }
 });
@@ -745,21 +753,21 @@ new Chart(document.getElementById('chartConversionVisitantes'), {
 new Chart(document.getElementById('chartEvolucionSaldo'), {
   type: 'line',
   data: {
-    labels: {{ evolucion_saldo_mensual | map(attribute='mes_label') | list | tojson }},
+    labels: {{ evolucion_saldo_mensual | map(attribute='semana_label') | list | tojson }},
     datasets: [
       {
-        label: 'Turnos adeudados',
-        data: {{ evolucion_saldo_mensual | map(attribute='deuda_total') | list | tojson }},
+        label: 'Saldo medio',
+        data: {{ evolucion_saldo_mensual | map(attribute='saldo_medio') | list | tojson }},
         borderColor: 'rgba(220, 53, 69, 0.9)',
         backgroundColor: 'rgba(220, 53, 69, 0.1)',
         borderWidth: 2,
-        pointRadius: 4,
+        pointRadius: 3,
         fill: true,
         tension: 0.3,
         yAxisID: 'y',
       },
       {
-        label: 'Voluntarios con deuda',
+        label: 'Con deuda',
         data: {{ evolucion_saldo_mensual | map(attribute='n_con_deuda') | list | tojson }},
         borderColor: 'rgba(255, 193, 7, 0.9)',
         backgroundColor: 'transparent',
@@ -775,9 +783,9 @@ new Chart(document.getElementById('chartEvolucionSaldo'), {
     responsive: true,
     plugins: { legend: { display: true, position: 'bottom' } },
     scales: {
-      y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'Turnos' } },
+      y:  { position: 'left',  title: { display: true, text: 'Saldo medio' } },
       y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false },
-             ticks: { stepSize: 1 }, title: { display: true, text: 'Voluntarios' } }
+             ticks: { stepSize: 1 }, title: { display: true, text: 'Nº voluntarios' } }
     }
   }
 });

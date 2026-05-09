@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text, extract, func
-from calendar import monthrange
 from app.database import get_db
 from app.templates_config import templates
 from app.auth import get_current_user, require_not_veterano, require_admin, flash
@@ -29,6 +28,8 @@ _ALLOWED_VIEWS = {
     "mart_tiempo_acogida_mes",
     "mart_conversion_visitantes",
     "mart_perros_urgentes_adopcion",
+    "mart_cobertura_semanal",
+    "mart_evolucion_saldo_semanal",
 }
 
 
@@ -79,7 +80,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion, TurnoMensual
+    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
@@ -108,7 +109,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
             .all()
     ]
 
-    from app.routers.turnos import PERFILES_SIN_TURNOS, MESES_ES
+    from app.routers.turnos import PERFILES_SIN_TURNOS
     top_deudores = sorted(
         [{"voluntario": v, "saldo": calcular_saldo(v)}
          for v in db.query(Voluntario)
@@ -118,46 +119,28 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         key=lambda x: x["saldo"]
     )[:10]
 
-    from app.models import SaldoMensual
-    saldo_historico = db.query(SaldoMensual).order_by(SaldoMensual.mes).all()
-    saldos_por_mes = {}
-    for s in saldo_historico:
-        saldos_por_mes.setdefault(s.mes, []).append(s.saldo)
+    cobertura_raw = _query_analytics(db, "mart_cobertura_semanal")
+    cobertura_mensual = [
+        {
+            "semana_label": r["semana_label"],
+            "slots_con_veterano": r["slots_con_veterano"],
+            "slots_sin_cubrir": r["slots_sin_cubrir"],
+            "nivel": r["nivel"],
+            "pct_con_veterano": float(r["pct_con_veterano"]) if r.get("pct_con_veterano") is not None else 0.0,
+        }
+        for r in reversed(cobertura_raw)
+    ]
+
+    evolucion_raw = _query_analytics(db, "mart_evolucion_saldo_semanal")
     evolucion_saldo_mensual = [
         {
-            "mes_label": f"{MESES_ES[m.month]} {m.year}",
-            "deuda_total": round(sum(abs(s) for s in saldos if s < 0), 1),
-            "n_con_deuda": sum(1 for s in saldos if s < 0),
+            "semana_label": r["semana_label"],
+            "saldo_medio": float(r["saldo_medio"]) if r.get("saldo_medio") is not None else 0.0,
+            "n_voluntarios": r["n_voluntarios"],
+            "n_con_deuda": r["n_con_deuda"],
         }
-        for m, saldos in sorted(saldos_por_mes.items())
+        for r in evolucion_raw
     ]
-    voluntarios_con_turnos = (
-        db.query(Voluntario)
-        .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
-        .all()
-    )
-    all_tm = db.query(TurnoMensual).filter(
-        TurnoMensual.voluntario_id.in_([v.id for v in voluntarios_con_turnos])
-    ).all()
-    tm_by_vol = {}
-    for t in all_tm:
-        tm_by_vol.setdefault(t.voluntario_id, []).append(t)
-
-    meses_list = sorted(set(t.mes for t in all_tm))
-
-    cobertura_mensual = []
-    for mes_date in meses_list:
-        total_realizados = sum(t.turnos for t in all_tm if t.mes == mes_date)
-        dias_mes = monthrange(mes_date.year, mes_date.month)[1]
-        esperados = dias_mes * 2
-        porcentaje = round(total_realizados / esperados * 100, 1)
-        cobertura_mensual.append({
-            "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
-            "total_realizados": total_realizados,
-            "esperados": esperados,
-            "sin_cubrir": max(0, esperados - total_realizados),
-            "porcentaje": porcentaje,
-        })
 
     return templates.TemplateResponse(request, "dashboard.html", {
         "vacunas_proximas": vacunas_proximas,
@@ -377,4 +360,41 @@ def ejecutar_dbt(request: Request):
     except Exception as e:
         logger.exception("dbt run excepción: %s", e)
         flash(request, f"Error inesperado al ejecutar dbt: {e}", "danger")
+    return RedirectResponse("/", status_code=303)
+
+
+_ALLOWED_MODELS = {
+    "mart_cobertura_semanal",
+    "mart_saldo_turnos_semanal",
+    "mart_evolucion_saldo_semanal",
+}
+
+
+@router.post("/dbt-run-model", dependencies=[Depends(require_admin)])
+async def ejecutar_dbt_model(request: Request):
+    form = await request.form()
+    model = form.get("model", "")
+    if model not in _ALLOWED_MODELS:
+        flash(request, "Modelo no permitido.", "danger")
+        return RedirectResponse("/", status_code=303)
+    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
+    env = {**os.environ}
+    try:
+        result = subprocess.run(
+            ["dbt", "run", "--select", model],
+            cwd=dbt_dir,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+        if result.returncode == 0:
+            flash(request, f"{model} actualizado correctamente.", "success")
+        else:
+            output = (result.stderr or result.stdout or "Sin salida").strip()
+            flash(request, f"Error actualizando {model}: {output[-300:]}", "danger")
+    except subprocess.TimeoutExpired:
+        flash(request, "dbt run superó el tiempo límite.", "danger")
+    except Exception as e:
+        flash(request, f"Error inesperado: {e}", "danger")
     return RedirectResponse("/", status_code=303)
