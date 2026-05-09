@@ -1,7 +1,7 @@
 with semanas as (
     select distinct semana
     from {{ ref('stg_turnos_voluntarios') }}
-    where semana >= date_trunc('month', current_date - interval '5 months')::date
+    where semana >= date_trunc('month', current_date - interval '8 months')::date
 ),
 
 dias_semana as (
@@ -29,7 +29,7 @@ turnos_con_perfil as (
         v.perfil
     from {{ ref('stg_turnos_voluntarios') }} t
     inner join {{ ref('stg_voluntarios') }} v on v.id = t.voluntario_id
-    where t.semana >= date_trunc('month', current_date - interval '5 months')::date
+    where t.semana >= date_trunc('month', current_date - interval '8 months')::date
 ),
 
 por_slot as (
@@ -37,8 +37,8 @@ por_slot as (
         se.semana,
         se.fecha,
         se.franja,
-        max(case when tcp.perfil = 'veterano'   and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
-        max(case when tcp.perfil = 'voluntario' and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
+        max(case when tcp.perfil in ('veterano', 'apoyo_en_junta') and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
+        max(case when tcp.perfil = 'voluntario'                   and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
     from slots_esperados se
     left join turnos_con_perfil tcp on se.semana = tcp.semana
                                     and se.fecha = tcp.fecha

@@ -17,6 +17,8 @@ sources:
         description: Voluntarios de la protectora
       - name: turnos_voluntarios
         description: Registro de turnos por voluntario
+      - name: periodos_apoyo
+        description: Periodos en que un voluntario actúa como veterano de apoyo (exento de saldo)
       - name: visitantes
         description: Pipeline de adopción y acogida
 
