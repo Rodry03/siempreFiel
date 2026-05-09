@@ -6,5 +6,6 @@ select
     count(*) filter (where saldo_acumulado < 0) as n_con_deuda
 from {{ ref('mart_saldo_turnos_semanal') }}
 where perfil not in ('directiva', 'guagua', 'eventos', 'colaboradores')
+  and semana >= date_trunc('month', current_date - interval '8 months')::date
 group by semana
 order by semana
