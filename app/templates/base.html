@@ -86,6 +86,9 @@
   <a href="/" class="text-white text-decoration-none fw-bold">
     <i class="bi bi-heart-fill text-danger me-1"></i>Siempre Fiel
   </a>
+  <button class="btn btn-link text-white p-0 ms-auto" type="button" onclick="abrirBusqueda()" title="Buscar (/)">
+    <i class="bi bi-search fs-5"></i>
+  </button>
 </nav>
 
 <!-- Offcanvas (móvil) -->
@@ -100,6 +103,9 @@
   <div class="offcanvas-body d-flex flex-column p-0">
     {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
     <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
+      <button type="button" class="nav-link text-start border-0 bg-transparent w-100" onclick="abrirBusqueda()">
+        <i class="bi bi-search me-2"></i>Buscar <span class="text-white-50 small ms-1">/</span>
+      </button>
       {% if not es_veterano %}
       <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
@@ -171,6 +177,9 @@
       </a>
       {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
       <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
+        <button type="button" class="nav-link text-start border-0 bg-transparent w-100" onclick="abrirBusqueda()">
+          <i class="bi bi-search me-2"></i>Buscar <span class="text-white-50 small ms-1">/</span>
+        </button>
         {% if not es_veterano %}
         <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
           <i class="bi bi-speedometer2 me-2"></i>Dashboard
@@ -248,6 +257,161 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Modal búsqueda global -->
+<div class="modal fade" id="modalBusqueda" tabindex="-1">
+  <div class="modal-dialog modal-lg" style="margin-top:5vh;">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0 ps-3">
+            <i class="bi bi-search text-muted"></i>
+          </span>
+          <input type="text" class="form-control border-start-0 ps-0 fs-5" id="inputBusqueda"
+                 placeholder="Buscar perro, voluntario, visitante..." autocomplete="off">
+        </div>
+        <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2" id="resultadosBusqueda" style="min-height:100px; max-height:65vh; overflow-y:auto;">
+        <p class="text-muted text-center py-3 mb-0">
+          <i class="bi bi-search me-1"></i> Escribe al menos 2 caracteres
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirBusqueda() {
+  const ocEl = document.getElementById('mobileSidebar');
+  const oc = ocEl ? bootstrap.Offcanvas.getInstance(ocEl) : null;
+  if (oc) {
+    oc.hide();
+    ocEl.addEventListener('hidden.bs.offcanvas', function() {
+      _mostrarModalBusqueda();
+    }, { once: true });
+  } else {
+    _mostrarModalBusqueda();
+  }
+}
+
+function _mostrarModalBusqueda() {
+  new bootstrap.Modal(document.getElementById('modalBusqueda')).show();
+  setTimeout(() => document.getElementById('inputBusqueda').focus(), 300);
+}
+
+let _busqTimer = null;
+document.addEventListener('DOMContentLoaded', function() {
+  const input = document.getElementById('inputBusqueda');
+  if (!input) return;
+
+  input.addEventListener('input', function() {
+    clearTimeout(_busqTimer);
+    const q = this.value.trim();
+    if (q.length < 2) {
+      document.getElementById('resultadosBusqueda').innerHTML =
+        '<p class="text-muted text-center py-3 mb-0"><i class="bi bi-search me-1"></i> Escribe al menos 2 caracteres</p>';
+      return;
+    }
+    document.getElementById('resultadosBusqueda').innerHTML =
+      '<p class="text-muted text-center py-3 mb-0"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</p>';
+    _busqTimer = setTimeout(() => _ejecutarBusqueda(q), 300);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+      e.preventDefault();
+      abrirBusqueda();
+    }
+  });
+
+  document.getElementById('modalBusqueda').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('inputBusqueda').value = '';
+    document.getElementById('resultadosBusqueda').innerHTML =
+      '<p class="text-muted text-center py-3 mb-0"><i class="bi bi-search me-1"></i> Escribe al menos 2 caracteres</p>';
+  });
+});
+
+function _ejecutarBusqueda(q) {
+  fetch('/buscar?q=' + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(data => _renderResultados(data, q));
+}
+
+function _renderResultados(data, q) {
+  const container = document.getElementById('resultadosBusqueda');
+  const total = data.perros.length + data.voluntarios.length + data.visitantes.length;
+
+  if (total === 0) {
+    container.innerHTML = '<p class="text-muted text-center py-3 mb-0"><i class="bi bi-emoji-frown me-1"></i>Sin resultados para <strong>' + _esc(q) + '</strong></p>';
+    return;
+  }
+
+  const ecPerro = {libre:'primary', reservado:'warning text-dark', adoptado:'success', fallecido:'secondary'};
+  const ecVisita = {interesado:'primary', visita_programada:'warning text-dark', visita_realizada:'info', se_convirtio:'success', descartado:'secondary'};
+  const pcVol = {directiva:'danger',apoyo_en_junta:'dark',veterano:'warning text-dark',voluntario:'success',guagua:'primary',eventos:'info',colaboradores:'secondary'};
+
+  let html = '';
+
+  if (data.perros.length > 0) {
+    html += '<div class="px-3 pt-3 pb-1"><small class="text-muted text-uppercase fw-semibold"><i class="bi bi-emoji-smile me-1"></i>Perros (' + data.perros.length + ')</small></div>';
+    html += '<div class="list-group list-group-flush">';
+    data.perros.forEach(p => {
+      html += `<a href="/perros/${p.id}" class="list-group-item list-group-item-action px-3 py-2 border-0" onclick="buscarIr(event,'/perros/${p.id}')">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">${_esc(p.nombre)}</span>
+          <span class="badge bg-${ecPerro[p.estado]||'secondary'}">${p.estado}</span>
+        </div>
+        <small class="text-muted">${_esc(p.raza)}</small>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  if (data.voluntarios.length > 0) {
+    html += '<div class="px-3 pt-3 pb-1' + (data.perros.length ? ' border-top' : '') + '"><small class="text-muted text-uppercase fw-semibold"><i class="bi bi-people me-1"></i>Voluntarios (' + data.voluntarios.length + ')</small></div>';
+    html += '<div class="list-group list-group-flush">';
+    data.voluntarios.forEach(v => {
+      const inact = v.activo ? '' : ' <span class="badge bg-secondary ms-1">inactivo</span>';
+      html += `<a href="/voluntarios/${v.id}" class="list-group-item list-group-item-action px-3 py-2 border-0" onclick="buscarIr(event,'/voluntarios/${v.id}')">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">${_esc(v.nombre)}</span>
+          <div><span class="badge bg-${pcVol[v.perfil]||'secondary'}">${v.perfil.replace(/_/g,' ')}</span>${inact}</div>
+        </div>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  if (data.visitantes.length > 0) {
+    const sep = (data.perros.length || data.voluntarios.length) ? ' border-top' : '';
+    html += '<div class="px-3 pt-3 pb-1' + sep + '"><small class="text-muted text-uppercase fw-semibold"><i class="bi bi-door-open me-1"></i>Visitantes (' + data.visitantes.length + ')</small></div>';
+    html += '<div class="list-group list-group-flush">';
+    data.visitantes.forEach(v => {
+      html += `<a href="/visitas/${v.id}" class="list-group-item list-group-item-action px-3 py-2 border-0" onclick="buscarIr(event,'/visitas/${v.id}')">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">${_esc(v.nombre)}</span>
+          <span class="badge bg-${ecVisita[v.estado]||'secondary'}">${v.estado.replace(/_/g,' ')}</span>
+        </div>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function buscarIr(e, url) {
+  e.preventDefault();
+  const m = bootstrap.Modal.getInstance(document.getElementById('modalBusqueda'));
+  if (m) m.hide();
+  window.location.href = url;
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
 
 <!-- Modal genérico de confirmación de borrado -->
 <div class="modal fade" id="modalConfirmar" tabindex="-1">
