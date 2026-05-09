@@ -83,16 +83,22 @@
       <!-- Reportado por -->
       <div class="col-md-6">
         <label class="form-label fw-semibold">Reportado por</label>
-        <select name="reportado_por" class="form-select">
+        {% set es_veterano = usuario_actual and usuario_actual.rol.value == 'veterano' %}
+        {% set nombre_usuario = usuario_actual.voluntario.nombre ~ ' ' ~ usuario_actual.voluntario.apellido if usuario_actual and usuario_actual.voluntario else '' %}
+        <select name="reportado_por" class="form-select" {% if es_veterano %}disabled{% endif %}>
           <option value="">— Sin especificar —</option>
           {% for v in voluntarios %}
           {% set nombre_completo = v.nombre ~ ' ' ~ v.apellido %}
           <option value="{{ nombre_completo }}"
-            {% if incidencia and incidencia.reportado_por == nombre_completo %}selected{% endif %}>
+            {% if incidencia and incidencia.reportado_por == nombre_completo %}selected
+            {% elif not incidencia and es_veterano and nombre_completo == nombre_usuario %}selected{% endif %}>
             {{ nombre_completo }}
           </option>
           {% endfor %}
         </select>
+        {% if es_veterano %}
+        <input type="hidden" name="reportado_por" value="{{ nombre_usuario }}">
+        {% endif %}
       </div>
 
       <!-- Descripción -->

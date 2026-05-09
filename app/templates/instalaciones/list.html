@@ -79,9 +79,12 @@
           <td class="text-muted small">{{ inc.fecha_reporte.strftime('%d/%m/%Y') }}</td>
           <td class="text-muted small">{{ inc.reportado_por or '—' }}</td>
           <td class="text-end">
+            {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+            {% if not es_veterano or inc.creado_por_id == request.state.current_user.id %}
             <a href="/instalaciones/{{ inc.id }}/editar" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-pencil"></i>
             </a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

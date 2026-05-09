@@ -137,6 +137,10 @@ def form_editar_datos(request: Request, voluntario_id: int, db: Session = Depend
 def editar_datos(
     request: Request,
     voluntario_id: int,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    telefono: Optional[str] = Form(None),
+    fecha_alta: Optional[str] = Form(None),
     dni: Optional[str] = Form(None),
     email: str = Form(...),
     direccion: Optional[str] = Form(None),
@@ -149,6 +153,15 @@ def editar_datos(
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if not voluntario:
         return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+    voluntario.nombre = nombre.strip()
+    voluntario.apellido = apellido.strip()
+    voluntario.telefono = telefono or None
+    if fecha_alta:
+        from datetime import date
+        try:
+            voluntario.fecha_alta = date.fromisoformat(fecha_alta)
+        except ValueError:
+            pass
     voluntario.dni = dni or None
     voluntario.email = email
     voluntario.direccion = direccion or None

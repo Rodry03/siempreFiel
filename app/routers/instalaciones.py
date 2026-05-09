@@ -3,14 +3,14 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_not_veterano, flash
+from app.auth import get_current_user, require_not_veterano, NotAuthorized, flash
 from app.database import get_db
 from app.models import IncidenciaInstalacion, PrioridadIncidencia, EstadoIncidencia, Voluntario
 from app.templates_config import templates
 
 router = APIRouter(
     prefix="/instalaciones",
-    dependencies=[Depends(get_current_user), Depends(require_not_veterano)],
+    dependencies=[Depends(get_current_user)],
 )
 
 PRIORIDAD_LABELS = {
@@ -53,6 +53,12 @@ def _ctx():
     }
 
 
+def _check_puede_editar(request: Request, inc: IncidenciaInstalacion):
+    user = request.state.current_user
+    if user.rol.value == "veterano" and inc.creado_por_id != user.id:
+        raise NotAuthorized()
+
+
 def _voluntarios_activos(db: Session):
     return (
         db.query(Voluntario)
@@ -93,6 +99,7 @@ def form_nueva(request: Request, db: Session = Depends(get_db)):
         "incidencia": None,
         "hoy": date.today(),
         "voluntarios": _voluntarios_activos(db),
+        "usuario_actual": request.state.current_user,
     })
 
 
@@ -125,6 +132,7 @@ def crear_incidencia(
         resuelto_por=(resuelto_por or None) if es_resuelto else None,
         notas_resolucion=(notas_resolucion or None) if es_resuelto else None,
         coste=coste if es_resuelto else None,
+        creado_por_id=request.state.current_user.id,
     )
     db.add(inc)
     db.commit()
@@ -137,9 +145,12 @@ def detalle_incidencia(request: Request, inc_id: int, db: Session = Depends(get_
     inc = db.query(IncidenciaInstalacion).filter(IncidenciaInstalacion.id == inc_id).first()
     if not inc:
         raise HTTPException(status_code=404)
+    user = request.state.current_user
+    puede_editar = user.rol.value != "veterano" or inc.creado_por_id == user.id
     return templates.TemplateResponse(request, "instalaciones/detail.html", {
         **_ctx(),
         "incidencia": inc,
+        "puede_editar": puede_editar,
     })
 
 
@@ -148,11 +159,13 @@ def form_editar(request: Request, inc_id: int, db: Session = Depends(get_db)):
     inc = db.query(IncidenciaInstalacion).filter(IncidenciaInstalacion.id == inc_id).first()
     if not inc:
         raise HTTPException(status_code=404)
+    _check_puede_editar(request, inc)
     return templates.TemplateResponse(request, "instalaciones/form.html", {
         **_ctx(),
         "incidencia": inc,
         "hoy": date.today(),
         "voluntarios": _voluntarios_activos(db),
+        "usuario_actual": request.state.current_user,
     })
 
 
@@ -176,6 +189,7 @@ def editar_incidencia(
     inc = db.query(IncidenciaInstalacion).filter(IncidenciaInstalacion.id == inc_id).first()
     if not inc:
         raise HTTPException(status_code=404)
+    _check_puede_editar(request, inc)
     es_resuelto = estado == EstadoIncidencia.resuelto.value
     inc.titulo = titulo
     inc.descripcion = descripcion or None
@@ -197,6 +211,7 @@ def editar_incidencia(
 def eliminar_incidencia(request: Request, inc_id: int, db: Session = Depends(get_db)):
     inc = db.query(IncidenciaInstalacion).filter(IncidenciaInstalacion.id == inc_id).first()
     if inc:
+        _check_puede_editar(request, inc)
         db.delete(inc)
         db.commit()
     flash(request, "Incidencia eliminada.", "success")

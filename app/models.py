@@ -346,3 +346,4 @@ class IncidenciaInstalacion(Base):
     resuelto_por = Column(String(150), nullable=True)
     notas_resolucion = Column(Text, nullable=True)
     coste = Column(Float, nullable=True)
+    creado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)

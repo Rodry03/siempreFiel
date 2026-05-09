@@ -17,6 +17,7 @@
       </span>
     </div>
   </div>
+  {% if puede_editar %}
   <div class="d-flex gap-2">
     <a href="/instalaciones/{{ incidencia.id }}/editar" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-pencil me-1"></i>Editar
@@ -30,6 +31,7 @@
       <i class="bi bi-trash"></i>
     </button>
   </div>
+  {% endif %}
 </div>
 
 <div class="row g-4" style="max-width:760px;">
@@ -102,11 +104,13 @@
   </div>
   {% else %}
   <!-- Acceso rápido para resolver -->
+  {% if puede_editar %}
   <div class="col-12">
     <a href="/instalaciones/{{ incidencia.id }}/editar" class="btn btn-success">
       <i class="bi bi-check-circle me-1"></i>Marcar como resuelta
     </a>
   </div>
+  {% endif %}
   {% endif %}
 
 </div>
