@@ -65,6 +65,7 @@
           <th>Teléfono</th>
           <th>{{ sort_link('perfil', 'Perfil') }}</th>
           <th>{{ sort_link('fecha_alta', 'Alta') }}</th>
+          <th>Veterano desde</th>
           <th>Estado</th><th>PPP</th><th></th>
         </tr>
       </thead>
@@ -85,6 +86,7 @@
             </span>
           </td>
           <td>{{ v.fecha_alta }}</td>
+          <td class="text-muted small">{{ v.fecha_veterano.strftime('%d/%m/%Y') if v.fecha_veterano else '—' }}</td>
           <td>
             {% if v.activo %}
               <span class="badge bg-success">Activo</span>

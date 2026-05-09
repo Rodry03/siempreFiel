@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
-from app.models import Voluntario, TurnoMensual, PerfilVoluntario
+from app.models import Voluntario, PerfilVoluntario, EstadoTurno
 from app.routers.voluntarios import CONTRATO_LABELS, CONTRATO_COLORS
 from app.templates_config import templates
 
@@ -44,7 +45,10 @@ MESES_ES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
 
-FECHA_INICIO_TURNOS = date(2026, 5, 1)
+DIAS_ES = {0: "Lun", 1: "Mar", 2: "Mié", 3: "Jue", 4: "Vie", 5: "Sáb", 6: "Dom"}
+FRANJA_LABELS = {"manana": "Mañana", "tarde": "Tarde"}
+
+FECHA_INICIO_SALDO = date(2025, 7, 28)
 
 
 def calcular_tiempo_voluntario(fecha_alta) -> str:
@@ -59,14 +63,29 @@ def calcular_tiempo_voluntario(fecha_alta) -> str:
 
 
 def calcular_saldo(voluntario: Voluntario) -> float:
-    # Si hay saldo manual, usarlo; si no, calcular
-    if voluntario.saldo_manual is not None:
-        return voluntario.saldo_manual
-    fecha_inicio = max(FECHA_INICIO_TURNOS, voluntario.fecha_alta)
-    semanas_activo = (date.today() - fecha_inicio).days // 7
-    # Solo contar turnos a partir de FECHA_INICIO_TURNOS
-    turnos_acumulados = sum(t.turnos for t in voluntario.turnos_mensuales if t.mes >= FECHA_INICIO_TURNOS)
-    return voluntario.deuda_inicial + turnos_acumulados - semanas_activo
+    effective_start = max(FECHA_INICIO_SALDO, voluntario.fecha_veterano or voluntario.fecha_alta)
+    first_monday = effective_start - timedelta(days=effective_start.weekday())
+    today = date.today()
+
+    saldo = 0.0
+    week_start = first_monday
+    while week_start + timedelta(days=6) <= today:
+        week_end = week_start + timedelta(days=6)
+        week_turns = [t for t in voluntario.turnos if week_start <= t.fecha <= week_end]
+        en_apoyo = any(
+            p.fecha_inicio <= week_end and (p.fecha_fin is None or p.fecha_fin >= week_start)
+            for p in voluntario.periodos_apoyo
+        )
+        if en_apoyo:
+            pass
+        elif not week_turns:
+            saldo -= 1.0
+        else:
+            for t in week_turns:
+                saldo += 0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+        week_start += timedelta(days=7)
+
+    return saldo
 
 
 @router.get("/{voluntario_id}")
@@ -82,8 +101,22 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         return RedirectResponse("/voluntarios/", status_code=303)
     hace_turnos = voluntario.perfil not in PERFILES_SIN_TURNOS
     saldo = calcular_saldo(voluntario) if hace_turnos else None
-    total_turnos = sum(t.turnos for t in voluntario.turnos_mensuales) if hace_turnos else 0
+    total_turnos = len(voluntario.turnos) if hace_turnos else 0
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
+
+    turnos_recientes = []
+    if hace_turnos:
+        por_semana = defaultdict(list)
+        for t in voluntario.turnos:
+            lunes = t.fecha - timedelta(days=t.fecha.weekday())
+            por_semana[lunes].append(t)
+        for lunes in sorted(por_semana.keys(), reverse=True)[:12]:
+            por_semana[lunes].sort(key=lambda t: (t.fecha, t.franja.value))
+            turnos_recientes.append({
+                "semana": lunes,
+                "semana_fin": lunes + timedelta(days=6),
+                "turnos": por_semana[lunes],
+            })
 
     from app.models import MiembroGrupoTarea, EjecucionGrupoTarea
     hoy = date.today()
@@ -97,9 +130,16 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         ).first()
         grupos_voluntario.append({"grupo": m.grupo, "ejecucion": ej})
 
+    hoy_date = date.today()
+    tiene_apoyo_activo = hace_turnos and any(
+        p.fecha_inicio <= hoy_date and (p.fecha_fin is None or p.fecha_fin >= hoy_date)
+        for p in voluntario.periodos_apoyo
+    )
+
     return templates.TemplateResponse(request, "voluntarios/detail.html", {
         "voluntario": voluntario,
         "hace_turnos": hace_turnos,
+        "tiene_apoyo_activo": tiene_apoyo_activo,
         "saldo": saldo,
         "perfiles": [p.value for p in PerfilVoluntario],
         "perfil_labels": PERFIL_LABELS,
@@ -110,7 +150,9 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "tiempo_voluntario": tiempo_voluntario,
         "grupos_voluntario": grupos_voluntario,
         "semana_actual": semana_actual,
-        "meses_es": MESES_ES,
+        "turnos_recientes": turnos_recientes,
+        "dias_labels": DIAS_ES,
+        "franja_labels": FRANJA_LABELS,
     })
 
 

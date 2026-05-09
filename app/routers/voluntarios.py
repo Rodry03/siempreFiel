@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from app.database import get_db
-from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea
+from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea, PeriodoApoyo
 from app.templates_config import templates
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "contracts", "contrato_voluntario.docx")
@@ -223,7 +223,7 @@ def crear_voluntario(
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
-    deuda_inicial: Optional[float] = Form(None),
+    fecha_veterano: Optional[date] = Form(None),
     db: Session = Depends(get_db),
 ):
     email_final = email or f"{nombre}{apellido}@siemprefiel.com"
@@ -245,7 +245,7 @@ def crear_voluntario(
         contrato_estado=EstadoContrato(contrato_estado) if contrato_estado else None,
         teaming=teaming == "on",
         notas=notas or None,
-        deuda_inicial=deuda_inicial or 0.0,
+        fecha_veterano=fecha_veterano,
     )
     db.add(voluntario)
     try:
@@ -288,7 +288,7 @@ def editar_voluntario(
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
-    deuda_inicial: Optional[float] = Form(None),
+    fecha_veterano: Optional[date] = Form(None),
     db: Session = Depends(get_db),
 ):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
@@ -312,7 +312,7 @@ def editar_voluntario(
     voluntario.contrato_estado = EstadoContrato(contrato_estado) if contrato_estado else None
     voluntario.teaming = teaming == "on"
     voluntario.notas = notas or None
-    voluntario.deuda_inicial = deuda_inicial or 0.0
+    voluntario.fecha_veterano = fecha_veterano
     try:
         db.commit()
     except IntegrityError:
@@ -408,6 +408,50 @@ def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = De
             db.commit()
         except ValueError:
             pass
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/apoyo/nuevo")
+def nuevo_periodo_apoyo(
+    request: Request,
+    voluntario_id: int,
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    db: Session = Depends(get_db),
+):
+    db.add(PeriodoApoyo(voluntario_id=voluntario_id, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin))
+    db.commit()
+    flash(request, "Periodo de apoyo registrado.")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/apoyo/{periodo_id}/cerrar")
+def cerrar_periodo_apoyo(
+    request: Request,
+    voluntario_id: int,
+    periodo_id: int,
+    fecha_fin: date = Form(...),
+    db: Session = Depends(get_db),
+):
+    p = db.query(PeriodoApoyo).filter(PeriodoApoyo.id == periodo_id).first()
+    if p:
+        p.fecha_fin = fecha_fin
+        db.commit()
+        flash(request, "Periodo de apoyo cerrado.")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/apoyo/{periodo_id}/eliminar")
+def eliminar_periodo_apoyo(
+    request: Request,
+    voluntario_id: int,
+    periodo_id: int,
+    db: Session = Depends(get_db),
+):
+    p = db.query(PeriodoApoyo).filter(PeriodoApoyo.id == periodo_id).first()
+    if p:
+        db.delete(p)
+        db.commit()
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 

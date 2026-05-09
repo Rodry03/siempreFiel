@@ -164,6 +164,7 @@ class Voluntario(Base):
     codigo_postal = Column(String(10), nullable=True)
     fecha_contrato = Column(Date, nullable=True)
     contrato_estado = Column(Enum(EstadoContrato), nullable=True)
+    fecha_veterano = Column(Date, nullable=True)
     teaming = Column(Boolean, default=False, nullable=False)
     notas = Column(Text, nullable=True)
 
@@ -173,6 +174,7 @@ class Voluntario(Base):
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
     turnos_mensuales = relationship("TurnoMensual", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoMensual.mes.desc()")
+    periodos_apoyo = relationship("PeriodoApoyo", back_populates="voluntario", cascade="all, delete-orphan", order_by="PeriodoApoyo.fecha_inicio.desc()")
 
 
 class GrupoTarea(Base):
@@ -347,3 +349,14 @@ class IncidenciaInstalacion(Base):
     notas_resolucion = Column(Text, nullable=True)
     coste = Column(Float, nullable=True)
     creado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+
+
+class PeriodoApoyo(Base):
+    __tablename__ = "periodos_apoyo"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+    fecha_inicio  = Column(Date, nullable=False, default=date.today)
+    fecha_fin     = Column(Date, nullable=True)
+
+    voluntario = relationship("Voluntario", back_populates="periodos_apoyo")

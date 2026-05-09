@@ -1,46 +1,43 @@
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_not_veterano, flash
+from app.auth import get_current_user, require_admin, flash
 from app.database import get_db
-from app.models import TurnoMensual, Voluntario, SaldoMensual
-from app.routers.turnos import PERFIL_LABELS, PERFIL_COLORS, PERFILES_SIN_TURNOS, MESES_ES, calcular_saldo
+from app.models import TurnoVoluntario, EstadoTurno, Voluntario, PerfilVoluntario
+from app.routers.turnos import (
+    PERFIL_LABELS, PERFIL_COLORS, PERFILES_SIN_TURNOS,
+    DIAS_ES, FRANJA_LABELS, calcular_saldo,
+)
 from app.templates_config import templates
 
 router = APIRouter(
     prefix="/turnos",
-    dependencies=[Depends(get_current_user), Depends(require_not_veterano)],
+    dependencies=[Depends(get_current_user), Depends(require_admin)],
 )
 
 
-def _mes_anterior(mes: date) -> date:
-    if mes.month == 1:
-        return date(mes.year - 1, 12, 1)
-    return date(mes.year, mes.month - 1, 1)
-
-
-def _mes_siguiente(mes: date) -> date:
-    if mes.month == 12:
-        return date(mes.year + 1, 1, 1)
-    return date(mes.year, mes.month + 1, 1)
+def _semana_lunes(d: date) -> date:
+    return d - timedelta(days=d.weekday())
 
 
 @router.get("/")
 def listar_turnos(
     request: Request,
-    mes: Optional[str] = None,
+    semana: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     hoy = date.today()
-    if mes:
+    if semana:
         try:
-            mes_date = date.fromisoformat(mes + "-01")
+            semana_date = _semana_lunes(date.fromisoformat(semana))
         except ValueError:
-            mes_date = _mes_anterior(date(hoy.year, hoy.month, 1))
+            semana_date = _semana_lunes(hoy)
     else:
-        mes_date = _mes_anterior(date(hoy.year, hoy.month, 1))
+        semana_date = _semana_lunes(hoy)
+
+    semana_fin = semana_date + timedelta(days=6)
 
     voluntarios = (
         db.query(Voluntario)
@@ -49,98 +46,117 @@ def listar_turnos(
         .all()
     )
 
-    turnos_mes = {
-        t.voluntario_id: t
-        for t in db.query(TurnoMensual).filter(TurnoMensual.mes == mes_date).all()
-    }
+    turnos_semana = (
+        db.query(TurnoVoluntario)
+        .filter(TurnoVoluntario.fecha >= semana_date, TurnoVoluntario.fecha <= semana_fin)
+        .all()
+    )
+
+    turnos_por_vol = {}
+    for t in turnos_semana:
+        turnos_por_vol.setdefault(t.voluntario_id, []).append(t)
+    for v_id in turnos_por_vol:
+        turnos_por_vol[v_id].sort(key=lambda t: (t.fecha, t.franja.value))
+
+    def _valor(t):
+        return 0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+
+    def _en_apoyo(v):
+        return any(
+            p.fecha_inicio <= semana_fin and (p.fecha_fin is None or p.fecha_fin >= semana_date)
+            for p in v.periodos_apoyo
+        )
 
     voluntarios_data = [
-        {"voluntario": v, "saldo": calcular_saldo(v)}
+        {
+            "voluntario": v,
+            "saldo": calcular_saldo(v),
+            "turnos": turnos_por_vol.get(v.id, []),
+            "total_valor": sum(_valor(t) for t in turnos_por_vol.get(v.id, [])),
+            "en_apoyo": _en_apoyo(v),
+        }
         for v in voluntarios
     ]
 
+    dias = [semana_date + timedelta(days=i) for i in range(7)]
+
     return templates.TemplateResponse(request, "turnos/list.html", {
-        "mes": mes_date,
-        "mes_label": f"{MESES_ES[mes_date.month]} {mes_date.year}",
-        "mes_anterior": _mes_anterior(mes_date).strftime("%Y-%m"),
-        "mes_siguiente": _mes_siguiente(mes_date).strftime("%Y-%m"),
+        "semana": semana_date,
+        "semana_fin": semana_fin,
+        "semana_label": f"{semana_date.strftime('%d/%m')} – {semana_fin.strftime('%d/%m/%Y')}",
+        "semana_anterior": (semana_date - timedelta(days=7)).isoformat(),
+        "semana_siguiente": (semana_date + timedelta(days=7)).isoformat(),
+        "dias": dias,
         "voluntarios_data": voluntarios_data,
-        "turnos_mes": turnos_mes,
         "perfil_labels": PERFIL_LABELS,
         "perfil_colors": PERFIL_COLORS,
+        "dias_labels": DIAS_ES,
+        "franja_labels": FRANJA_LABELS,
     })
 
 
-@router.post("/guardar")
-async def guardar_turnos_mes(
-    request: Request,
-    db: Session = Depends(get_db),
-):
+@router.post("/anadir")
+async def anadir_turno(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
-    mes_str = form.get("mes")
+    semana_str = form.get("semana", "")
     try:
-        mes_date = date.fromisoformat(mes_str)
+        voluntario_id = int(form.get("voluntario_id"))
+        fecha = date.fromisoformat(form.get("fecha"))
+        franja = form.get("franja")
+        tipo = form.get("tipo", "completo")
     except (ValueError, TypeError):
-        flash(request, "Mes inválido.", "danger")
-        return RedirectResponse("/turnos/", status_code=303)
+        flash(request, "Datos inválidos.", "danger")
+        return RedirectResponse(f"/turnos/?semana={semana_str}", status_code=303)
 
-    for key, value in form.multi_items():
-        if key.startswith("turnos_"):
-            try:
-                voluntario_id = int(key[len("turnos_"):])
-                turnos_val = float(value) if value else 0.0
-            except (ValueError, IndexError):
-                continue
+    existing = db.query(TurnoVoluntario).filter(
+        TurnoVoluntario.voluntario_id == voluntario_id,
+        TurnoVoluntario.fecha == fecha,
+        TurnoVoluntario.franja == franja,
+    ).first()
 
-            existing = db.query(TurnoMensual).filter(
-                TurnoMensual.voluntario_id == voluntario_id,
-                TurnoMensual.mes == mes_date,
-            ).first()
+    if existing:
+        return RedirectResponse(f"/turnos/?semana={semana_str}", status_code=303)
 
-            if existing:
-                existing.turnos = turnos_val
-            else:
-                db.add(TurnoMensual(
-                    voluntario_id=voluntario_id,
-                    mes=mes_date,
-                    turnos=turnos_val,
-                ))
-        
-        elif key.startswith("recuperar_urgentes_"):
-            try:
-                voluntario_id = int(key[len("recuperar_urgentes_"):])
-                recuperar_val = float(value) if value else 0.0
-            except (ValueError, IndexError):
-                continue
-            
-            voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
-            if voluntario:
-                voluntario.recuperar_turnos_urgentes = recuperar_val
-        
-        elif key.startswith("saldo_"):
-            try:
-                voluntario_id = int(key[len("saldo_"):])
-                saldo_val = float(value) if value else None
-            except (ValueError, IndexError):
-                continue
+    estado = EstadoTurno.medio_turno if tipo == "medio" else EstadoTurno.realizado
 
-            voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
-            if voluntario:
-                voluntario.saldo_manual = saldo_val
-                if saldo_val is not None:
-                    snapshot = db.query(SaldoMensual).filter(
-                        SaldoMensual.voluntario_id == voluntario_id,
-                        SaldoMensual.mes == mes_date,
-                    ).first()
-                    if snapshot:
-                        snapshot.saldo = saldo_val
-                    else:
-                        db.add(SaldoMensual(
-                            voluntario_id=voluntario_id,
-                            mes=mes_date,
-                            saldo=saldo_val,
-                        ))
+    # Regla automática: si es veterano con turno completo y hay otro veterano en el mismo hueco,
+    # ambos pasan a medio turno
+    if estado == EstadoTurno.realizado:
+        voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+        if voluntario and voluntario.perfil == PerfilVoluntario.veterano:
+            otros_vet = (
+                db.query(TurnoVoluntario)
+                .join(Voluntario, TurnoVoluntario.voluntario_id == Voluntario.id)
+                .filter(
+                    TurnoVoluntario.fecha == fecha,
+                    TurnoVoluntario.franja == franja,
+                    Voluntario.perfil == PerfilVoluntario.veterano,
+                    TurnoVoluntario.voluntario_id != voluntario_id,
+                    TurnoVoluntario.estado == EstadoTurno.realizado,
+                )
+                .all()
+            )
+            if otros_vet:
+                for t in otros_vet:
+                    t.estado = EstadoTurno.medio_turno
+                estado = EstadoTurno.medio_turno
 
+    db.add(TurnoVoluntario(
+        voluntario_id=voluntario_id,
+        fecha=fecha,
+        franja=franja,
+        estado=estado,
+    ))
     db.commit()
-    flash(request, f"Turnos de {MESES_ES[mes_date.month]} {mes_date.year} guardados.")
-    return RedirectResponse(f"/turnos/?mes={mes_date.strftime('%Y-%m')}", status_code=303)
+    return RedirectResponse(f"/turnos/?semana={semana_str}", status_code=303)
+
+
+@router.post("/{turno_id}/eliminar")
+async def eliminar_turno(request: Request, turno_id: int, db: Session = Depends(get_db)):
+    form = await request.form()
+    semana_str = form.get("semana", "")
+    turno = db.query(TurnoVoluntario).filter(TurnoVoluntario.id == turno_id).first()
+    if turno:
+        db.delete(turno)
+        db.commit()
+    return RedirectResponse(f"/turnos/?semana={semana_str}", status_code=303)

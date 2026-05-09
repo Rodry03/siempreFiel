@@ -57,6 +57,11 @@
           <input type="date" name="fecha_alta" class="form-control" required
             value="{{ voluntario.fecha_alta.isoformat() if voluntario else hoy }}">
         </div>
+        <div class="col-md-6" id="campo-fecha-veterano" style="display:none;">
+          <label class="form-label fw-semibold">Fecha veterano</label>
+          <input type="date" name="fecha_veterano" class="form-control"
+            value="{{ voluntario.fecha_veterano.isoformat() if voluntario and voluntario.fecha_veterano else '' }}">
+        </div>
         <div class="col-12">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" name="activo" id="activo"
@@ -123,14 +128,7 @@
         </div>
 
         <div class="col-12"><hr class="my-1"></div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Saldo inicial de turnos</label>
-          <input type="number" name="deuda_inicial" class="form-control" step="0.5"
-            value="{{ voluntario.deuda_inicial if voluntario else 0 }}"
-            placeholder="0">
-          <div class="form-text">Negativo = debe turnos. Ej: -3</div>
-        </div>
-        <div class="col-md-8">
+        <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ voluntario.notas if voluntario and voluntario.notas else '' }}</textarea>
         </div>
@@ -145,4 +143,15 @@
     </form>
   </div>
 </div>
+<script>
+(function () {
+  var perfilSel = document.querySelector('select[name="perfil"]');
+  var campo = document.getElementById('campo-fecha-veterano');
+  function toggle() {
+    campo.style.display = ['veterano', 'apoyo_en_junta'].includes(perfilSel.value) ? 'block' : 'none';
+  }
+  perfilSel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
 {% endblock %}
