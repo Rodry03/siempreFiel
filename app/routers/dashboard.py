@@ -33,12 +33,19 @@ _ALLOWED_VIEWS = {
 
 
 def _query_analytics(db: Session, view: str) -> list[dict]:
+    from datetime import date as _date, datetime as _datetime
     if view not in _ALLOWED_VIEWS:
         raise ValueError(f"Vista no permitida: {view}")
     try:
         result = db.execute(text(f"SELECT * FROM analytics.{view}"))
         columns = result.keys()
-        return [dict(zip(columns, row)) for row in result.fetchall()]
+        rows = []
+        for row in result.fetchall():
+            d = {}
+            for k, v in zip(columns, row):
+                d[k] = v.isoformat() if isinstance(v, (_date, _datetime)) else v
+            rows.append(d)
+        return rows
     except Exception:
         db.rollback()
         return []
@@ -269,6 +276,62 @@ def detalle_conversion(
             "estado": v.estado.value,
         }
         for v in visitantes
+    ]
+    return JSONResponse({"items": items})
+
+
+@router.get("/dashboard/detalle-perros-activos")
+def detalle_perros_activos(db: Session = Depends(get_db)):
+    from app.models import Perro, EstadoPerro
+    ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
+    perros = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).order_by(Perro.nombre).all()
+    items = []
+    for p in perros:
+        ub = p.ubicaciones[0].tipo.value.replace("_", " ") if p.ubicaciones else "—"
+        items.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "raza": p.raza.nombre if p.raza else "—",
+            "sexo": p.sexo.value,
+            "estado": p.estado.value,
+            "ubicacion": ub,
+        })
+    return JSONResponse({"items": items})
+
+
+@router.get("/dashboard/detalle-refugio")
+def detalle_refugio(db: Session = Depends(get_db)):
+    from app.models import Perro, EstadoPerro, TipoUbicacion
+    ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
+    perros = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).order_by(Perro.nombre).all()
+    items = []
+    for p in perros:
+        if p.ubicaciones and p.ubicaciones[0].tipo == TipoUbicacion.refugio:
+            items.append({
+                "id": p.id,
+                "nombre": p.nombre,
+                "raza": p.raza.nombre if p.raza else "—",
+                "sexo": p.sexo.value,
+                "estado": p.estado.value,
+                "fecha_entrada": p.fecha_entrada.isoformat() if p.fecha_entrada else "—",
+            })
+    return JSONResponse({"items": items})
+
+
+@router.get("/dashboard/detalle-voluntarios")
+def detalle_voluntarios_activos(db: Session = Depends(get_db)):
+    from app.models import Voluntario
+    voluntarios = db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre).all()
+    items = [
+        {
+            "id": v.id,
+            "nombre": f"{v.nombre} {v.apellido}",
+            "perfil": v.perfil.value,
+            "fecha_alta": v.fecha_alta.isoformat() if v.fecha_alta else "—",
+            "email": v.email or "—",
+            "telefono": v.telefono or "—",
+        }
+        for v in voluntarios
     ]
     return JSONResponse({"items": items})
 

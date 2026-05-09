@@ -15,31 +15,31 @@
 <!-- Stat cards -->
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-primary p-3">
+    <div class="card stat-card border-primary p-3" style="cursor:pointer" onclick="abrirDetalleCard('perros-activos')" title="Ver detalle">
       <div class="text-muted small">Perros activos</div>
       <div class="fs-2 fw-bold text-primary">{{ total_activos }}</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-info p-3">
+    <div class="card stat-card border-info p-3" style="cursor:pointer" onclick="abrirDetalleCard('refugio')" title="Ver detalle">
       <div class="text-muted small">En el refugio</div>
       <div class="fs-2 fw-bold text-info">{{ dist_ubicacion.refugio }}</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-success p-3">
+    <div class="card stat-card border-success p-3" style="cursor:pointer" onclick="abrirDetalleCard('voluntarios')" title="Ver detalle">
       <div class="text-muted small">Voluntarios activos</div>
       <div class="fs-2 fw-bold text-success">{{ total_voluntarios }}</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-warning p-3">
+    <div class="card stat-card border-warning p-3" style="cursor:pointer" onclick="abrirDetalleCard('vacunas')" title="Ver detalle">
       <div class="text-muted small">Vacunas próximas / vencidas</div>
       <div class="fs-2 fw-bold text-warning">{{ vacunas_proximas | length }}</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-danger p-3">
+    <div class="card stat-card border-danger p-3" style="cursor:pointer" onclick="abrirDetalleCard('esterilizados')" title="Ver detalle">
       <div class="text-muted small">Sin esterilizar</div>
       <div class="fs-2 fw-bold text-danger">{{ no_esterilizados | length }}</div>
     </div>
@@ -425,6 +425,30 @@
 
 </div>
 
+<!-- Modal detalle cards -->
+<div class="modal fade" id="modalDetalleCard" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDetalleCardTitle"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="modalDetalleCardLoading" class="text-center py-4 text-muted">Cargando...</div>
+        <div id="modalDetalleCardContent" class="d-none">
+          <div style="max-height:420px; overflow-y:auto;">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light sticky-top" id="modalDetalleCardThead"></thead>
+              <tbody id="modalDetalleCardTbody"></tbody>
+            </table>
+          </div>
+          <p id="modalDetalleCardEmpty" class="text-muted p-3 mb-0 d-none">Sin registros.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal detalle mes -->
 <div class="modal fade" id="modalDetalleMes" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -761,4 +785,113 @@ new Chart(document.getElementById('chartEvolucionSaldo'), {
 
 </script>
 {% endif %}
+
+<script>
+const _vacunasData = {{ vacunas_proximas | tojson }};
+const _esterilizadosData = {{ no_esterilizados | tojson }};
+
+const CARD_CONFIG = {
+  'perros-activos': {
+    title: 'Perros activos',
+    url: '/dashboard/detalle-perros-activos',
+    thead: '<tr><th>Nombre</th><th>Raza</th><th>Sexo</th><th>Estado</th><th>Ubicación</th></tr>',
+    renderRow: p => {
+      const ec = {libre:'primary', reservado:'warning text-dark'};
+      return `<tr>
+        <td><a href="/perros/${p.id}" class="text-decoration-none fw-semibold">${p.nombre}</a></td>
+        <td>${p.raza}</td><td>${p.sexo}</td>
+        <td><span class="badge bg-${ec[p.estado]||'secondary'}">${p.estado}</span></td>
+        <td>${p.ubicacion}</td>
+      </tr>`;
+    }
+  },
+  'refugio': {
+    title: 'Perros en el refugio',
+    url: '/dashboard/detalle-refugio',
+    thead: '<tr><th>Nombre</th><th>Raza</th><th>Sexo</th><th>Estado</th><th>Entrada</th></tr>',
+    renderRow: p => {
+      const ec = {libre:'primary', reservado:'warning text-dark'};
+      return `<tr>
+        <td><a href="/perros/${p.id}" class="text-decoration-none fw-semibold">${p.nombre}</a></td>
+        <td>${p.raza}</td><td>${p.sexo}</td>
+        <td><span class="badge bg-${ec[p.estado]||'secondary'}">${p.estado}</span></td>
+        <td>${p.fecha_entrada}</td>
+      </tr>`;
+    }
+  },
+  'voluntarios': {
+    title: 'Voluntarios activos',
+    url: '/dashboard/detalle-voluntarios',
+    thead: '<tr><th>Nombre</th><th>Perfil</th><th>Alta</th><th>Email</th><th>Teléfono</th></tr>',
+    renderRow: v => {
+      const pc = {directiva:'danger',apoyo_en_junta:'dark',veterano:'warning text-dark',voluntario:'success',guagua:'primary',eventos:'info',colaboradores:'secondary'};
+      return `<tr>
+        <td><a href="/voluntarios/${v.id}" class="text-decoration-none fw-semibold">${v.nombre}</a></td>
+        <td><span class="badge bg-${pc[v.perfil]||'secondary'}">${v.perfil.replace(/_/g,' ')}</span></td>
+        <td>${v.fecha_alta}</td><td>${v.email}</td><td>${v.telefono}</td>
+      </tr>`;
+    }
+  },
+  'vacunas': {
+    title: 'Vacunas próximas o vencidas',
+    data: _vacunasData,
+    thead: '<tr><th>Perro</th><th>Vacuna</th><th>Fecha</th><th>Días</th></tr>',
+    renderRow: v => {
+      const d = v.dias_restantes;
+      const badge = d < 0
+        ? `<span class="badge bg-danger">Vencida ${Math.abs(d)}d</span>`
+        : d <= 7
+          ? `<span class="badge bg-warning text-dark">${d}d</span>`
+          : `<span class="badge bg-success">${d}d</span>`;
+      return `<tr>
+        <td><a href="/perros/${v.perro_id}" class="text-decoration-none fw-semibold">${v.nombre}</a></td>
+        <td>${v.vacuna}</td><td>${v.fecha_proxima}</td><td>${badge}</td>
+      </tr>`;
+    }
+  },
+  'esterilizados': {
+    title: 'Pendientes de esterilizar',
+    data: _esterilizadosData,
+    thead: '<tr><th>Nombre</th><th>Raza</th><th>Sexo</th><th>Ubicación</th></tr>',
+    renderRow: p => {
+      const ub = p.ubicacion_actual
+        ? `<span class="badge badge-${p.ubicacion_actual} text-white">${p.ubicacion_actual.replace(/_/g,' ')}</span>`
+        : '<span class="badge bg-secondary">—</span>';
+      return `<tr>
+        <td><a href="/perros/${p.id}" class="text-decoration-none fw-semibold">${p.nombre}</a></td>
+        <td>${p.raza}</td><td>${p.sexo}</td><td>${ub}</td>
+      </tr>`;
+    }
+  }
+};
+
+function abrirDetalleCard(tipo) {
+  const cfg = CARD_CONFIG[tipo];
+  if (!cfg) return;
+  document.getElementById('modalDetalleCardTitle').textContent = cfg.title;
+  document.getElementById('modalDetalleCardThead').innerHTML = cfg.thead;
+  document.getElementById('modalDetalleCardLoading').classList.remove('d-none');
+  document.getElementById('modalDetalleCardContent').classList.add('d-none');
+  document.getElementById('modalDetalleCardEmpty').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('modalDetalleCard')).show();
+
+  function populate(items) {
+    const tbody = document.getElementById('modalDetalleCardTbody');
+    tbody.innerHTML = '';
+    if (!items || items.length === 0) {
+      document.getElementById('modalDetalleCardEmpty').classList.remove('d-none');
+    } else {
+      items.forEach(item => tbody.insertAdjacentHTML('beforeend', cfg.renderRow(item)));
+    }
+    document.getElementById('modalDetalleCardLoading').classList.add('d-none');
+    document.getElementById('modalDetalleCardContent').classList.remove('d-none');
+  }
+
+  if ('data' in cfg) {
+    populate(cfg.data);
+  } else {
+    fetch(cfg.url).then(r => r.json()).then(d => populate(d.items));
+  }
+}
+</script>
 {% endblock %}
