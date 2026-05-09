@@ -49,6 +49,7 @@ TIPOS_VACUNA = [
     "Moquillo",
     "Hepatitis",
     "Coronavirus",
+    "Desparasitación Interna",
     "Otra",
 ]
 
