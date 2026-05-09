@@ -409,3 +409,22 @@ def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = De
         except ValueError:
             pass
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/eliminar")
+def eliminar_voluntario(voluntario_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.models import EjecucionGrupoTarea, Usuario, NotaGestion, SaldoMensual
+    v = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if not v:
+        return RedirectResponse("/voluntarios/", status_code=303)
+    nombre = f"{v.nombre} {v.apellido}"
+    db.query(GrupoTarea).filter(GrupoTarea.capitan_id == voluntario_id).update({"capitan_id": None})
+    db.query(EjecucionGrupoTarea).filter(EjecucionGrupoTarea.ejecutor_id == voluntario_id).update({"ejecutor_id": None})
+    db.query(Usuario).filter(Usuario.voluntario_id == voluntario_id).update({"voluntario_id": None})
+    db.query(NotaGestion).filter(NotaGestion.encargado_id == voluntario_id).update({"encargado_id": None})
+    db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
+    db.query(SaldoMensual).filter(SaldoMensual.voluntario_id == voluntario_id).delete()
+    db.delete(v)
+    db.commit()
+    flash(request, f"{nombre} eliminado/a.", "success")
+    return RedirectResponse("/voluntarios/", status_code=303)

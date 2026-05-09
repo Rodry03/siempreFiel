@@ -22,32 +22,16 @@
     <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
     </a>
-    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar">
+    <form id="form-eliminar-perro" method="post" action="/perros/{{ perro.id }}/eliminar" class="d-none"></form>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            data-confirm-form="form-eliminar-perro"
+            data-confirm-title="¿Eliminar a {{ perro.nombre }}?"
+            data-confirm-message="Se borrarán también sus vacunas, pesos, celos y ubicaciones. Esta acción no se puede deshacer."
+            data-confirm-btn-text="Eliminar">
       <i class="bi bi-trash me-1"></i>Eliminar
     </button>
   </div>
   {% endif %}
-</div>
-
-<!-- Modal confirmación -->
-<div class="modal fade" id="modalEliminar" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header border-0">
-        <h6 class="modal-title fw-bold">¿Eliminar a {{ perro.nombre }}?</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-muted small pt-0">
-        Se borrarán también sus vacunas y ubicaciones. Esta acción no se puede deshacer.
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <form method="post" action="/perros/{{ perro.id }}/eliminar">
-          <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-        </form>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="row g-4">

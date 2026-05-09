@@ -46,6 +46,14 @@
       </button>
     </form>
     {% endif %}
+    <form id="form-eliminar-vol" method="post" action="/voluntarios/{{ voluntario.id }}/eliminar" class="d-none"></form>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            data-confirm-form="form-eliminar-vol"
+            data-confirm-title="¿Eliminar a {{ voluntario.nombre }}?"
+            data-confirm-message="Se eliminarán también sus turnos y saldos. Esta acción no se puede deshacer."
+            data-confirm-btn-text="Eliminar definitivamente">
+      <i class="bi bi-trash me-1"></i>Eliminar
+    </button>
   </div>
   {% endif %}
 </div>
