@@ -183,6 +183,7 @@ def editar_datos(
     apellido: str = Form(...),
     telefono: Optional[str] = Form(None),
     fecha_alta: Optional[str] = Form(None),
+    fecha_veterano: Optional[str] = Form(None),
     dni: Optional[str] = Form(None),
     email: str = Form(...),
     direccion: Optional[str] = Form(None),
@@ -204,6 +205,13 @@ def editar_datos(
             voluntario.fecha_alta = date.fromisoformat(fecha_alta)
         except ValueError:
             pass
+    if fecha_veterano:
+        try:
+            voluntario.fecha_veterano = date.fromisoformat(fecha_veterano)
+        except ValueError:
+            pass
+    else:
+        voluntario.fecha_veterano = None
     voluntario.dni = dni or None
     voluntario.email = email
     voluntario.direccion = direccion or None

@@ -2,6 +2,7 @@
 {% block title %}{{ perro.nombre }}{% endblock %}
 
 {% block content %}
+{% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
 {% if error %}
 <div class="alert alert-danger alert-dismissible fade show" role="alert">
   <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
@@ -71,8 +72,10 @@
           </td></tr>
           <tr><th class="text-muted">Nacimiento</th><td>{{ perro.fecha_nacimiento or '—' }}{% if edad %} <span class="text-muted small">({{ edad }})</span>{% endif %}</td></tr>
           <tr><th class="text-muted">Color</th><td>{{ perro.color or '—' }}</td></tr>
+          {% if not es_veterano %}
           <tr><th class="text-muted">Chip</th><td>{{ perro.num_chip or '—' }}</td></tr>
           <tr><th class="text-muted">Pasaporte</th><td>{{ perro.num_pasaporte or '—' }}</td></tr>
+          {% endif %}
           <tr><th class="text-muted">Entrada</th><td>{{ perro.fecha_entrada }}</td></tr>
           {% if perro.fecha_adopcion %}
           <tr><th class="text-muted">Adopción</th><td>{{ perro.fecha_adopcion }}</td></tr>
@@ -366,6 +369,7 @@
   {% endif %}
 
   <!-- Vacunas -->
+  {% if not es_veterano %}
   <div class="col-12">
     <div class="card">
       <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
@@ -501,9 +505,11 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 <script>
+  {% if not es_veterano %}
   document.getElementById('fecha_administracion').addEventListener('change', function () {
     if (!this.value) return;
     const d = new Date(this.value);
@@ -532,6 +538,8 @@
     document.getElementById('editVacunaNotas').value = notas;
     new bootstrap.Modal(document.getElementById('modalEditarVacuna')).show();
   }
+
+  {% endif %}
 
   const celoInicio = document.getElementById('celo_fecha_inicio');
   const celoFin = document.getElementById('celo_fecha_fin');

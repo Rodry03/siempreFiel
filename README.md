@@ -62,14 +62,15 @@ Los perros con `estado=reservado` pasan automáticamente a `adoptado` al cabo de
 
 #### Perfiles de voluntario
 
-| Perfil | Hace turnos |
-|---|---|
-| `veterano` | Sí |
-| `voluntario` | Sí |
-| `directiva` | No |
-| `guagua` | No |
-| `eventos` | No |
-| `colaboradores` | No |
+| Perfil | Hace turnos | Nota |
+|---|---|---|
+| `veterano` | Sí | Cuenta como cobertura veterana |
+| `apoyo_en_junta` | Sí | Cuenta como cobertura veterana; semanas de apoyo son neutras en saldo |
+| `voluntario` | Sí | — |
+| `directiva` | No | — |
+| `guagua` | No | — |
+| `eventos` | No | — |
+| `colaboradores` | No | — |
 
 #### Saldo de turnos
 
@@ -81,7 +82,9 @@ Los perros con `estado=reservado` pasan automáticamente a `adoptado` al cabo de
 | `falta_injustificada` | 0.0 |
 | `no_apuntado` | 0.0 |
 
-Saldo = `turnos_realizados − semanas_activo` desde `max(2026-04-01, fecha_alta)`.
+Saldo in-app = `turnos_realizados − semanas_activo` desde `max(2026-04-01, fecha_alta)`.
+
+El mart dbt `mart_saldo_turnos_semanal` usa `COALESCE(fecha_veterano, fecha_alta)` como inicio del grid y neutraliza las semanas cubiertas por un `PeriodoApoyo` (saldo = 0 en esas semanas).
 
 ### Visitantes
 
@@ -147,11 +150,12 @@ protectora/
 | `mart_vacunas_proximas` | Vacunas próximas a vencer o vencidas (solo activos) | **vista** |
 | `mart_perros_no_esterilizados` | Perros activos sin esterilizar | **vista** |
 | `mart_saldo_turnos` | Saldo de turnos por voluntario | tabla |
-| `mart_cobertura_semanal` | Cobertura semanal de turnos (con/sin veterano) | tabla |
+| `mart_saldo_turnos_semanal` | Saldo semanal por voluntario (usa `fecha_veterano` + `periodos_apoyo`). Alimenta `mart_evolucion_saldo_semanal`. | tabla |
+| `mart_cobertura_semanal` | Cobertura semanal: slots cubiertos por veterano/apoyo_en_junta vs sin cubrir (últimos 8 meses) | tabla |
 | `mart_faltas_voluntario` | Faltas e incumplimientos por voluntario | tabla |
 | `mart_tiempo_acogida_mes` | Días medios que los perros pasan en acogida por mes | tabla |
 | `mart_conversion_visitantes` | Tasa de conversión visitante → voluntario por mes | tabla |
-| `mart_evolucion_saldo_semanal` | Saldo medio de turnos agregado por semana | tabla |
+| `mart_evolucion_saldo_semanal` | Saldo medio agregado por semana (últimos 8 meses) | tabla |
 
 Los marts marcados como **vista** reflejan datos en tiempo real sin necesidad de ejecutar `dbt run`.
 
@@ -192,14 +196,19 @@ CLOUDINARY_API_SECRET=...
 
 ### Ejecutar dbt
 
+El target por defecto es `prod` (Neon). Requiere las 4 variables de entorno:
+
 ```bash
 cd dbt_protectora
 
-# Windows PowerShell
-$env:DBT_PASSWORD="tu_password"; dbt run
+# Windows PowerShell — prod (Neon)
+$env:DBT_NEON_HOST="<host>"; $env:DBT_NEON_USER="<user>"; $env:DBT_NEON_PASSWORD="<pass>"; $env:DBT_NEON_DBNAME="<db>"; dbt run
 
-# Linux/Mac
-DBT_PASSWORD=tu_password dbt run
+# Solo un modelo
+... dbt run --select mart_cobertura_semanal
+
+# Dev (PostgreSQL local)
+$env:DBT_PASSWORD="<pass>"; dbt run --target dev
 ```
 
 ## Despliegue

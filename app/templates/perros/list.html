@@ -56,7 +56,7 @@
           {{ th("nombre", "Nombre") }}
           {{ th("raza", "Raza") }}
           {{ th("sexo", "Sexo") }}
-          <th>Chip</th>
+          {% if not es_veterano %}<th>Chip</th>{% endif %}
           {{ th("esterilizado", "Esterilizado") }}
           {{ th("fecha_entrada", "Entrada") }}
           {{ th("dias", "Días en sistema") }}
@@ -84,7 +84,7 @@
               <span class="text-danger"><i class="bi bi-gender-female"></i> Hembra</span>
             {% endif %}
           </td>
-          <td>{{ perro.num_chip or '—' }}</td>
+          {% if not es_veterano %}<td>{{ perro.num_chip or '—' }}</td>{% endif %}
           <td>
             {% if perro.esterilizado %}
               <span class="badge bg-success">Sí</span>
