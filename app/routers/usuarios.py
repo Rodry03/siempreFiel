@@ -21,6 +21,41 @@ def _fmt_duracion(td: timedelta) -> str:
         return f"{h}h {m}m"
     return f"{m}m"
 
+
+def _parsear_ua(ua: str) -> dict:
+    ua = ua or ""
+    ul = ua.lower()
+
+    es_movil = any(t in ul for t in ("mobile", "android", "iphone", "ipad", "ipod"))
+
+    if "edg/" in ul or "edga/" in ul:
+        navegador = "Edge"
+        icono = "bi-browser-edge"
+    elif "firefox/" in ul:
+        navegador = "Firefox"
+        icono = "bi-browser-firefox"
+    elif "opr/" in ul or "opera/" in ul:
+        navegador = "Opera"
+        icono = "bi-browser-opera"
+    elif "chrome/" in ul and "chromium" not in ul:
+        navegador = "Chrome"
+        icono = "bi-browser-chrome"
+    elif "safari/" in ul:
+        navegador = "Safari"
+        icono = "bi-browser-safari"
+    elif ua:
+        navegador = "Otro"
+        icono = "bi-globe"
+    else:
+        return {"dispositivo_icono": "bi-question-circle", "dispositivo_label": "—", "navegador": "—", "navegador_icono": "bi-globe"}
+
+    return {
+        "dispositivo_icono": "bi-phone" if es_movil else "bi-laptop",
+        "dispositivo_label": "Móvil" if es_movil else "Escritorio",
+        "navegador": navegador,
+        "navegador_icono": icono,
+    }
+
 router = APIRouter(prefix="/usuarios")
 
 ROL_LABELS = {"admin": "Admin", "junta": "Junta", "veterano": "Veterano"}
@@ -195,15 +230,17 @@ def listar_sesiones(
             estado = "activa"
             duracion = _fmt_duracion(ahora - s.fecha_inicio)
             activas += 1
+        ua_info = _parsear_ua(s.user_agent or "")
         sesiones.append({
             "id": s.id,
             "usuario": s.usuario,
             "fecha_inicio": s.fecha_inicio,
             "fecha_fin": s.fecha_fin,
             "ip": s.ip or "—",
-            "user_agent": (s.user_agent or "")[:80],
+            "user_agent": s.user_agent or "",
             "estado": estado,
             "duracion": duracion,
+            **ua_info,
         })
     return templates.TemplateResponse(request, "usuarios/sesiones.html", {
         "sesiones": sesiones,

@@ -40,7 +40,8 @@
             <th>Rol</th>
             <th>Inicio de sesión</th>
             <th>Duración</th>
-            <th>IP</th>
+            <th class="d-none d-md-table-cell">IP</th>
+            <th>Dispositivo</th>
             <th>Navegador</th>
           </tr>
         </thead>
@@ -66,9 +67,14 @@
               {{ (s.fecha_inicio | madrid).strftime("%d/%m/%Y %H:%M") }}
             </td>
             <td class="text-muted">{{ s.duracion }}</td>
-            <td class="font-monospace small text-muted">{{ s.ip }}</td>
-            <td class="text-muted small" title="{{ s.user_agent }}">
-              {{ s.user_agent[:60] }}{% if s.user_agent|length > 60 %}…{% endif %}
+            <td class="font-monospace small text-muted d-none d-md-table-cell">{{ s.ip }}</td>
+            <td class="text-nowrap" title="{{ s.dispositivo_label }}">
+              <i class="bi {{ s.dispositivo_icono }} text-muted"></i>
+              <span class="text-muted small ms-1 d-none d-sm-inline">{{ s.dispositivo_label }}</span>
+            </td>
+            <td class="text-nowrap" title="{{ s.user_agent }}">
+              <i class="bi {{ s.navegador_icono }} text-muted"></i>
+              <span class="small ms-1">{{ s.navegador }}</span>
             </td>
           </tr>
           {% endfor %}

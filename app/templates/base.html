@@ -112,7 +112,7 @@
       </a>
       {% endif %}
       <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
-        <i class="bi bi-emoji-smile me-2"></i>Perros
+        <i class="bi bi-gitlab me-2"></i>Perros
       </a>
       {% if not es_veterano %}
       <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
@@ -186,7 +186,7 @@
         </a>
         {% endif %}
         <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
-          <i class="bi bi-emoji-smile me-2"></i>Perros
+          <i class="bi bi-gitlab me-2"></i>Perros
         </a>
         {% if not es_veterano %}
         <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
@@ -354,7 +354,7 @@ function _renderResultados(data, q) {
   let html = '';
 
   if (data.perros.length > 0) {
-    html += '<div class="px-3 pt-3 pb-1"><small class="text-muted text-uppercase fw-semibold"><i class="bi bi-emoji-smile me-1"></i>Perros (' + data.perros.length + ')</small></div>';
+    html += '<div class="px-3 pt-3 pb-1"><small class="text-muted text-uppercase fw-semibold"><i class="bi bi-gitlab me-1"></i>Perros (' + data.perros.length + ')</small></div>';
     html += '<div class="list-group list-group-flush">';
     data.perros.forEach(p => {
       html += `<a href="/perros/${p.id}" class="list-group-item list-group-item-action px-3 py-2 border-0" onclick="buscarIr(event,'/perros/${p.id}')">
