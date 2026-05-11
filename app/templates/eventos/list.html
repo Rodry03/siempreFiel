@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Eventos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0 fw-bold">Eventos</h1>
+  {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+  {% if not es_veterano %}
+  <a href="/eventos/nuevo" class="btn btn-success btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo evento
+  </a>
+  {% endif %}
+</div>
+
+{% if not eventos %}
+<div class="card">
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-calendar-event fs-1 d-block mb-2"></i>
+    No hay eventos registrados.
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha</th>
+          <th>Título</th>
+          <th>Tipo</th>
+          <th>Ubicación</th>
+          <th>Participantes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in eventos %}
+        <tr>
+          <td class="text-nowrap">
+            {{ e.fecha.strftime('%d/%m/%Y') }}
+            {% if e.hora_inicio %}
+            <br><small class="text-muted">{{ e.hora_inicio }}{% if e.hora_fin %} – {{ e.hora_fin }}{% endif %}</small>
+            {% endif %}
+          </td>
+          <td><a href="/eventos/{{ e.id }}" class="fw-semibold text-decoration-none">{{ e.titulo }}</a></td>
+          <td>
+            {% for t in tipos_list(e) %}
+            <span class="badge bg-info text-dark me-1">{{ tipos_labels.get(t, t) }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endfor %}
+          </td>
+          <td class="text-muted small">{{ e.ubicacion or '—' }}</td>
+          <td>
+            {% if e.participantes %}
+            <span class="badge bg-secondary">{{ e.participantes|length }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="/eventos/{{ e.id }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

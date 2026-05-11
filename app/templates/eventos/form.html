@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{% if evento %}Editar evento{% else %}Nuevo evento{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-2">
+  <button class="btn btn-sm btn-outline-secondary" onclick="history.back()">
+    <i class="bi bi-arrow-left"></i>
+  </button>
+  <h1 class="h3 mb-0 fw-bold">{% if evento %}Editar evento{% else %}Nuevo evento{% endif %}</h1>
+</div>
+
+<div class="card" style="max-width:640px;">
+  <div class="card-body">
+    <form method="post" action="{% if evento %}/eventos/{{ evento.id }}/editar{% else %}/eventos/nuevo{% endif %}">
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+        <input type="text" name="titulo" class="form-control" required
+               value="{{ evento.titulo if evento else '' }}">
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">Fecha <span class="text-danger">*</span></label>
+          <input type="date" name="fecha" class="form-control" required
+                 value="{{ evento.fecha.isoformat() if evento else '' }}">
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">Hora inicio</label>
+          <input type="time" name="hora_inicio" class="form-control"
+                 value="{{ evento.hora_inicio if evento and evento.hora_inicio else '' }}">
+        </div>
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">Hora fin</label>
+          <input type="time" name="hora_fin" class="form-control"
+                 value="{{ evento.hora_fin if evento and evento.hora_fin else '' }}">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Tipo(s)</label>
+        <div class="d-flex flex-wrap gap-3">
+          {% for t in tipos %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="tipo" value="{{ t }}" id="tipo_{{ t }}"
+                   {% if t in evento_tipos %}checked{% endif %}>
+            <label class="form-check-label" for="tipo_{{ t }}">{{ tipos_labels[t] }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Ubicación</label>
+        <input type="text" name="ubicacion" class="form-control"
+               value="{{ evento.ubicacion if evento and evento.ubicacion else '' }}">
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Notas</label>
+        <textarea name="notas" class="form-control" rows="3">{{ evento.notas if evento and evento.notas else '' }}</textarea>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+          <i class="bi bi-check-lg me-1"></i>{% if evento %}Guardar cambios{% else %}Crear evento{% endif %}
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

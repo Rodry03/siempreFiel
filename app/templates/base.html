@@ -125,6 +125,9 @@
         <i class="bi bi-calendar-check me-2"></i>Turnos
       </a>
       {% endif %}
+      <a class="nav-link {% if '/eventos' in request.url.path %}active{% endif %}" href="/eventos/">
+        <i class="bi bi-calendar-event me-2"></i>Eventos
+      </a>
       <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
         <i class="bi bi-tools me-2"></i>Instalaciones
       </a>
@@ -199,6 +202,9 @@
           <i class="bi bi-calendar-check me-2"></i>Turnos
         </a>
         {% endif %}
+        <a class="nav-link {% if '/eventos' in request.url.path %}active{% endif %}" href="/eventos/">
+          <i class="bi bi-calendar-event me-2"></i>Eventos
+        </a>
         <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
           <i class="bi bi-tools me-2"></i>Instalaciones
         </a>

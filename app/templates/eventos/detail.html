@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ evento.titulo }}{% endblock %}
+
+{% block content %}
+{% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+
+<div class="d-flex align-items-center mb-4 gap-2">
+  <button class="btn btn-sm btn-outline-secondary" onclick="history.back()">
+    <i class="bi bi-arrow-left"></i>
+  </button>
+  <h1 class="h3 mb-0 fw-bold">{{ evento.titulo }}</h1>
+  {% if not es_veterano %}
+  <div class="ms-auto d-flex gap-2">
+    <a href="/eventos/{{ evento.id }}/editar" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+    <form id="form-eliminar" method="post" action="/eventos/{{ evento.id }}/eliminar">
+      <button type="button" class="btn btn-sm btn-outline-danger"
+              data-confirm-form="form-eliminar"
+              data-confirm-title="¿Eliminar evento?"
+              data-confirm-message="Se eliminará el evento y todos sus participantes.">
+        <i class="bi bi-trash me-1"></i>Eliminar
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+
+  <!-- Info del evento -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <dl class="row mb-0">
+          {% if evento_tipos %}
+          <dt class="col-5 text-muted fw-normal small">Tipo(s)</dt>
+          <dd class="col-7">
+            {% for t in evento_tipos %}
+            <span class="badge bg-info text-dark me-1">{{ tipos_labels.get(t, t) }}</span>
+            {% endfor %}
+          </dd>
+          {% endif %}
+
+          <dt class="col-5 text-muted fw-normal small">Fecha</dt>
+          <dd class="col-7">{{ evento.fecha.strftime('%d/%m/%Y') }}</dd>
+
+          {% if evento.hora_inicio %}
+          <dt class="col-5 text-muted fw-normal small">Horario</dt>
+          <dd class="col-7">
+            {{ evento.hora_inicio }}{% if evento.hora_fin %} – {{ evento.hora_fin }}{% endif %}
+          </dd>
+          {% endif %}
+
+          {% if evento.ubicacion %}
+          <dt class="col-5 text-muted fw-normal small">Ubicación</dt>
+          <dd class="col-7">{{ evento.ubicacion }}</dd>
+          {% endif %}
+
+          {% if evento.notas %}
+          <dt class="col-5 text-muted fw-normal small">Notas</dt>
+          <dd class="col-7" style="white-space:pre-wrap;">{{ evento.notas }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Participantes -->
+  <div class="col-md-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+        <h6 class="mb-0 fw-semibold">
+          <i class="bi bi-people me-1"></i>Participantes
+          <span class="badge bg-secondary ms-1">{{ evento.participantes|length }}</span>
+        </h6>
+        {% if not es_veterano %}
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#addVoluntario">
+          <i class="bi bi-plus-lg me-1"></i>Añadir
+        </button>
+        {% endif %}
+      </div>
+
+      {% if not es_veterano %}
+      <div class="collapse" id="addVoluntario">
+        <div class="card-body border-bottom bg-light py-2">
+          <form method="post" action="/eventos/{{ evento.id }}/voluntario" class="d-flex gap-2">
+            <select name="voluntario_id" class="form-select form-select-sm">
+              {% if voluntarios_disponibles %}
+                {% for v in voluntarios_disponibles %}
+                <option value="{{ v.id }}">{{ v.nombre }} {{ v.apellido }} ({{ v.perfil.value.replace('_',' ') }})</option>
+                {% endfor %}
+              {% else %}
+                <option disabled>No hay voluntarios disponibles</option>
+              {% endif %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-success" {% if not voluntarios_disponibles %}disabled{% endif %}>
+              Añadir
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card-body p-0">
+        {% if evento.participantes %}
+        <ul class="list-group list-group-flush">
+          {% for ep in evento.participantes %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
+            <div>
+              <a href="/voluntarios/{{ ep.voluntario.id }}" class="text-decoration-none fw-semibold">
+                {{ ep.voluntario.nombre }} {{ ep.voluntario.apellido }}
+              </a>
+              <small class="text-muted ms-2">{{ ep.voluntario.perfil.value.replace('_', ' ') }}</small>
+            </div>
+            {% if not es_veterano %}
+            <form method="post" action="/eventos/{{ evento.id }}/voluntario/{{ ep.voluntario.id }}/eliminar">
+              <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar">
+                <i class="bi bi-x"></i>
+              </button>
+            </form>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted text-center py-4 mb-0 small">Sin participantes asignados.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

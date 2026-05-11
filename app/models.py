@@ -363,3 +363,31 @@ class PeriodoApoyo(Base):
     fecha_fin     = Column(Date, nullable=True)
 
     voluntario = relationship("Voluntario", back_populates="periodos_apoyo")
+
+
+class Evento(Base):
+    __tablename__ = "eventos"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    titulo      = Column(String(200), nullable=False)
+    fecha       = Column(Date, nullable=False)
+    hora_inicio = Column(String(5), nullable=True)
+    hora_fin    = Column(String(5), nullable=True)
+    ubicacion   = Column(String(200), nullable=True)
+    tipo        = Column(Text, nullable=True)  # comma-separated: "mercadillo,charla"
+    notas       = Column(Text, nullable=True)
+
+    participantes = relationship("EventoVoluntario", back_populates="evento", cascade="all, delete-orphan")
+
+
+class EventoVoluntario(Base):
+    __tablename__ = "evento_voluntarios"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    evento_id     = Column(Integer, ForeignKey("eventos.id"), nullable=False)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+
+    evento     = relationship("Evento", back_populates="participantes")
+    voluntario = relationship("Voluntario")
+
+    __table_args__ = (UniqueConstraint("evento_id", "voluntario_id", name="uq_evento_voluntario"),)
