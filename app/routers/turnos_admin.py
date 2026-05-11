@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_admin, flash
@@ -265,6 +266,7 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
             insertados += 1
 
         # Apply medio_turno rule: 2+ vets in same slot → all become medio_turno
+        # Only counts people who were actually veterans on that date
         db.flush()
         vets_slot = (
             db.query(TurnoVoluntario)
@@ -272,8 +274,18 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
             .filter(
                 TurnoVoluntario.fecha == fecha,
                 TurnoVoluntario.franja == franja,
-                Voluntario.perfil.in_(list(PERFILES_VET)),
                 TurnoVoluntario.estado == EstadoTurno.realizado,
+                or_(
+                    Voluntario.perfil == PerfilVoluntario.apoyo_en_junta,
+                    and_(
+                        Voluntario.fecha_veterano != None,
+                        Voluntario.fecha_veterano <= fecha,
+                        or_(
+                            Voluntario.fecha_fin_veterano == None,
+                            Voluntario.fecha_fin_veterano >= fecha,
+                        ),
+                    ),
+                ),
             )
             .all()
         )
