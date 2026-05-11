@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
 from typing import Optional
 from app.database import get_db
-from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro
+from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro
 from app.templates_config import templates
 import cloudinary
 import cloudinary.uploader
@@ -269,14 +269,17 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
     if not perro:
         return RedirectResponse("/perros/", status_code=303)
     vacunas = sorted(perro.vacunas, key=lambda v: v.fecha_administracion, reverse=True)
+    hoy_date = date.today()
     return templates.TemplateResponse(request, "perros/detail.html", {
         "perro": perro,
         "vacunas": vacunas,
         "pesos": perro.pesos,
         "celos": perro.celos,
+        "medicaciones": perro.medicaciones,
         "ubicacion_actual": _ubicacion_actual(perro),
         "ubicacion_labels": UBICACION_LABELS,
-        "hoy": date.today().isoformat(),
+        "hoy": hoy_date.isoformat(),
+        "hoy_date": hoy_date,
         "tipos_ubicacion": [t.value for t in TipoUbicacion],
         "tipos_vacuna": TIPOS_VACUNA,
         "edad": _calcular_edad(perro.fecha_nacimiento),
@@ -610,5 +613,62 @@ def eliminar_celo(perro_id: int, celo_id: int, db: Session = Depends(get_db)):
     celo = db.query(CeloPerro).filter(CeloPerro.id == celo_id, CeloPerro.perro_id == perro_id).first()
     if celo:
         db.delete(celo)
+        db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/medicacion", dependencies=[Depends(require_not_veterano)])
+def agregar_medicacion(
+    perro_id: int,
+    medicamento: str = Form(...),
+    dosis: Optional[str] = Form(None),
+    frecuencia: Optional[str] = Form(None),
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    db.add(MedicacionPerro(
+        perro_id=perro_id,
+        medicamento=medicamento.strip(),
+        dosis=dosis or None,
+        frecuencia=frecuencia or None,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin or None,
+        notas=notas or None,
+    ))
+    db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/medicacion/{med_id}/editar", dependencies=[Depends(require_not_veterano)])
+def editar_medicacion(
+    perro_id: int,
+    med_id: int,
+    medicamento: str = Form(...),
+    dosis: Optional[str] = Form(None),
+    frecuencia: Optional[str] = Form(None),
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    notas: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    med = db.query(MedicacionPerro).filter(MedicacionPerro.id == med_id, MedicacionPerro.perro_id == perro_id).first()
+    if med:
+        med.medicamento = medicamento.strip()
+        med.dosis = dosis or None
+        med.frecuencia = frecuencia or None
+        med.fecha_inicio = fecha_inicio
+        med.fecha_fin = fecha_fin or None
+        med.notas = notas or None
+        db.commit()
+    return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+
+
+@router.post("/{perro_id}/medicacion/{med_id}/eliminar", dependencies=[Depends(require_not_veterano)])
+def eliminar_medicacion(perro_id: int, med_id: int, db: Session = Depends(get_db)):
+    med = db.query(MedicacionPerro).filter(MedicacionPerro.id == med_id, MedicacionPerro.perro_id == perro_id).first()
+    if med:
+        db.delete(med)
         db.commit()
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)

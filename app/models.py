@@ -114,6 +114,7 @@ class Perro(Base):
     ubicaciones = relationship("Ubicacion", back_populates="perro", cascade="all, delete-orphan", order_by="Ubicacion.fecha_inicio.desc()")
     pesos = relationship("PesoPerro", back_populates="perro", cascade="all, delete-orphan", order_by="PesoPerro.fecha.desc()")
     celos = relationship("CeloPerro", back_populates="perro", cascade="all, delete-orphan", order_by="CeloPerro.fecha_inicio.desc()")
+    medicaciones = relationship("MedicacionPerro", back_populates="perro", cascade="all, delete-orphan", order_by="MedicacionPerro.fecha_inicio.desc()")
 
 
 class Vacuna(Base):
@@ -309,6 +310,21 @@ class CeloPerro(Base):
     notas = Column(Text, nullable=True)
 
     perro = relationship("Perro", back_populates="celos")
+
+
+class MedicacionPerro(Base):
+    __tablename__ = "medicaciones_perro"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    perro_id     = Column(Integer, ForeignKey("perros.id"), nullable=False)
+    medicamento  = Column(String(200), nullable=False)
+    dosis        = Column(String(100), nullable=True)
+    frecuencia   = Column(String(100), nullable=True)
+    fecha_inicio = Column(Date, nullable=False, default=date.today)
+    fecha_fin    = Column(Date, nullable=True)
+    notas        = Column(Text, nullable=True)
+
+    perro = relationship("Perro", back_populates="medicaciones")
 
 
 class SaldoMensual(Base):

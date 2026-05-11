@@ -368,6 +368,150 @@
   </div>
   {% endif %}
 
+  <!-- Medicación -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-capsule me-2"></i>Medicación</span>
+        {% if not es_veterano %}
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formMedicacion">
+          <i class="bi bi-plus-lg me-1"></i>Añadir
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if not es_veterano %}
+        <div class="collapse mb-3" id="formMedicacion">
+          <form method="post" action="/perros/{{ perro.id }}/medicacion" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Medicamento *</label>
+                <input type="text" name="medicamento" class="form-control form-control-sm" placeholder="Ej: Tramadol" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Dosis</label>
+                <input type="text" name="dosis" class="form-control form-control-sm" placeholder="Ej: 50mg/kg">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Frecuencia</label>
+                <input type="text" name="frecuencia" class="form-control form-control-sm" placeholder="Ej: Cada 8h">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Fecha inicio *</label>
+                <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Fecha fin <span class="text-muted fw-normal">(vacío = en curso)</span></label>
+                <input type="date" name="fecha_fin" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Notas</label>
+                <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-success mt-2">
+              <i class="bi bi-check-lg me-1"></i>Registrar
+            </button>
+          </form>
+          <hr>
+        </div>
+        {% endif %}
+
+        {% if medicaciones %}
+        <div style="overflow-x:auto;">
+        <table class="table table-hover align-middle mb-0" style="min-width:500px;">
+          <thead class="table-light">
+            <tr><th>Medicamento</th><th>Dosis</th><th>Frecuencia</th><th>Desde</th><th>Hasta</th><th>Notas</th>{% if not es_veterano %}<th></th>{% endif %}</tr>
+          </thead>
+          <tbody>
+            {% for m in medicaciones %}
+            {% set activa = not m.fecha_fin or m.fecha_fin >= hoy_date %}
+            <tr class="{% if activa %}table-success bg-opacity-10{% endif %}">
+              <td class="fw-semibold">
+                {{ m.medicamento }}
+                {% if activa %}<span class="badge bg-success ms-1" style="font-size:0.65rem;">En curso</span>{% endif %}
+              </td>
+              <td class="text-muted small">{{ m.dosis or '—' }}</td>
+              <td class="text-muted small">{{ m.frecuencia or '—' }}</td>
+              <td class="small">{{ m.fecha_inicio }}</td>
+              <td class="small">{{ m.fecha_fin or '—' }}</td>
+              <td class="text-muted small">{{ m.notas or '' }}</td>
+              {% if not es_veterano %}
+              <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                  onclick="abrirEditarMedicacion({{ m.id }}, '{{ m.medicamento | e }}', '{{ (m.dosis or '') | e }}', '{{ (m.frecuencia or '') | e }}', '{{ m.fecha_inicio }}', '{{ m.fecha_fin or '' }}', '{{ (m.notas or '') | e }}')">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                  data-confirm-form="formEliminarMed{{ m.id }}"
+                  data-confirm-title="¿Eliminar medicación?"
+                  data-confirm-message="Se eliminará el registro de {{ m.medicamento | e }}."
+                  data-confirm-btn-text="Eliminar">
+                  <i class="bi bi-trash"></i>
+                </button>
+                <form id="formEliminarMed{{ m.id }}" method="post" action="/perros/{{ perro.id }}/medicacion/{{ m.id }}/eliminar" class="d-none"></form>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-3">Sin medicación registrada.</p>
+        {% endif %}
+
+        {% if not es_veterano %}
+        <!-- Modal editar medicación -->
+        <div class="modal fade" id="modalEditarMedicacion" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Editar medicación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form method="post" id="formEditarMedicacion">
+                <div class="modal-body">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Medicamento *</label>
+                      <input type="text" name="medicamento" id="editMedMedicamento" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Dosis</label>
+                      <input type="text" name="dosis" id="editMedDosis" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Frecuencia</label>
+                      <input type="text" name="frecuencia" id="editMedFrecuencia" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Fecha inicio *</label>
+                      <input type="date" name="fecha_inicio" id="editMedFechaInicio" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-semibold">Fecha fin</label>
+                      <input type="date" name="fecha_fin" id="editMedFechaFin" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Notas</label>
+                      <input type="text" name="notas" id="editMedNotas" class="form-control form-control-sm">
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   <!-- Vacunas -->
   {% if not es_veterano %}
   <div class="col-12">
@@ -539,6 +683,19 @@
     new bootstrap.Modal(document.getElementById('modalEditarVacuna')).show();
   }
 
+  {% endif %}
+
+  {% if not es_veterano %}
+  function abrirEditarMedicacion(id, medicamento, dosis, frecuencia, fechaInicio, fechaFin, notas) {
+    document.getElementById('formEditarMedicacion').action = '/perros/{{ perro.id }}/medicacion/' + id + '/editar';
+    document.getElementById('editMedMedicamento').value = medicamento;
+    document.getElementById('editMedDosis').value = dosis;
+    document.getElementById('editMedFrecuencia').value = frecuencia;
+    document.getElementById('editMedFechaInicio').value = fechaInicio;
+    document.getElementById('editMedFechaFin').value = fechaFin;
+    document.getElementById('editMedNotas').value = notas;
+    new bootstrap.Modal(document.getElementById('modalEditarMedicacion')).show();
+  }
   {% endif %}
 
   const celoInicio = document.getElementById('celo_fecha_inicio');
