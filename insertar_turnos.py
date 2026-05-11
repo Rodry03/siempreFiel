@@ -1,3 +1,4 @@
+import re
 import unicodedata
 from datetime import date
 from app.database import SessionLocal
@@ -96,7 +97,8 @@ def norm(s: str) -> str:
 
 
 def buscar(todos: list[Voluntario], nombre_raw: str) -> Voluntario | None:
-    partes = nombre_raw.strip().split()
+    nombre_raw = re.sub(r'\s*\(.*?\)\s*', '', nombre_raw).strip()
+    partes = nombre_raw.split()
     nombre_n = norm(partes[0])
     inicial = partes[1].upper() if len(partes) > 1 else None
 
@@ -143,6 +145,7 @@ try:
             continue
 
         for nombre_raw, role, estado in personas:
+            nombre_limpio = re.sub(r'\s*\(.*?\)\s*', '', nombre_raw).strip()
             v = buscar(todos, nombre_raw)
             if v:
                 if insertar(db, v, fecha, franja, estado):
@@ -150,7 +153,7 @@ try:
                     print(f"  + {v.nombre} {v.apellido} — {fecha} {franja} [{role}] ({estado_label})")
                     insertados += 1
             else:
-                no_encontrados.append(f"[{role}] '{nombre_raw}' ({fecha} {franja})")
+                no_encontrados.append(f"[{role}] '{nombre_limpio}' ({fecha} {franja})")
 
     db.commit()
     print(f"\n{insertados} turno(s) insertado(s).")

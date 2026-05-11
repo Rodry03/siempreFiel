@@ -75,12 +75,15 @@ def _parse_personas(names_str: str) -> list[tuple[str, bool]]:
 
     result = []
     for part in parts:
+        part = re.sub(r'\s*\(.*?\)\s*', '', part).strip()
+        if not part or part.lower() == 'visita':
+            continue
         words = part.split()
         if not words:
             continue
         # vet if first word is fully uppercase and ≥ 2 chars (avoids lone initials)
         es_vet = words[0].isupper() and len(words[0]) >= 2
-        result.append((part.strip(), es_vet))
+        result.append((part, es_vet))
 
     # If no vet found, the slot is uncovered — return empty
     if not any(es_vet for _, es_vet in result):
