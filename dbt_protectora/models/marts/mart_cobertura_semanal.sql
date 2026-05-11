@@ -1,7 +1,7 @@
 with semanas as (
     select distinct semana
     from {{ ref('stg_turnos_voluntarios') }}
-    where semana >= date_trunc('month', current_date - interval '8 months')::date
+    where semana >= (current_date - interval '20 weeks')::date
 ),
 
 dias_semana as (
@@ -38,7 +38,7 @@ turnos_con_perfil as (
         end as es_veterano_en_fecha
     from {{ ref('stg_turnos_voluntarios') }} t
     inner join {{ ref('stg_voluntarios') }} v on v.id = t.voluntario_id
-    where t.semana >= date_trunc('month', current_date - interval '8 months')::date
+    where t.semana >= (current_date - interval '20 weeks')::date
 ),
 
 por_slot as (

@@ -104,13 +104,16 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     total_turnos = len(voluntario.turnos) if hace_turnos else 0
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
 
+    FECHA_HISTORIAL = date(2025, 7, 15)
     turnos_recientes = []
     if hace_turnos:
         por_semana = defaultdict(list)
         for t in voluntario.turnos:
+            if t.fecha < FECHA_HISTORIAL:
+                continue
             lunes = t.fecha - timedelta(days=t.fecha.weekday())
             por_semana[lunes].append(t)
-        for lunes in sorted(por_semana.keys(), reverse=True)[:12]:
+        for lunes in sorted(por_semana.keys(), reverse=True):
             por_semana[lunes].sort(key=lambda t: (t.fecha, t.franja.value))
             turnos_recientes.append({
                 "semana": lunes,
