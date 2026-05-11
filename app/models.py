@@ -80,6 +80,12 @@ class EstadoIncidencia(str, enum.Enum):
     resuelto = "resuelto"
 
 
+class TipoMovimiento(str, enum.Enum):
+    ingreso = "ingreso"
+    gasto = "gasto"
+    deuda = "deuda"
+
+
 class Raza(Base):
     __tablename__ = "razas"
 
@@ -380,6 +386,19 @@ class PeriodoApoyo(Base):
     fecha_fin     = Column(Date, nullable=True)
 
     voluntario = relationship("Voluntario", back_populates="periodos_apoyo")
+
+
+class MovimientoEconomico(Base):
+    __tablename__ = "movimientos_economicos"
+
+    id        = Column(Integer, primary_key=True, index=True)
+    tipo      = Column(Enum(TipoMovimiento), nullable=False)
+    concepto  = Column(String(200), nullable=False)
+    categoria = Column(String(100), nullable=True)
+    importe   = Column(Float, nullable=False)
+    fecha     = Column(Date, nullable=False, default=date.today)
+    pagado    = Column(Boolean, default=False, nullable=False)
+    notas     = Column(Text, nullable=True)
 
 
 class Evento(Base):

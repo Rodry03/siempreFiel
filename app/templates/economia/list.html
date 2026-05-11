@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Economía{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0"><i class="bi bi-cash-coin me-2"></i>Economía</h2>
+  <button class="btn btn-sm btn-outline-success" data-bs-toggle="collapse" data-bs-target="#formNuevo">
+    <i class="bi bi-plus-lg me-1"></i>Añadir movimiento
+  </button>
+</div>
+
+<!-- Formulario nuevo movimiento -->
+<div class="collapse mb-4" id="formNuevo">
+  <div class="card border-success">
+    <div class="card-body">
+      <form method="post" action="/economia/nuevo">
+        <div class="row g-2">
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Tipo *</label>
+            <select name="tipo" id="nuevoTipo" class="form-select form-select-sm" required>
+              <option value="ingreso">Ingreso</option>
+              <option value="gasto">Gasto</option>
+              <option value="deuda">Deuda</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Concepto *</label>
+            <input type="text" name="concepto" class="form-control form-control-sm" placeholder="Ej: Donación mercadillo" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Categoría</label>
+            <input type="text" name="categoria" class="form-control form-control-sm" placeholder="Ej: Veterinario">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Importe (€) *</label>
+            <input type="number" name="importe" class="form-control form-control-sm" step="0.01" min="0.01" placeholder="0.00" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Fecha *</label>
+            <input type="date" name="fecha" class="form-control form-control-sm" value="{{ hoy }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Notas</label>
+            <input type="text" name="notas" class="form-control form-control-sm" placeholder="Opcional">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-sm btn-success mt-2">
+          <i class="bi bi-check-lg me-1"></i>Guardar
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Tarjetas resumen -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 bg-success bg-opacity-10 text-center py-3">
+      <div class="text-muted small mb-1">Total ingresos</div>
+      <div class="fs-5 fw-bold text-success">{{ "%.2f"|format(total_ingresos) }} €</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 bg-danger bg-opacity-10 text-center py-3">
+      <div class="text-muted small mb-1">Total gastos</div>
+      <div class="fs-5 fw-bold text-danger">{{ "%.2f"|format(total_gastos) }} €</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 {% if balance >= 0 %}bg-success bg-opacity-10{% else %}bg-danger bg-opacity-10{% endif %} text-center py-3">
+      <div class="text-muted small mb-1">Balance</div>
+      <div class="fs-5 fw-bold {% if balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+        {% if balance > 0 %}+{% endif %}{{ "%.2f"|format(balance) }} €
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 {% if deuda_pendiente > 0 %}bg-warning bg-opacity-10{% else %}bg-light{% endif %} text-center py-3">
+      <div class="text-muted small mb-1">Deuda pendiente</div>
+      <div class="fs-5 fw-bold {% if deuda_pendiente > 0 %}text-warning{% else %}text-secondary{% endif %}">
+        {{ "%.2f"|format(deuda_pendiente) }} €
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtro por tipo -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="/economia/" class="btn btn-sm {{ 'btn-secondary' if not tipo_filtro else 'btn-outline-secondary' }}">Todos</a>
+  {% for t, label in tipo_labels.items() %}
+  <a href="/economia/?tipo={{ t }}"
+     class="btn btn-sm {{ ('btn-' ~ tipo_colors[t]) if tipo_filtro == t else ('btn-outline-' ~ tipo_colors[t]) }}">
+    {{ label }}s
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Tabla de movimientos -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if movimientos %}
+    <div style="overflow-x:auto;">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Concepto</th>
+          <th>Categoría</th>
+          <th class="text-end">Importe</th>
+          <th class="text-center">Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr class="{% if m.tipo.value == 'deuda' and not m.pagado %}table-warning bg-opacity-10{% endif %}">
+          <td class="small text-muted text-nowrap">{{ m.fecha.strftime('%d/%m/%Y') }}</td>
+          <td>
+            <span class="badge bg-{{ tipo_colors[m.tipo.value] }} {% if m.tipo.value == 'deuda' %}text-dark{% endif %}">
+              {{ tipo_labels[m.tipo.value] }}
+            </span>
+          </td>
+          <td class="fw-semibold">
+            {{ m.concepto }}
+            {% if m.notas %}<div class="text-muted small fw-normal">{{ m.notas }}</div>{% endif %}
+          </td>
+          <td class="text-muted small">{{ m.categoria or '—' }}</td>
+          <td class="text-end fw-semibold text-nowrap">
+            <span class="{% if m.tipo.value == 'ingreso' %}text-success{% elif m.tipo.value == 'gasto' %}text-danger{% endif %}">
+              {% if m.tipo.value == 'ingreso' %}+{% elif m.tipo.value == 'gasto' %}−{% endif %}{{ "%.2f"|format(m.importe) }} €
+            </span>
+          </td>
+          <td class="text-center">
+            {% if m.tipo.value == 'deuda' %}
+              {% if m.pagado %}
+                <span class="badge bg-success">Pagada</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Pendiente</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if m.tipo.value == 'deuda' %}
+            <form method="post" action="/economia/{{ m.id }}/marcar-pagado" class="d-inline">
+              <button type="submit" class="btn btn-sm py-0 {{ 'btn-outline-warning' if not m.pagado else 'btn-outline-secondary' }}"
+                      title="{{ 'Marcar como pagada' if not m.pagado else 'Marcar como pendiente' }}">
+                <i class="bi {{ 'bi-check-circle' if not m.pagado else 'bi-arrow-counterclockwise' }}"></i>
+              </button>
+            </form>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+              onclick="abrirEditar({{ m.id }}, '{{ m.tipo.value }}', '{{ m.concepto | e }}', '{{ (m.categoria or '') | e }}', {{ m.importe }}, '{{ m.fecha }}', '{{ (m.notas or '') | e }}')">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0"
+              data-confirm-form="formEliminar{{ m.id }}"
+              data-confirm-title="¿Eliminar movimiento?"
+              data-confirm-message="Se eliminará «{{ m.concepto | e }}» ({{ '%.2f'|format(m.importe) }} €)."
+              data-confirm-btn-text="Eliminar">
+              <i class="bi bi-trash"></i>
+            </button>
+            <form id="formEliminar{{ m.id }}" method="post" action="/economia/{{ m.id }}/eliminar" class="d-none"></form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4 mb-0">No hay movimientos registrados{% if tipo_filtro %} de tipo {{ tipo_labels[tipo_filtro] | lower }}{% endif %}.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar movimiento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="formEditar">
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tipo *</label>
+              <select name="tipo" id="editTipo" class="form-select form-select-sm" required>
+                <option value="ingreso">Ingreso</option>
+                <option value="gasto">Gasto</option>
+                <option value="deuda">Deuda</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Importe (€) *</label>
+              <input type="number" name="importe" id="editImporte" class="form-control form-control-sm" step="0.01" min="0.01" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Fecha *</label>
+              <input type="date" name="fecha" id="editFecha" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Concepto *</label>
+              <input type="text" name="concepto" id="editConcepto" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Categoría</label>
+              <input type="text" name="categoria" id="editCategoria" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Notas</label>
+              <input type="text" name="notas" id="editNotas" class="form-control form-control-sm">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirEditar(id, tipo, concepto, categoria, importe, fecha, notas) {
+  document.getElementById('formEditar').action = '/economia/' + id + '/editar';
+  document.getElementById('editTipo').value = tipo;
+  document.getElementById('editConcepto').value = concepto;
+  document.getElementById('editCategoria').value = categoria;
+  document.getElementById('editImporte').value = importe;
+  document.getElementById('editFecha').value = fecha;
+  document.getElementById('editNotas').value = notas;
+  new bootstrap.Modal(document.getElementById('modalEditar')).show();
+}
+</script>
+{% endblock %}
