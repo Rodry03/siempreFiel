@@ -167,7 +167,8 @@ class Voluntario(Base):
     contrato_firmado_url = Column(String, nullable=True)
     contrato_firmado_fecha = Column(Date, nullable=True)
     contrato_firmado_nombre = Column(String(255), nullable=True)
-    fecha_veterano = Column(Date, nullable=True)
+    fecha_veterano     = Column(Date, nullable=True)
+    fecha_fin_veterano = Column(Date, nullable=True)
     teaming = Column(Boolean, default=False, nullable=False)
     notas = Column(Text, nullable=True)
 

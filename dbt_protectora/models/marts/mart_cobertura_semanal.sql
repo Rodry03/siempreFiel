@@ -26,7 +26,16 @@ turnos_con_perfil as (
         t.fecha,
         t.franja,
         t.estado,
-        v.perfil
+        v.perfil,
+        -- un turno cuenta como veterano si fue realizado dentro de la ventana de veterano
+        case
+            when v.perfil = 'apoyo_en_junta' then true
+            when v.fecha_veterano is not null
+                 and t.fecha >= v.fecha_veterano
+                 and (v.fecha_fin_veterano is null or t.fecha <= v.fecha_fin_veterano)
+            then true
+            else false
+        end as es_veterano_en_fecha
     from {{ ref('stg_turnos_voluntarios') }} t
     inner join {{ ref('stg_voluntarios') }} v on v.id = t.voluntario_id
     where t.semana >= date_trunc('month', current_date - interval '8 months')::date
@@ -37,8 +46,8 @@ por_slot as (
         se.semana,
         se.fecha,
         se.franja,
-        max(case when tcp.perfil in ('veterano', 'apoyo_en_junta') and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
-        max(case when tcp.perfil = 'voluntario'                   and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
+        max(case when tcp.es_veterano_en_fecha and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_veterano,
+        max(case when not tcp.es_veterano_en_fecha and tcp.perfil = 'voluntario' and tcp.estado in ('realizado', 'medio_turno') then 1 else 0 end) as tiene_voluntario
     from slots_esperados se
     left join turnos_con_perfil tcp on se.semana = tcp.semana
                                     and se.fecha = tcp.fecha

@@ -57,10 +57,15 @@
           <input type="date" name="fecha_alta" class="form-control" required
             value="{{ voluntario.fecha_alta.isoformat() if voluntario else hoy }}">
         </div>
-        <div class="col-md-6" id="campo-fecha-veterano" style="display:none;">
+        <div class="col-md-3" id="campo-fecha-veterano" style="display:none;">
           <label class="form-label fw-semibold">Fecha veterano</label>
           <input type="date" name="fecha_veterano" class="form-control"
             value="{{ voluntario.fecha_veterano.isoformat() if voluntario and voluntario.fecha_veterano else '' }}">
+        </div>
+        <div class="col-md-3" id="campo-fecha-fin-veterano" style="display:none;">
+          <label class="form-label fw-semibold">Baja de veterano</label>
+          <input type="date" name="fecha_fin_veterano" class="form-control"
+            value="{{ voluntario.fecha_fin_veterano.isoformat() if voluntario and voluntario.fecha_fin_veterano else '' }}">
         </div>
         <div class="col-12">
           <div class="form-check">
@@ -147,10 +152,28 @@
 (function () {
   var perfilSel = document.querySelector('select[name="perfil"]');
   var campo = document.getElementById('campo-fecha-veterano');
+  var campoFin = document.getElementById('campo-fecha-fin-veterano');
+  var inputInicio = document.querySelector('input[name="fecha_veterano"]');
+  var inputFin = document.querySelector('input[name="fecha_fin_veterano"]');
+
   function toggle() {
-    campo.style.display = ['veterano', 'apoyo_en_junta'].includes(perfilSel.value) ? 'block' : 'none';
+    var esVet = ['veterano', 'apoyo_en_junta'].includes(perfilSel.value);
+    var tieneInicio = inputInicio.value;
+    // fecha_veterano visible si es vet actualmente O ya tuvo fecha de inicio
+    campo.style.display = (esVet || tieneInicio) ? 'block' : 'none';
+    campoFin.style.display = (esVet || tieneInicio) ? 'block' : 'none';
   }
+
+  // Al poner fecha de fin → auto-cambiar perfil a voluntario
+  inputFin.addEventListener('change', function () {
+    if (this.value) {
+      perfilSel.value = 'voluntario';
+    }
+    toggle();
+  });
+
   perfilSel.addEventListener('change', toggle);
+  inputInicio.addEventListener('change', toggle);
   toggle();
 })();
 </script>

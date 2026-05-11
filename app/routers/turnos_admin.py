@@ -206,14 +206,14 @@ async def estadillo_previsualizar(request: Request, db: Session = Depends(get_db
             continue
 
         slot_personas = []
-        for nombre_raw, es_vet in personas:
+        for nombre_raw, es_vet, es_medio in personas:
             v = buscar_voluntario(todos, nombre_raw)
             if v:
                 total_insertar += 1
-                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": v, "es_vet": es_vet, "ok": True})
+                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": v, "es_vet": es_vet, "es_medio": es_medio, "ok": True})
             else:
                 no_encontrados.append({"nombre_raw": nombre_raw, "fecha": fecha, "franja": franja})
-                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": None, "es_vet": es_vet, "ok": False})
+                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": None, "es_vet": es_vet, "es_medio": es_medio, "ok": False})
 
         slots_preview.append({"fecha": fecha, "franja": franja, "personas": slot_personas, "skip": False})
 
@@ -244,7 +244,7 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
         if not personas:
             continue
 
-        for nombre_raw, _ in personas:
+        for nombre_raw, _, es_medio in personas:
             v = buscar_voluntario(todos, nombre_raw)
             if not v:
                 continue
@@ -260,7 +260,7 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
                 voluntario_id=v.id,
                 fecha=fecha,
                 franja=franja,
-                estado=EstadoTurno.realizado,
+                estado=EstadoTurno.medio_turno if es_medio else EstadoTurno.realizado,
             ))
             insertados += 1
 

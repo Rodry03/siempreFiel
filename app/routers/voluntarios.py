@@ -226,9 +226,12 @@ def crear_voluntario(
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_veterano: Optional[date] = Form(None),
+    fecha_fin_veterano: Optional[date] = Form(None),
     db: Session = Depends(get_db),
 ):
     email_final = email or f"{nombre}{apellido}@siemprefiel.com"
+    if fecha_fin_veterano:
+        perfil = PerfilVoluntario.voluntario.value
     voluntario = Voluntario(
         nombre=nombre,
         apellido=apellido,
@@ -248,6 +251,7 @@ def crear_voluntario(
         teaming=teaming == "on",
         notas=notas or None,
         fecha_veterano=fecha_veterano,
+        fecha_fin_veterano=fecha_fin_veterano,
     )
     db.add(voluntario)
     try:
@@ -291,6 +295,7 @@ def editar_voluntario(
     teaming: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_veterano: Optional[date] = Form(None),
+    fecha_fin_veterano: Optional[date] = Form(None),
     db: Session = Depends(get_db),
 ):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
@@ -301,7 +306,6 @@ def editar_voluntario(
     voluntario.apellido = apellido
     voluntario.dni = dni or None
     voluntario.email = email_final
-    voluntario.perfil = PerfilVoluntario(perfil)
     voluntario.fecha_alta = fecha_alta
     voluntario.activo = activo == "on"
     voluntario.ppp = ppp == "on"
@@ -314,7 +318,11 @@ def editar_voluntario(
     voluntario.contrato_estado = EstadoContrato(contrato_estado) if contrato_estado else None
     voluntario.teaming = teaming == "on"
     voluntario.notas = notas or None
+    if fecha_fin_veterano:
+        perfil = PerfilVoluntario.voluntario.value
+    voluntario.perfil = PerfilVoluntario(perfil)
     voluntario.fecha_veterano = fecha_veterano
+    voluntario.fecha_fin_veterano = fecha_fin_veterano
     try:
         db.commit()
     except IntegrityError:

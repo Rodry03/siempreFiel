@@ -53,10 +53,14 @@ def _parse_fecha_inicio(line: str) -> Optional[date]:
     return d
 
 
-def _parse_personas(names_str: str) -> list[tuple[str, bool]]:
+_TC_RE = re.compile(r'\s*\(T\.?C\.?\)\s*', re.IGNORECASE)
+_ANNOTATION_RE = re.compile(r'\s*\([^)]*\)\s*')
+
+
+def _parse_personas(names_str: str) -> list[tuple[str, bool, bool]]:
     """
     Parses the names part of a shift line.
-    Returns list of (nombre_raw, es_vet_por_convencion).
+    Returns list of (nombre_raw, es_vet_por_convencion, es_medio_turno).
     Returns empty list if no vet present (slot vacío).
 
     Conventions:
@@ -64,6 +68,9 @@ def _parse_personas(names_str: str) -> list[tuple[str, bool]]:
     - lowercase first word = voluntario
     - * separates people
     - ❌ / ‼️ are ignored annotations
+    - (T.C.) is ignored (informational)
+    - Any other (...) on a vet → medio_turno (e.g. "(a partir de las 11h)")
+    - Visita → silently skipped
     """
     cleaned = _STRIP_EMOJI.sub("", names_str).strip()
     if not cleaned:
@@ -75,18 +82,25 @@ def _parse_personas(names_str: str) -> list[tuple[str, bool]]:
 
     result = []
     for part in parts:
-        part = re.sub(r'\s*\(.*?\)\s*', '', part).strip()
-        if not part or part.lower() == 'visita':
+        # Strip T.C. annotations first (informational only, no effect on estado)
+        sin_tc = _TC_RE.sub(" ", part).strip()
+        # Detect any remaining annotation → medio_turno for vets
+        tiene_anotacion = bool(_ANNOTATION_RE.search(sin_tc))
+        # Strip all remaining annotations to get the clean name
+        nombre = _ANNOTATION_RE.sub(" ", sin_tc).split()
+        nombre = " ".join(nombre)
+        if not nombre or nombre.lower() == "visita":
             continue
-        words = part.split()
+        words = nombre.split()
         if not words:
             continue
         # vet if first word is fully uppercase and ≥ 2 chars (avoids lone initials)
         es_vet = words[0].isupper() and len(words[0]) >= 2
-        result.append((part, es_vet))
+        es_medio = tiene_anotacion and es_vet
+        result.append((nombre, es_vet, es_medio))
 
     # If no vet found, the slot is uncovered — return empty
-    if not any(es_vet for _, es_vet in result):
+    if not any(es_vet for _, es_vet, _ in result):
         return []
 
     return result
@@ -97,7 +111,7 @@ def parse_estadillo(text: str) -> tuple[Optional[date], list]:
     Parses a pasted estadillo text.
 
     Returns (fecha_inicio, slots) where slots is:
-        [(fecha, franja, [(nombre_raw, es_vet_convencion), ...])]
+        [(fecha, franja, [(nombre_raw, es_vet_convencion, es_medio_turno), ...])]
 
     An empty inner list means the slot has no vet and should be skipped.
     """

@@ -69,6 +69,7 @@
                 {% if p.ok %}
                   {{ p.voluntario.nombre }} {{ p.voluntario.apellido }}
                   {% if p.es_vet %}<i class="bi bi-star-fill ms-1" style="font-size:0.65rem;"></i>{% endif %}
+                  {% if p.es_medio %}<span class="ms-1" style="font-size:0.75rem;">½</span>{% endif %}
                 {% else %}
                   <i class="bi bi-x-circle me-1"></i>{{ p.nombre_raw }}
                 {% endif %}
