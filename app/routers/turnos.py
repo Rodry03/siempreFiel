@@ -107,19 +107,38 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     FECHA_HISTORIAL = date(2025, 7, 15)
     turnos_recientes = []
     if hace_turnos:
+        hoy_turnos = date.today()
+        primer_lunes_raw = max(FECHA_HISTORIAL, voluntario.fecha_alta)
+        primer_lunes = primer_lunes_raw - timedelta(days=primer_lunes_raw.weekday())
+        semana_hoy_lunes = hoy_turnos - timedelta(days=hoy_turnos.weekday())
+
         por_semana = defaultdict(list)
         for t in voluntario.turnos:
-            if t.fecha < FECHA_HISTORIAL:
-                continue
             lunes = t.fecha - timedelta(days=t.fecha.weekday())
-            por_semana[lunes].append(t)
-        for lunes in sorted(por_semana.keys(), reverse=True):
-            por_semana[lunes].sort(key=lambda t: (t.fecha, t.franja.value))
+            if lunes >= primer_lunes:
+                por_semana[lunes].append(t)
+        for semana_turnos in por_semana.values():
+            semana_turnos.sort(key=lambda t: (t.fecha, t.franja.value))
+
+        lunes = primer_lunes
+        while lunes <= semana_hoy_lunes:
+            lunes_fin = lunes + timedelta(days=6)
+            turnos = por_semana.get(lunes, [])
+            en_apoyo = any(
+                p.fecha_inicio <= lunes_fin and (p.fecha_fin is None or p.fecha_fin >= lunes)
+                for p in voluntario.periodos_apoyo
+            )
+            es_actual = lunes == semana_hoy_lunes
             turnos_recientes.append({
                 "semana": lunes,
-                "semana_fin": lunes + timedelta(days=6),
-                "turnos": por_semana[lunes],
+                "semana_fin": lunes_fin,
+                "turnos": turnos,
+                "en_apoyo": en_apoyo,
+                "sin_turno": not turnos and not en_apoyo and not es_actual,
+                "es_actual": es_actual,
             })
+            lunes += timedelta(days=7)
+        turnos_recientes.reverse()
 
     from app.models import MiembroGrupoTarea, EjecucionGrupoTarea
     hoy = date.today()

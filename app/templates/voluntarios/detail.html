@@ -340,18 +340,33 @@
           </thead>
           <tbody>
             {% for item in turnos_recientes %}
-            <tr>
+            <tr class="{% if item.sin_turno %}table-danger{% elif item.es_actual and not item.turnos and not item.en_apoyo %}table-warning bg-opacity-25{% endif %}">
               <td class="text-muted small text-nowrap">
                 {{ item.semana.strftime('%d/%m') }} – {{ item.semana_fin.strftime('%d/%m/%Y') }}
+                {% if item.es_actual %}<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">Esta semana</span>{% endif %}
               </td>
               <td>
-                {% for t in item.turnos %}
-                <span class="badge bg-secondary me-1">
-                  {{ dias_labels[t.fecha.weekday()] }} {{ franja_labels[t.franja.value] }}
-                </span>
-                {% endfor %}
+                {% if item.en_apoyo %}
+                  <span class="badge bg-info text-dark"><i class="bi bi-person-arms-up me-1"></i>Periodo de apoyo</span>
+                {% elif item.sin_turno %}
+                  <span class="text-danger small fst-italic">Sin turno</span>
+                {% elif item.es_actual and not item.turnos %}
+                  <span class="text-muted small fst-italic">Aún sin turno</span>
+                {% else %}
+                  {% for t in item.turnos %}
+                  <span class="badge bg-secondary me-1">
+                    {{ dias_labels[t.fecha.weekday()] }} {{ franja_labels[t.franja.value] }}
+                  </span>
+                  {% endfor %}
+                {% endif %}
               </td>
-              <td class="text-center fw-semibold">{{ item.turnos | length }}</td>
+              <td class="text-center fw-semibold {% if item.sin_turno %}text-danger{% elif item.en_apoyo %}text-muted{% endif %}">
+                {% if item.en_apoyo %}—
+                {% elif item.sin_turno %}-1
+                {% elif item.es_actual and not item.turnos %}—
+                {% else %}{{ item.turnos | length }}
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
