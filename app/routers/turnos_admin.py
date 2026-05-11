@@ -176,6 +176,27 @@ async def eliminar_turno(request: Request, turno_id: int, db: Session = Depends(
     return RedirectResponse(f"/turnos/?semana={semana_str}{perfil_qs}", status_code=303)
 
 
+@router.post("/limpiar-semana", dependencies=[Depends(require_admin)])
+async def limpiar_semana(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    semana_str = form.get("semana", "")
+    try:
+        semana_date = _semana_lunes(date.fromisoformat(semana_str))
+    except ValueError:
+        semana_date = _semana_lunes(date.today())
+    semana_fin = semana_date + timedelta(days=6)
+    eliminados = (
+        db.query(TurnoVoluntario)
+        .filter(TurnoVoluntario.fecha >= semana_date, TurnoVoluntario.fecha <= semana_fin)
+        .all()
+    )
+    for t in eliminados:
+        db.delete(t)
+    db.commit()
+    flash(request, f"{len(eliminados)} turno(s) eliminado(s) de la semana del {semana_date.strftime('%d/%m/%Y')}.", "warning")
+    return RedirectResponse(f"/turnos/?semana={semana_date.isoformat()}", status_code=303)
+
+
 @router.get("/estadillo")
 def estadillo_form(request: Request):
     return templates.TemplateResponse(request, "turnos/estadillo_form.html", {})

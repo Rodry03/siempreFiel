@@ -4,9 +4,21 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Gestión de turnos</h2>
   {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
-  <a href="/turnos/estadillo" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-clipboard-data me-1"></i>Cargar estadillo
-  </a>
+  <div class="d-flex gap-2">
+    <form id="form-limpiar-semana" method="post" action="/turnos/limpiar-semana" class="d-none">
+      <input type="hidden" name="semana" value="{{ semana.isoformat() }}">
+    </form>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            data-confirm-form="form-limpiar-semana"
+            data-confirm-title="¿Limpiar semana?"
+            data-confirm-message="Se eliminarán todos los turnos de la semana del {{ semana_label }}. Esta acción no se puede deshacer."
+            data-confirm-btn-text="Limpiar">
+      <i class="bi bi-trash me-1"></i>Limpiar semana
+    </button>
+    <a href="/turnos/estadillo" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-clipboard-data me-1"></i>Cargar estadillo
+    </a>
+  </div>
   {% endif %}
 </div>
 

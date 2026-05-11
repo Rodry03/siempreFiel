@@ -104,7 +104,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     total_turnos = len(voluntario.turnos) if hace_turnos else 0
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
 
-    FECHA_HISTORIAL = date(2025, 7, 15)
+    FECHA_HISTORIAL = date(2025, 7, 28)
     turnos_recientes = []
     if hace_turnos:
         hoy_turnos = date.today()
