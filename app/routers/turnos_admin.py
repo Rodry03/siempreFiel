@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_admin, flash
 from app.database import get_db
+from app.estadillo_parser import parse_estadillo, buscar_voluntario
 from app.models import TurnoVoluntario, EstadoTurno, Voluntario, PerfilVoluntario
 from app.routers.turnos import (
     PERFIL_LABELS, PERFIL_COLORS, PERFILES_SIN_TURNOS,
@@ -172,3 +173,119 @@ async def eliminar_turno(request: Request, turno_id: int, db: Session = Depends(
         db.delete(turno)
         db.commit()
     return RedirectResponse(f"/turnos/?semana={semana_str}{perfil_qs}", status_code=303)
+
+
+@router.get("/estadillo")
+def estadillo_form(request: Request):
+    return templates.TemplateResponse(request, "turnos/estadillo_form.html", {})
+
+
+@router.post("/estadillo/previsualizar")
+async def estadillo_previsualizar(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    texto = form.get("texto", "").strip()
+
+    if not texto:
+        flash(request, "Pega el estadillo antes de continuar.", "danger")
+        return templates.TemplateResponse(request, "turnos/estadillo_form.html", {"texto": ""})
+
+    fecha_inicio, slots = parse_estadillo(texto)
+
+    if not fecha_inicio:
+        flash(request, "No se detectó la fecha. Asegúrate de que el texto incluye el encabezado (ej: ESTADILLO 28 JULIO - 3 AGOSTO).", "danger")
+        return templates.TemplateResponse(request, "turnos/estadillo_form.html", {"texto": texto})
+
+    todos = db.query(Voluntario).all()
+    slots_preview = []
+    no_encontrados = []
+    total_insertar = 0
+
+    for fecha, franja, personas in slots:
+        if not personas:
+            slots_preview.append({"fecha": fecha, "franja": franja, "personas": [], "skip": True})
+            continue
+
+        slot_personas = []
+        for nombre_raw, es_vet in personas:
+            v = buscar_voluntario(todos, nombre_raw)
+            if v:
+                total_insertar += 1
+                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": v, "es_vet": es_vet, "ok": True})
+            else:
+                no_encontrados.append({"nombre_raw": nombre_raw, "fecha": fecha, "franja": franja})
+                slot_personas.append({"nombre_raw": nombre_raw, "voluntario": None, "es_vet": es_vet, "ok": False})
+
+        slots_preview.append({"fecha": fecha, "franja": franja, "personas": slot_personas, "skip": False})
+
+    return templates.TemplateResponse(request, "turnos/estadillo_preview.html", {
+        "fecha_inicio": fecha_inicio,
+        "slots_preview": slots_preview,
+        "no_encontrados": no_encontrados,
+        "total_insertar": total_insertar,
+        "texto": texto,
+        "dias_labels": DIAS_ES,
+        "franja_labels": FRANJA_LABELS,
+    })
+
+
+@router.post("/estadillo/insertar")
+async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    texto = form.get("texto", "")
+
+    fecha_inicio, slots = parse_estadillo(texto)
+    todos = db.query(Voluntario).all()
+
+    PERFILES_VET = {PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta}
+    insertados = 0
+    omitidos = 0
+
+    for fecha, franja, personas in slots:
+        if not personas:
+            continue
+
+        for nombre_raw, _ in personas:
+            v = buscar_voluntario(todos, nombre_raw)
+            if not v:
+                continue
+            existe = db.query(TurnoVoluntario).filter(
+                TurnoVoluntario.voluntario_id == v.id,
+                TurnoVoluntario.fecha == fecha,
+                TurnoVoluntario.franja == franja,
+            ).first()
+            if existe:
+                omitidos += 1
+                continue
+            db.add(TurnoVoluntario(
+                voluntario_id=v.id,
+                fecha=fecha,
+                franja=franja,
+                estado=EstadoTurno.realizado,
+            ))
+            insertados += 1
+
+        # Apply medio_turno rule: 2+ vets in same slot → all become medio_turno
+        db.flush()
+        vets_slot = (
+            db.query(TurnoVoluntario)
+            .join(Voluntario, TurnoVoluntario.voluntario_id == Voluntario.id)
+            .filter(
+                TurnoVoluntario.fecha == fecha,
+                TurnoVoluntario.franja == franja,
+                Voluntario.perfil.in_(list(PERFILES_VET)),
+                TurnoVoluntario.estado == EstadoTurno.realizado,
+            )
+            .all()
+        )
+        if len(vets_slot) >= 2:
+            for t in vets_slot:
+                t.estado = EstadoTurno.medio_turno
+
+    db.commit()
+
+    msg = f"{insertados} turno(s) insertado(s)."
+    if omitidos:
+        msg += f" {omitidos} omitido(s) por ya existir."
+    flash(request, msg)
+    semana_str = fecha_inicio.isoformat() if fecha_inicio else date.today().isoformat()
+    return RedirectResponse(f"/turnos/?semana={semana_str}", status_code=303)

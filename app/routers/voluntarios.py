@@ -7,7 +7,9 @@ import tempfile
 logger = logging.getLogger(__name__)
 from datetime import date
 from docx import Document as DocxDocument
-from fastapi import APIRouter, Depends, Form, Query, Request
+import cloudinary
+import cloudinary.uploader
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -375,6 +377,86 @@ def generar_contrato(voluntario_id: int, db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="Contrato_{nombre}.docx"'},
     )
+
+
+def _subir_contrato_firmado(file: UploadFile, voluntario_id: int) -> tuple:
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.environ.get("CLOUDINARY_API_KEY"),
+        api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    )
+    contents = file.file.read()
+    result = cloudinary.uploader.upload(
+        contents,
+        resource_type="raw",
+        folder="protectora/contratos",
+        public_id=f"contrato_voluntario_{voluntario_id}",
+        overwrite=True,
+    )
+    return result["secure_url"], file.filename
+
+
+@router.get("/contratos-firmados")
+def contratos_firmados(request: Request, db: Session = Depends(get_db)):
+    voluntarios = db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre.asc()).all()
+    return templates.TemplateResponse(request, "voluntarios/contratos_firmados.html", {
+        "voluntarios": voluntarios,
+        "perfil_labels": PERFIL_LABELS,
+        "perfil_colors": PERFIL_COLORS,
+        "contrato_labels": CONTRATO_LABELS,
+        "contrato_colors": CONTRATO_COLORS,
+    })
+
+
+@router.post("/{voluntario_id}/contrato-firmado")
+def subir_contrato_firmado(
+    request: Request,
+    voluntario_id: int,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if not voluntario:
+        return RedirectResponse("/voluntarios/", status_code=303)
+    try:
+        url, nombre = _subir_contrato_firmado(archivo, voluntario_id)
+        voluntario.contrato_firmado_url = url
+        voluntario.contrato_firmado_fecha = date.today()
+        voluntario.contrato_firmado_nombre = nombre
+        db.commit()
+        flash(request, "Contrato firmado subido correctamente.")
+    except Exception as e:
+        logger.error("Error subiendo contrato firmado: %s", e)
+        flash(request, "Error al subir el contrato.", "danger")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
+@router.post("/{voluntario_id}/contrato-firmado/eliminar")
+def eliminar_contrato_firmado(
+    request: Request,
+    voluntario_id: int,
+    db: Session = Depends(get_db),
+):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if voluntario and voluntario.contrato_firmado_url:
+        try:
+            cloudinary.config(
+                cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.environ.get("CLOUDINARY_API_KEY"),
+                api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+            )
+            cloudinary.uploader.destroy(
+                f"protectora/contratos/contrato_voluntario_{voluntario_id}",
+                resource_type="raw",
+            )
+        except Exception as e:
+            logger.warning("Error eliminando contrato de Cloudinary: %s", e)
+        voluntario.contrato_firmado_url = None
+        voluntario.contrato_firmado_fecha = None
+        voluntario.contrato_firmado_nombre = None
+        db.commit()
+        flash(request, "Contrato eliminado.")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
 @router.post("/{voluntario_id}/dar-de-baja")
