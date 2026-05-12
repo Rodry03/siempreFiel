@@ -48,7 +48,7 @@ MESES_ES = {
 DIAS_ES = {0: "Lun", 1: "Mar", 2: "Mié", 3: "Jue", 4: "Vie", 5: "Sáb", 6: "Dom"}
 FRANJA_LABELS = {"manana": "Mañana", "tarde": "Tarde"}
 
-FECHA_INICIO_SALDO = date(2025, 7, 28)
+FECHA_INICIO_SALDO = date(2025, 8, 4)
 
 
 def calcular_tiempo_voluntario(fecha_alta) -> str:
@@ -104,7 +104,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     total_turnos = len(voluntario.turnos) if hace_turnos else 0
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
 
-    FECHA_HISTORIAL = date(2025, 7, 28)
+    FECHA_HISTORIAL = date(2025, 8, 4)
     turnos_recientes = []
     if hace_turnos:
         hoy_turnos = date.today()

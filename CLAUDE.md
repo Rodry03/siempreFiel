@@ -98,10 +98,11 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - **Oculto para veteranos**
 
 ### MedicacionPerro
-- `perro_id`, `medicamento`, `dosis` (nullable), `frecuencia` (nullable), `fecha_inicio`, `fecha_fin` (nullable = en curso), `notas` (nullable)
+- `perro_id`, `medicamento`, `dosis` (nullable), `frecuencia` (nullable), `turno` (nullable String, comma-separated: `'manana'`, `'tarde'`, `'manana,tarde'`), `fecha_inicio`, `fecha_fin` (nullable = en curso), `notas` (nullable)
 - CRUD: `POST /perros/{id}/medicacion`, `POST /perros/{id}/medicacion/{id}/editar`, `POST /perros/{id}/medicacion/{id}/eliminar` (solo junta/admin)
 - **Visible para todos los roles** (incluido veterano), edición solo junta/admin
 - Medicaciones con `fecha_fin IS NULL OR fecha_fin >= hoy` se muestran en verde como "En curso"
+- `turno`: checkboxes múltiples en el formulario; se guarda como string separado por coma. Badges: Mañana (amarillo), Tarde (azul)
 
 ### Sincronización estado ↔ ubicación
 - Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había
@@ -144,11 +145,14 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 ### TurnoVoluntario
 - `fecha`, `franja` (manana/tarde), `estado` (realizado, medio_turno, falta_justificada, falta_injustificada, no_apuntado)
 - **Saldo in-app** (`app/routers/turnos.py: calcular_saldo`):
-  - Fecha inicio: `max(2025-07-28, fecha_veterano or fecha_alta)`
-  - Por semana completada: realizado=+1.0, medio_turno=+0.5, sin turno=−1.0, en PeriodoApoyo=0
-  - **Saldo = suma de valores semanales**
-- **Saldo dbt** (`mart_saldo_turnos_semanal`): usa `COALESCE(fecha_veterano, fecha_alta)` como inicio; las semanas con `PeriodoApoyo` activo cuentan como 0 (ni + ni −).
-- **Historial en perfil:** muestra todas las semanas desde 28/07/2025 (o `fecha_alta` si es posterior). Semanas sin turno → fila roja con **-1**. Semanas en PeriodoApoyo → badge azul, sin penalización. Semana actual → badge "Esta semana", sin -1.
+  - Fecha inicio: `max(2025-08-04, fecha_veterano or fecha_alta)`
+  - Fórmula por semana completada: `sum(valores_turnos) - 1.0` donde realizado=1.0, medio_turno=0.5, resto=0. Solo cuentan `realizado` y `medio_turno`.
+  - Ejemplos: 0 turnos=−1, 1 turno=0, 2 turnos=+1, 1 medio_turno=−0.5. En PeriodoApoyo=0.
+  - Semana actual (incompleta) no se procesa.
+  - **Saldo = suma de contribuciones semanales**
+- **Saldo dbt** (`mart_saldo_turnos_semanal`): usa `COALESCE(fecha_veterano, fecha_alta)` como inicio; misma fórmula `valor - 1.0` por semana; semanas con `PeriodoApoyo` = 0; semana actual (`semana >= date_trunc('week', current_date)`) = 0 (no penaliza).
+- **Historial en perfil:** muestra todas las semanas desde 04/08/2025 (o `fecha_alta` si es posterior). Columna "Saldo" muestra contribución semanal (+1, 0, −1, ±0.5). Semanas sin turno → fila roja, −1. Semanas en PeriodoApoyo → badge azul, sin penalización. Semana actual → badge "Esta semana", sin −1.
+- **Saldo en lista de voluntarios:** columna con badge verde/rojo/gris calculado con `calcular_saldo`.
 - **Regla auto medio_turno:** si hay 2+ voluntarios con perfil `veterano` o `apoyo_en_junta` **que eran veteranos en esa fecha** (fecha_veterano ≤ fecha ≤ fecha_fin_veterano, o perfil apoyo_en_junta) en el mismo hueco con estado `realizado`, todos pasan a `medio_turno`. Se aplica en `turnos_admin.py: anadir_turno` y al insertar estadillo.
 
 ### Evento
@@ -163,6 +167,18 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - CRUD en `app/routers/economia.py` (prefix `/economia/`), **solo junta/admin** (oculto a veteranos)
 - Vista: tarjetas resumen (total ingresos, total gastos, balance, deuda pendiente) + tabla con filtro por tipo
 - Deudas: botón toggle para marcar como pagada/pendiente (`POST /economia/{id}/marcar-pagado`)
+
+### Familia
+- Representa familias adoptantes o acogedoras de perros.
+- Campos obligatorios: `nombre`, `apellidos`, `dni` (unique, guardado en mayúsculas)
+- `tipo`: String nullable — `'adopcion'` | `'acogida'`
+- `perro_id`: FK nullable a `perros.id`
+- Campos opcionales: `email`, `telefono`, `direccion`, `municipio`, `provincia`, `codigo_postal`, `notas`
+- `fecha_contrato`: Date (obligatoria, default hoy) — fecha de firma del contrato
+- `contrato_firmado_url`, `contrato_firmado_fecha`, `contrato_firmado_nombre`: upload del contrato firmado a Cloudinary (`protectora/contratos/contrato_familia_{id}`, resource_type=raw)
+- CRUD en `app/routers/familias.py` (prefix `/familias/`), **solo junta/admin** (oculto a veteranos)
+- Detalle: dos botones deshabilitados para generar contrato adopción/acogida (pendiente recibir plantillas Word); tarjeta upload contrato firmado igual que voluntarios
+- Sidebar: entre Visitas y Turnos
 
 ---
 
@@ -205,12 +221,13 @@ app/
     dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes, GET /dashboard/detalle-conversion (drill-down charts)
     perros.py         — CRUD perros, photo upload, location tabs, sync estado↔ubicación, auto-adopción reservados, CRUD vacunas, CRUD medicaciones
     voluntarios.py    — CRUD voluntarios (fecha_fin_veterano → auto-set perfil a voluntario)
-    turnos.py         — Detalle voluntario + historial de turnos (desde 28/07/2025, semanas vacías como -1). Prefix: /voluntarios
+    turnos.py         — Detalle voluntario + historial de turnos (desde 04/08/2025, semanas vacías como -1). Prefix: /voluntarios
     turnos_admin.py   — Gestión centralizada de turnos (junta/admin). Prefix: /turnos. CRUD + filtros semana/perfil. POST /limpiar-semana (admin). POST /dbt-run-model.
     visitas.py        — CRUD visitantes, pipeline estados, convertir a voluntario
     usuarios.py       — User management (admin-only)
     eventos.py        — CRUD eventos + asignación de voluntarios. Prefix: /eventos/
     economia.py       — CRUD movimientos económicos (ingreso/gasto/deuda). Prefix: /economia/
+    familias.py       — CRUD familias adoptantes/acogedoras + upload contrato firmado (Cloudinary). Prefix: /familias/
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
     login.html        — Login form (with logo). Fondo gradiente verde marca
@@ -221,7 +238,7 @@ app/
       form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
     voluntarios/
       list.html       — Active volunteers
-      detail.html     — Profile + historial turnos (desde 28/07/2025, semanas vacías en rojo con -1, apoyo en azul)
+      detail.html     — Profile + historial turnos (desde 04/08/2025, semanas vacías en rojo con -1, apoyo en azul)
       form.html       — Create/edit. fecha_veterano + fecha_fin_veterano (rellenar fin → fuerza perfil a voluntario)
     turnos/
       list.html       — Vista semanal con nav ◀▶, filtro por perfil, modal añadir, eliminar. Botón "Limpiar semana" (admin). Saldo en float (1 decimal).
@@ -240,6 +257,10 @@ app/
       form.html       — Create/edit con checkboxes multi-tipo
     economia/
       list.html       — Tarjetas resumen + filtro por tipo + tabla con acciones
+    familias/
+      list.html       — Lista con filtro por tipo (adopcion/acogida), columnas: nombre, apellidos, DNI, tipo, perro, teléfono, fecha contrato
+      detail.html     — Ficha + tarjeta contrato firmado (upload/descarga/eliminar) + dos botones disabled para generar contratos
+      form.html       — Create/edit con dropdown de perros (no fallecidos)
 
 dbt_protectora/
   profiles.yml        — Default target: prod (points to Neon)
@@ -323,10 +344,13 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 21. **Cobertura semanal usa es_veterano_en_fecha:** `mart_cobertura_semanal` evalúa si el turno fue realizado cuando el voluntario era veterano (respeta `fecha_fin_veterano`). `apoyo_en_junta` siempre cuenta como veterano. Ventana: últimas 20 semanas.
 22. **dbt Neon env vars:** `profiles.yml` target prod usa `DBT_NEON_HOST`, `DBT_NEON_USER`, `DBT_NEON_PASSWORD`, `DBT_NEON_DBNAME`. PowerShell no carga `.env` automáticamente — hay que setearlos manualmente antes de `dbt run`.
 23. **fecha_fin_veterano → auto-perfil voluntario:** En el formulario de voluntario, al rellenar `fecha_fin_veterano` el JS fuerza el selector de perfil a `voluntario`. En el servidor, si `fecha_fin_veterano` tiene valor, el perfil se sobreescribe a `voluntario` antes de guardar.
-24. **Historial turnos desde 28/07/2025:** `FECHA_HISTORIAL = date(2025, 7, 28)` en `turnos.py`. Se generan todas las semanas desde esa fecha (o `fecha_alta` del voluntario si es posterior) hasta hoy. Semanas sin turno y sin apoyo → fila roja, valor -1. Semana actual → no penaliza aunque no haya turno.
+24. **Historial turnos desde 04/08/2025:** `FECHA_HISTORIAL = date(2025, 7, 28)` en `turnos.py`. Se generan todas las semanas desde esa fecha (o `fecha_alta` del voluntario si es posterior) hasta hoy. Semanas sin turno y sin apoyo → fila roja, valor -1. Semana actual → no penaliza aunque no haya turno.
 25. **Limpiar semana (admin):** `POST /turnos/limpiar-semana` elimina todos los `TurnoVoluntario` de la semana visible. Botón con confirmación, solo admin.
 26. **Medicación visible a veteranos:** A diferencia de vacunas/pesos, `MedicacionPerro` es visible para todos los roles en el perfil del perro. Solo junta/admin pueden añadir/editar/eliminar.
 27. **Economía oculta a veteranos:** `MovimientoEconomico` solo accesible a junta/admin. Tipos: ingreso, gasto, deuda. Las deudas tienen campo `pagado` (toggle). Categoría es texto libre.
+28. **Fórmula saldo turnos:** `sum(valores_semana) - 1` por semana (no `sum(valores_semana)`). 1 turno = neutro (0), no +1. Aplica igual en Python (`calcular_saldo`) y dbt (`mart_saldo_turnos_semanal`). La semana actual nunca penaliza.
+29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin. Los botones de generación de contrato están deshabilitados hasta recibir las plantillas Word (mismo mecanismo que voluntarios).
+30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
 
 ---
 

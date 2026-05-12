@@ -14,7 +14,7 @@ target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
 vars:
-  fecha_inicio_turnos: '2026-04-01'
+  fecha_inicio_turnos: '2025-08-04'
 
 models:
   dbt_protectora:
