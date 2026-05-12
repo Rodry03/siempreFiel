@@ -69,6 +69,7 @@
           <th>{{ sort_link('perfil', 'Perfil') }}</th>
           <th>{{ sort_link('fecha_alta', 'Alta') }}</th>
           <th>Veterano desde</th>
+          <th class="text-center">Saldo</th>
           <th>Estado</th><th>PPP</th><th></th>
         </tr>
       </thead>
@@ -90,6 +91,20 @@
           </td>
           <td>{{ v.fecha_alta }}</td>
           <td class="text-muted small">{{ v.fecha_veterano.strftime('%d/%m/%Y') if v.fecha_veterano else '—' }}</td>
+          <td class="text-center">
+            {% if v.id in saldos %}
+              {% set s = saldos[v.id] %}
+              {% if s > 0 %}
+                <span class="badge bg-success">+{{ s | int if s == s | int else s | round(1) }}</span>
+              {% elif s < 0 %}
+                <span class="badge bg-danger">{{ s | int if s == s | int else s | round(1) }}</span>
+              {% else %}
+                <span class="badge bg-secondary">0</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td>
             {% if v.activo %}
               <span class="badge bg-success">Activo</span>

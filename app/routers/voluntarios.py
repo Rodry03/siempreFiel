@@ -156,8 +156,17 @@ def listar_voluntarios(
 
     perfil_qs = "&".join(f"perfil={p}" for p in perfiles_filtro)
 
+    from app.routers.turnos import calcular_saldo, PERFILES_SIN_TURNOS
+    voluntarios = query.all()
+    saldos = {
+        v.id: calcular_saldo(v)
+        for v in voluntarios
+        if v.perfil not in PERFILES_SIN_TURNOS
+    }
+
     return templates.TemplateResponse(request, "voluntarios/list.html", {
-        "voluntarios": query.all(),
+        "voluntarios": voluntarios,
+        "saldos": saldos,
         "perfil_filtro": perfiles_filtro,
         "perfil_qs": perfil_qs,
         "perfiles": [p.value for p in PerfilVoluntario],
