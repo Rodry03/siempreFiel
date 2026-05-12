@@ -5,7 +5,7 @@ from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
-from typing import Optional
+from typing import List, Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro
 from app.templates_config import templates
@@ -623,6 +623,7 @@ def agregar_medicacion(
     medicamento: str = Form(...),
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
+    turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
     notas: Optional[str] = Form(None),
@@ -633,6 +634,7 @@ def agregar_medicacion(
         medicamento=medicamento.strip(),
         dosis=dosis or None,
         frecuencia=frecuencia or None,
+        turno=",".join(turno) if turno else None,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin or None,
         notas=notas or None,
@@ -648,6 +650,7 @@ def editar_medicacion(
     medicamento: str = Form(...),
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
+    turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
     notas: Optional[str] = Form(None),
@@ -658,6 +661,7 @@ def editar_medicacion(
         med.medicamento = medicamento.strip()
         med.dosis = dosis or None
         med.frecuencia = frecuencia or None
+        med.turno = ",".join(turno) if turno else None
         med.fecha_inicio = fecha_inicio
         med.fecha_fin = fecha_fin or None
         med.notas = notas or None

@@ -392,9 +392,20 @@
                 <label class="form-label small fw-semibold">Dosis</label>
                 <input type="text" name="dosis" class="form-control form-control-sm" placeholder="Ej: 50mg/kg">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label small fw-semibold">Frecuencia</label>
                 <input type="text" name="frecuencia" class="form-control form-control-sm" placeholder="Ej: Cada 8h">
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small fw-semibold d-block">Turno</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="turno" value="manana" id="turnoManana">
+                  <label class="form-check-label small" for="turnoManana">Mañana</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="turno" value="tarde" id="turnoTarde">
+                  <label class="form-check-label small" for="turnoTarde">Tarde</label>
+                </div>
               </div>
               <div class="col-md-3">
                 <label class="form-label small fw-semibold">Fecha inicio *</label>
@@ -421,7 +432,7 @@
         <div style="overflow-x:auto;">
         <table class="table table-hover align-middle mb-0" style="min-width:500px;">
           <thead class="table-light">
-            <tr><th>Medicamento</th><th>Dosis</th><th>Frecuencia</th><th>Desde</th><th>Hasta</th><th>Notas</th>{% if not es_veterano %}<th></th>{% endif %}</tr>
+            <tr><th>Medicamento</th><th>Dosis</th><th>Frecuencia</th><th>Turno</th><th>Desde</th><th>Hasta</th><th>Notas</th>{% if not es_veterano %}<th></th>{% endif %}</tr>
           </thead>
           <tbody>
             {% for m in medicaciones %}
@@ -433,13 +444,22 @@
               </td>
               <td class="text-muted small">{{ m.dosis or '—' }}</td>
               <td class="text-muted small">{{ m.frecuencia or '—' }}</td>
+              <td class="text-nowrap">
+                {% if m.turno %}
+                  {% set turnos = m.turno.split(',') %}
+                  {% if 'manana' in turnos %}<span class="badge bg-warning text-dark me-1"><i class="bi bi-sunrise me-1"></i>Mañana</span>{% endif %}
+                  {% if 'tarde' in turnos %}<span class="badge bg-primary"><i class="bi bi-sunset me-1"></i>Tarde</span>{% endif %}
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
               <td class="small">{{ m.fecha_inicio }}</td>
               <td class="small">{{ m.fecha_fin or '—' }}</td>
               <td class="text-muted small">{{ m.notas or '' }}</td>
               {% if not es_veterano %}
               <td class="text-end text-nowrap">
                 <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                  onclick="abrirEditarMedicacion({{ m.id }}, '{{ m.medicamento | e }}', '{{ (m.dosis or '') | e }}', '{{ (m.frecuencia or '') | e }}', '{{ m.fecha_inicio }}', '{{ m.fecha_fin or '' }}', '{{ (m.notas or '') | e }}')">
+                  onclick="abrirEditarMedicacion({{ m.id }}, '{{ m.medicamento | e }}', '{{ (m.dosis or '') | e }}', '{{ (m.frecuencia or '') | e }}', '{{ m.turno or '' }}', '{{ m.fecha_inicio }}', '{{ m.fecha_fin or '' }}', '{{ (m.notas or '') | e }}')">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-danger py-0"
@@ -481,9 +501,20 @@
                       <label class="form-label small fw-semibold">Dosis</label>
                       <input type="text" name="dosis" id="editMedDosis" class="form-control form-control-sm">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                       <label class="form-label small fw-semibold">Frecuencia</label>
                       <input type="text" name="frecuencia" id="editMedFrecuencia" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small fw-semibold d-block">Turno</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="turno" value="manana" id="editMedTurnoManana">
+                        <label class="form-check-label small" for="editMedTurnoManana">Mañana</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="turno" value="tarde" id="editMedTurnoTarde">
+                        <label class="form-check-label small" for="editMedTurnoTarde">Tarde</label>
+                      </div>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Fecha inicio *</label>
@@ -686,11 +717,14 @@
   {% endif %}
 
   {% if not es_veterano %}
-  function abrirEditarMedicacion(id, medicamento, dosis, frecuencia, fechaInicio, fechaFin, notas) {
+  function abrirEditarMedicacion(id, medicamento, dosis, frecuencia, turno, fechaInicio, fechaFin, notas) {
     document.getElementById('formEditarMedicacion').action = '/perros/{{ perro.id }}/medicacion/' + id + '/editar';
     document.getElementById('editMedMedicamento').value = medicamento;
     document.getElementById('editMedDosis').value = dosis;
     document.getElementById('editMedFrecuencia').value = frecuencia;
+    const turnos = turno ? turno.split(',') : [];
+    document.getElementById('editMedTurnoManana').checked = turnos.includes('manana');
+    document.getElementById('editMedTurnoTarde').checked = turnos.includes('tarde');
     document.getElementById('editMedFechaInicio').value = fechaInicio;
     document.getElementById('editMedFechaFin').value = fechaFin;
     document.getElementById('editMedNotas').value = notas;

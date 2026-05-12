@@ -326,6 +326,7 @@ class MedicacionPerro(Base):
     medicamento  = Column(String(200), nullable=False)
     dosis        = Column(String(100), nullable=True)
     frecuencia   = Column(String(100), nullable=True)
+    turno        = Column(String(20), nullable=True)
     fecha_inicio = Column(Date, nullable=False, default=date.today)
     fecha_fin    = Column(Date, nullable=True)
     notas        = Column(Text, nullable=True)
