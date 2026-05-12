@@ -76,13 +76,13 @@ def calcular_saldo(voluntario: Voluntario) -> float:
             p.fecha_inicio <= week_end and (p.fecha_fin is None or p.fecha_fin >= week_start)
             for p in voluntario.periodos_apoyo
         )
-        if en_apoyo:
-            pass
-        elif not week_turns:
-            saldo -= 1.0
-        else:
-            for t in week_turns:
-                saldo += 0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+        if not en_apoyo:
+            week_value = sum(
+                0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+                for t in week_turns
+                if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
+            )
+            saldo += week_value - 1.0
         week_start += timedelta(days=7)
 
     return saldo
@@ -129,6 +129,15 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 for p in voluntario.periodos_apoyo
             )
             es_actual = lunes == semana_hoy_lunes
+            if en_apoyo or es_actual:
+                saldo_semana = None
+            else:
+                wv = sum(
+                    0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+                    for t in turnos
+                    if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
+                )
+                saldo_semana = wv - 1.0
             turnos_recientes.append({
                 "semana": lunes,
                 "semana_fin": lunes_fin,
@@ -136,6 +145,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 "en_apoyo": en_apoyo,
                 "sin_turno": not turnos and not en_apoyo and not es_actual,
                 "es_actual": es_actual,
+                "saldo_semana": saldo_semana,
             })
             lunes += timedelta(days=7)
         turnos_recientes.reverse()

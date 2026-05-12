@@ -71,10 +71,12 @@ resultado as (
         coalesce(t.valor, 0)                                        as turnos_semana,
         case
             when coalesce(ap.en_apoyo, false) then 0.0
+            when g.semana >= date_trunc('week', current_date)::date then 0.0
             else coalesce(t.valor, 0) - 1.0
         end                                                         as saldo_semana,
         sum(case
             when coalesce(ap.en_apoyo, false) then 0.0
+            when g.semana >= date_trunc('week', current_date)::date then 0.0
             else coalesce(t.valor, 0) - 1.0
         end) over (
             partition by g.voluntario_id

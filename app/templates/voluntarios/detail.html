@@ -335,7 +335,7 @@
             <tr>
               <th>Semana</th>
               <th>Turnos</th>
-              <th class="text-center">Nº</th>
+              <th class="text-center">Saldo</th>
             </tr>
           </thead>
           <tbody>
@@ -360,11 +360,14 @@
                   {% endfor %}
                 {% endif %}
               </td>
-              <td class="text-center fw-semibold {% if item.sin_turno %}text-danger{% elif item.en_apoyo %}text-muted{% endif %}">
+              <td class="text-center fw-semibold {% if item.sin_turno %}text-danger{% elif item.saldo_semana is not none and item.saldo_semana > 0 %}text-success{% elif item.en_apoyo %}text-muted{% endif %}">
                 {% if item.en_apoyo %}—
                 {% elif item.sin_turno %}-1
                 {% elif item.es_actual and not item.turnos %}—
-                {% else %}{{ item.turnos | length }}
+                {% elif item.saldo_semana is not none %}
+                  {% if item.saldo_semana > 0 %}+{% endif %}
+                  {% if item.saldo_semana == item.saldo_semana | int %}{{ item.saldo_semana | int }}{% else %}{{ item.saldo_semana | round(1) }}{% endif %}
+                {% else %}—
                 {% endif %}
               </td>
             </tr>
