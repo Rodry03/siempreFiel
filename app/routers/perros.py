@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc, and_
+from sqlalchemy import asc, desc, and_, or_
 from typing import List, Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro
@@ -178,6 +178,26 @@ def listar_perros(
     hoy = date.today()
     perros_con_ubicacion = [(p, _ubicacion_actual(p), (hoy - p.fecha_entrada).days) for p in perros]
     razas = db.query(Raza).order_by(Raza.nombre).all()
+
+    medicaciones_hoy = []
+    if ubicacion == "refugio":
+        medicaciones_hoy = (
+            db.query(MedicacionPerro)
+            .join(Perro, MedicacionPerro.perro_id == Perro.id)
+            .join(Ubicacion, and_(
+                Ubicacion.perro_id == Perro.id,
+                Ubicacion.fecha_fin == None,
+                Ubicacion.tipo == TipoUbicacion.refugio,
+            ))
+            .filter(
+                Perro.estado.in_([EstadoPerro.libre, EstadoPerro.reservado]),
+                MedicacionPerro.fecha_inicio <= hoy,
+                or_(MedicacionPerro.fecha_fin == None, MedicacionPerro.fecha_fin >= hoy),
+            )
+            .order_by(Perro.nombre, MedicacionPerro.medicamento)
+            .all()
+        )
+
     return templates.TemplateResponse(request, "perros/list.html", {
         "perros_con_ubicacion": perros_con_ubicacion,
         "estado_filtro": estado,
@@ -191,6 +211,8 @@ def listar_perros(
         "ubicacion_filtro": ubicacion,
         "raza_id_filtro": raza_id,
         "razas": razas,
+        "medicaciones_hoy": medicaciones_hoy,
+        "hoy": hoy,
     })
 
 

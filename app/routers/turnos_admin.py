@@ -24,6 +24,16 @@ def _semana_lunes(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
+def _era_veterano_en_fecha(v: Voluntario, fecha: date) -> bool:
+    if v.perfil == PerfilVoluntario.apoyo_en_junta:
+        return True
+    return (
+        v.fecha_veterano is not None
+        and v.fecha_veterano <= fecha
+        and (v.fecha_fin_veterano is None or v.fecha_fin_veterano >= fecha)
+    )
+
+
 @router.get("/")
 def listar_turnos(
     request: Request,
@@ -131,20 +141,29 @@ async def anadir_turno(request: Request, db: Session = Depends(get_db)):
 
     estado = EstadoTurno.medio_turno if tipo == "medio" else EstadoTurno.realizado
 
-    # Regla automática: si hay 2+ veteranos/apoyo_en_junta en el mismo hueco → medio_turno a todos
-    PERFILES_VET = {PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta}
+    # Regla automática: si hay 2+ veteranos en el mismo hueco (según fecha) → medio_turno a todos
     if estado == EstadoTurno.realizado:
         voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
-        if voluntario and voluntario.perfil in PERFILES_VET:
+        if voluntario and _era_veterano_en_fecha(voluntario, fecha):
             otros_vet = (
                 db.query(TurnoVoluntario)
                 .join(Voluntario, TurnoVoluntario.voluntario_id == Voluntario.id)
                 .filter(
                     TurnoVoluntario.fecha == fecha,
                     TurnoVoluntario.franja == franja,
-                    Voluntario.perfil.in_(list(PERFILES_VET)),
                     TurnoVoluntario.voluntario_id != voluntario_id,
                     TurnoVoluntario.estado == EstadoTurno.realizado,
+                    or_(
+                        Voluntario.perfil == PerfilVoluntario.apoyo_en_junta,
+                        and_(
+                            Voluntario.fecha_veterano != None,
+                            Voluntario.fecha_veterano <= fecha,
+                            or_(
+                                Voluntario.fecha_fin_veterano == None,
+                                Voluntario.fecha_fin_veterano >= fecha,
+                            ),
+                        ),
+                    ),
                 )
                 .all()
             )
