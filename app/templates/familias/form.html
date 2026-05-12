@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar familia' if familia else 'Nueva familia' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="{{ '/familias/' ~ familia.id if familia else '/familias/' }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h2 class="fw-bold mb-0">{{ 'Editar familia' if familia else 'Nueva familia' }}</h2>
+</div>
+
+<div class="card" style="max-width:750px;">
+  <div class="card-body">
+    <form method="post" action="{{ '/familias/' ~ familia.id ~ '/editar' if familia else '/familias/nueva' }}">
+
+      <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:0.75rem; letter-spacing:.05em;">
+        Datos personales
+      </h6>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" name="nombre" class="form-control" value="{{ familia.nombre if familia else '' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Apellidos *</label>
+          <input type="text" name="apellidos" class="form-control" value="{{ familia.apellidos if familia else '' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">DNI *</label>
+          <input type="text" name="dni" class="form-control" value="{{ familia.dni if familia else '' }}"
+                 placeholder="12345678A" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ familia.email or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" name="telefono" class="form-control" value="{{ familia.telefono or '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Dirección</label>
+          <input type="text" name="direccion" class="form-control" value="{{ familia.direccion or '' }}">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Municipio</label>
+          <input type="text" name="municipio" class="form-control" value="{{ familia.municipio or '' }}">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Provincia</label>
+          <input type="text" name="provincia" class="form-control" value="{{ familia.provincia or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">C.P.</label>
+          <input type="text" name="codigo_postal" class="form-control" value="{{ familia.codigo_postal or '' }}">
+        </div>
+      </div>
+
+      <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:0.75rem; letter-spacing:.05em;">
+        Relación con la protectora
+      </h6>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="">— Sin especificar —</option>
+            {% for t, label in tipo_labels.items() %}
+            <option value="{{ t }}" {% if familia and familia.tipo == t %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Perro</label>
+          <select name="perro_id" class="form-select">
+            <option value="">— Sin asignar —</option>
+            {% for p in perros %}
+            <option value="{{ p.id }}" {% if familia and familia.perro_id == p.id %}selected{% endif %}>
+              {{ p.nombre }}{% if p.num_chip %} · chip {{ p.num_chip }}{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Fecha del contrato *</label>
+          <input type="date" name="fecha_contrato" class="form-control"
+                 value="{{ familia.fecha_contrato.isoformat() if familia else hoy }}" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Notas</label>
+          <textarea name="notas" class="form-control" rows="3">{{ familia.notas or '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>{{ 'Guardar cambios' if familia else 'Registrar familia' }}
+        </button>
+        <a href="{{ '/familias/' ~ familia.id if familia else '/familias/' }}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

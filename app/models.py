@@ -334,6 +334,30 @@ class MedicacionPerro(Base):
     perro = relationship("Perro", back_populates="medicaciones")
 
 
+class Familia(Base):
+    __tablename__ = "familias"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    nombre        = Column(String(100), nullable=False)
+    apellidos     = Column(String(150), nullable=False)
+    dni           = Column(String(20), nullable=False, unique=True)
+    tipo          = Column(String(20), nullable=True)   # 'adopcion' | 'acogida'
+    perro_id      = Column(Integer, ForeignKey("perros.id"), nullable=True)
+    email         = Column(String(150), nullable=True)
+    telefono      = Column(String(30), nullable=True)
+    direccion     = Column(String(200), nullable=True)
+    municipio     = Column(String(100), nullable=True)
+    provincia     = Column(String(100), nullable=True)
+    codigo_postal = Column(String(10), nullable=True)
+    notas                  = Column(Text, nullable=True)
+    fecha_contrato         = Column(Date, nullable=False, default=date.today)
+    contrato_firmado_url   = Column(String(500), nullable=True)
+    contrato_firmado_fecha = Column(Date, nullable=True)
+    contrato_firmado_nombre = Column(String(200), nullable=True)
+
+    perro = relationship("Perro")
+
+
 class SaldoMensual(Base):
     __tablename__ = "saldos_mensuales"
 

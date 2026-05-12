@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Familias{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0">
+    <i class="bi bi-house-heart me-2"></i>Familias
+  </h2>
+  <a href="/familias/nueva" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva familia</a>
+</div>
+
+<!-- Filtro por tipo -->
+<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+  <span class="text-muted small me-1">Tipo:</span>
+  <a href="/familias/" class="btn btn-sm {{ 'btn-secondary' if not tipo_filtro else 'btn-outline-secondary' }}">Todos</a>
+  {% for t, label in tipo_labels.items() %}
+  <a href="/familias/?tipo={{ t }}"
+     class="btn btn-sm {{ ('btn-' ~ tipo_colors[t]) if tipo_filtro == t else ('btn-outline-' ~ tipo_colors[t]) }}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-body p-0" style="overflow-x:auto;">
+    {% if familias %}
+    <table class="table table-hover align-middle mb-0" style="min-width:650px;">
+      <thead class="table-light">
+        <tr>
+          <th>Nombre</th>
+          <th>Apellidos</th>
+          <th>DNI</th>
+          <th>Tipo</th>
+          <th>Perro</th>
+          <th>Teléfono</th>
+          <th>Contrato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in familias %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="/familias/{{ f.id }}" class="text-decoration-none text-dark">{{ f.nombre }}</a>
+          </td>
+          <td>{{ f.apellidos }}</td>
+          <td class="text-muted small">{{ f.dni }}</td>
+          <td>
+            {% if f.tipo %}
+              <span class="badge bg-{{ tipo_colors[f.tipo] }}">{{ tipo_labels[f.tipo] }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if f.perro %}
+              <a href="/perros/{{ f.perro.id }}" class="text-decoration-none small">{{ f.perro.nombre }}</a>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="small">{{ f.telefono or '—' }}</td>
+          <td class="small text-muted">{{ f.fecha_contrato.strftime('%d/%m/%Y') }}</td>
+          <td>
+            <a href="/familias/{{ f.id }}/editar" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted p-4 mb-0 text-center">No hay familias registradas. <a href="/familias/nueva">Añadir la primera</a>.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

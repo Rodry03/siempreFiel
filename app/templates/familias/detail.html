@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ familia.nombre }} {{ familia.apellidos }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/familias/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h2 class="fw-bold mb-0">{{ familia.nombre }} {{ familia.apellidos }}</h2>
+  {% if familia.tipo %}
+    <span class="badge bg-{{ tipo_colors[familia.tipo] }} fs-6">{{ tipo_labels[familia.tipo] }}</span>
+  {% endif %}
+</div>
+
+<!-- Botones de contrato -->
+<div class="d-flex gap-2 mb-4">
+  <button class="btn btn-outline-success" disabled title="Plantilla pendiente de recibir">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
+  </button>
+  <button class="btn btn-outline-primary" disabled title="Plantilla pendiente de recibir">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato acogida
+  </button>
+  <a href="/familias/{{ familia.id }}/editar" class="btn btn-outline-secondary ms-auto">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+  <button type="button" class="btn btn-outline-danger"
+    data-confirm-form="formEliminar"
+    data-confirm-title="¿Eliminar familia?"
+    data-confirm-message="Se eliminará el registro de {{ familia.nombre }} {{ familia.apellidos }}. Esta acción no se puede deshacer."
+    data-confirm-btn-text="Eliminar">
+    <i class="bi bi-trash me-1"></i>Eliminar
+  </button>
+  <form id="formEliminar" method="post" action="/familias/{{ familia.id }}/eliminar" class="d-none"></form>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-folder2-open me-2"></i>Contrato firmado</span>
+    {% if familia.contrato_firmado_url %}
+    <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Subido</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if familia.contrato_firmado_url %}
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+      <div>
+        <div class="fw-semibold small">{{ familia.contrato_firmado_nombre or 'Contrato firmado' }}</div>
+        {% if familia.contrato_firmado_fecha %}
+        <div class="text-muted" style="font-size:0.75rem;">Subido el {{ familia.contrato_firmado_fecha.strftime('%d/%m/%Y') }}</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ familia.contrato_firmado_url }}" target="_blank" class="btn btn-sm btn-outline-primary flex-grow-1">
+        <i class="bi bi-download me-1"></i>Descargar
+      </a>
+      <form id="form-del-contrato" method="post" action="/familias/{{ familia.id }}/contrato-firmado/eliminar" class="d-none"></form>
+      <button type="button" class="btn btn-sm btn-outline-danger"
+              data-confirm-form="form-del-contrato"
+              data-confirm-title="¿Eliminar contrato?"
+              data-confirm-message="Se eliminará el contrato firmado subido. Esta acción no se puede deshacer."
+              data-confirm-btn-text="Eliminar">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    {% else %}
+    <form method="post" action="/familias/{{ familia.id }}/contrato-firmado" enctype="multipart/form-data">
+      <label class="form-label small fw-semibold mb-1">Subir contrato firmado (PDF)</label>
+      <input type="file" name="archivo" class="form-control form-control-sm mb-2" accept=".pdf,application/pdf" required>
+      <button type="submit" class="btn btn-sm btn-outline-success w-100">
+        <i class="bi bi-upload me-1"></i>Subir
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Datos personales -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-person me-2"></i>Datos personales
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted fw-normal small">DNI</dt>
+          <dd class="col-sm-8 fw-semibold">{{ familia.dni }}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Email</dt>
+          <dd class="col-sm-8">
+            {% if familia.email %}
+              <a href="mailto:{{ familia.email }}">{{ familia.email }}</a>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Teléfono</dt>
+          <dd class="col-sm-8">
+            {% if familia.telefono %}
+              <a href="tel:{{ familia.telefono }}">{{ familia.telefono }}</a>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Dirección</dt>
+          <dd class="col-sm-8">{{ familia.direccion or '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Municipio</dt>
+          <dd class="col-sm-8">{{ familia.municipio or '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Provincia</dt>
+          <dd class="col-sm-8">{{ familia.provincia or '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">C.P.</dt>
+          <dd class="col-sm-8">{{ familia.codigo_postal or '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal small">Contrato</dt>
+          <dd class="col-sm-8">{{ familia.fecha_contrato.strftime('%d/%m/%Y') }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Perro asociado -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-heart me-2"></i>Perro asociado
+      </div>
+      <div class="card-body">
+        {% if familia.perro %}
+          {% set p = familia.perro %}
+          <div class="d-flex align-items-center gap-3">
+            {% if p.foto_url %}
+              <img src="{{ p.foto_url.replace('/upload/', '/upload/c_fill,w_72,h_72/') }}"
+                   class="rounded" width="72" height="72" style="object-fit:cover;">
+            {% else %}
+              <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                   style="width:72px;height:72px;">
+                <i class="bi bi-camera text-muted" style="font-size:1.5rem;"></i>
+              </div>
+            {% endif %}
+            <div>
+              <div class="fw-semibold fs-5">
+                <a href="/perros/{{ p.id }}" class="text-decoration-none text-dark">{{ p.nombre }}</a>
+              </div>
+              {% if p.num_chip %}<div class="text-muted small">Chip: {{ p.num_chip }}</div>{% endif %}
+              <span class="badge bg-secondary mt-1">{{ p.estado.value }}</span>
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">Sin perro asignado.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Notas -->
+  {% if familia.notas %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-chat-left-text me-2"></i>Notas
+      </div>
+      <div class="card-body">
+        <p class="mb-0" style="white-space:pre-wrap;">{{ familia.notas }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
