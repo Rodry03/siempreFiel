@@ -1,7 +1,8 @@
 import os
+import logging
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from app.templates_config import templates
@@ -9,6 +10,8 @@ from app.database import init_db
 from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias
 from app.routers import login as login_router
 from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Siempre Fiel")
 
@@ -53,8 +56,16 @@ app.include_router(familias.router)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code == 404:
         return templates.TemplateResponse(request, "404.html", {}, status_code=404)
+    if exc.status_code == 500:
+        return templates.TemplateResponse(request, "500.html", {}, status_code=500)
     from fastapi.exception_handlers import http_exception_handler as _default
     return await _default(request, exc)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Error no controlado en %s %s", request.method, request.url)
+    return templates.TemplateResponse(request, "500.html", {}, status_code=500)
 
 
 @app.exception_handler(NotAuthenticated)
@@ -65,6 +76,12 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticated):
 @app.exception_handler(NotAuthorized)
 async def not_authorized_handler(request: Request, exc: NotAuthorized):
     return RedirectResponse("/perros/", status_code=303)
+
+
+@app.get("/health", include_in_schema=False)
+@app.head("/health", include_in_schema=False)
+async def health():
+    return Response(status_code=200)
 
 
 @app.on_event("startup")
