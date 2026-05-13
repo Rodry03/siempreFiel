@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from app.templates_config import templates
 from app.database import init_db
-from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias
+from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias, consulta
 from app.routers import login as login_router
 from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
 
@@ -50,6 +50,7 @@ app.include_router(search.router)
 app.include_router(eventos.router)
 app.include_router(economia.router)
 app.include_router(familias.router)
+app.include_router(consulta.router)
 
 
 @app.exception_handler(StarletteHTTPException)

@@ -112,6 +112,10 @@
       <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
       </a>
+      <a class="nav-link {% if '/consulta' in request.url.path %}active{% endif %}" href="/consulta/"
+         style="background: rgba(49,174,144,.18);">
+        <i class="bi bi-stars me-2"></i>AntonIA
+      </a>
       {% endif %}
       <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
         <i class="bi bi-gitlab me-2"></i>Perros
@@ -195,6 +199,10 @@
         {% if not es_veterano %}
         <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
           <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+        <a class="nav-link {% if '/consulta' in request.url.path %}active{% endif %}" href="/consulta/"
+           style="background: rgba(49,174,144,.18);">
+          <i class="bi bi-stars me-2"></i>AntonIA
         </a>
         {% endif %}
         <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">

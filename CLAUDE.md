@@ -32,6 +32,7 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - **ORM:** SQLAlchemy
 - **Analytics:** dbt-postgres
 - **Image upload:** Cloudinary (URL-only, stored in `Perro.foto_url`)
+- **AI assistant:** Groq (llama-3.3-70b-versatile) — Text-to-SQL, solo lectura
 - **Deployment:** Render
 
 ---
@@ -228,6 +229,7 @@ app/
     eventos.py        — CRUD eventos + asignación de voluntarios. Prefix: /eventos/
     economia.py       — CRUD movimientos económicos (ingreso/gasto/deuda). Prefix: /economia/
     familias.py       — CRUD familias adoptantes/acogedoras + upload contrato firmado (Cloudinary). Prefix: /familias/
+    consulta.py       — Asistente AntonIA: Text-to-SQL con Groq. GET /consulta/ (UI chat), POST /consulta/preguntar (AJAX). Solo junta/admin. Requiere GROQ_API_KEY.
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
     login.html        — Login form (with logo). Fondo gradiente verde marca
@@ -258,6 +260,9 @@ app/
     economia/
       list.html       — Tarjetas resumen + filtro por tipo + tabla con acciones
     familias/
+      ...
+    consulta/
+      chat.html       — UI de chat: burbujas, typing dots, chips de sugerencias, autoexpand textarea
       list.html       — Lista con filtro por tipo (adopcion/acogida), columnas: nombre, apellidos, DNI, tipo, perro, teléfono, fecha contrato
       detail.html     — Ficha + tarjeta contrato firmado (upload/descarga/eliminar) + dos botones disabled para generar contratos
       form.html       — Create/edit con dropdown de perros (no fallecidos)
@@ -351,6 +356,8 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 28. **Fórmula saldo turnos:** `sum(valores_semana) - 1` por semana (no `sum(valores_semana)`). 1 turno = neutro (0), no +1. Aplica igual en Python (`calcular_saldo`) y dbt (`mart_saldo_turnos_semanal`). La semana actual nunca penaliza.
 29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin. Los botones de generación de contrato están deshabilitados hasta recibir las plantillas Word (mismo mecanismo que voluntarios).
 30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
+31. **AntonIA (Text-to-SQL):** Asistente IA en `/consulta/` solo para junta/admin. Flujo: pregunta en lenguaje natural → Groq genera SQL → validación estricta (solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE/CREATE) → ejecuta en Neon → Groq formatea respuesta. Modelo: `llama-3.3-70b-versatile`. Requiere `GROQ_API_KEY` en env vars. El tiempo en la protectora usa `COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada` para perros ya adoptados.
+32. **Gestión de errores HTTP:** Handler para 404 (`404.html`) y 500 (`500.html`). Handler global para excepciones Python no controladas (`Exception`) → loguea el traceback y muestra `500.html`. Endpoint `/health` (GET+HEAD) para el health check de Render.
 
 ---
 

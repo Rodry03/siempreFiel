@@ -12,3 +12,4 @@ itsdangerous
 python-docx
 docx2pdf
 cloudinary
+groq

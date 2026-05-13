@@ -12,6 +12,7 @@ Aplicación web para la gestión interna de la protectora **Siempre Fiel**: regi
 | ORM | SQLAlchemy |
 | Imágenes | Cloudinary |
 | Analítica | dbt-postgres |
+| Asistente IA | Groq (llama-3.3-70b-versatile) |
 | Despliegue | Render |
 
 ## Roles y permisos
@@ -115,7 +116,8 @@ protectora/
 │   │   ├── turnos.py        # Perfil voluntario + registro de turnos. Prefix: /voluntarios
 │   │   ├── turnos_admin.py  # Gestión centralizada de turnos (junta/admin). Prefix: /turnos
 │   │   ├── visitas.py       # Pipeline visitantes
-│   │   └── usuarios.py      # Gestión de usuarios (admin)
+│   │   ├── usuarios.py      # Gestión de usuarios (admin)
+│   │   └── consulta.py      # AntonIA: asistente Text-to-SQL con Groq (solo junta/admin)
 │   └── templates/
 │       ├── base.html        # Sidebar (verde #31ae90), Nunito, fondo #eef4f2
 │       ├── login.html       # Fondo gradiente verde marca
@@ -192,6 +194,7 @@ DATABASE_URL=postgresql://...
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
+GROQ_API_KEY=...
 ```
 
 ### Ejecutar dbt
@@ -210,6 +213,17 @@ $env:DBT_NEON_HOST="<host>"; $env:DBT_NEON_USER="<user>"; $env:DBT_NEON_PASSWORD
 # Dev (PostgreSQL local)
 $env:DBT_PASSWORD="<pass>"; dbt run --target dev
 ```
+
+## AntonIA — Asistente IA
+
+Accesible en `/consulta/` (solo junta y admin). Permite hacer preguntas en lenguaje natural sobre los datos de la protectora: perros, voluntarios, turnos, economía, eventos, etc.
+
+- Traduce la pregunta a SQL con Groq (`llama-3.3-70b-versatile`)
+- Valida que la query sea solo `SELECT` (bloquea cualquier operación de escritura)
+- Ejecuta contra la base de datos Neon
+- Devuelve la respuesta formateada en lenguaje natural
+
+Requiere la variable de entorno `GROQ_API_KEY`.
 
 ## Despliegue
 
