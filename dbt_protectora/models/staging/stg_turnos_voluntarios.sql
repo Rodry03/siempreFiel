@@ -1,5 +1,3 @@
-{{ config(materialized='table') }}
-
 select
     id,
     voluntario_id,

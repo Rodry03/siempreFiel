@@ -56,11 +56,15 @@ def listar_turnos(
         db.query(Voluntario)
         .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
     )
-    if perfil:
+    if perfil == "todos":
+        pass
+    elif perfil:
         try:
             q = q.filter(Voluntario.perfil == PerfilVoluntario(perfil))
         except ValueError:
             perfil = None
+    else:
+        q = q.filter(Voluntario.perfil.in_([PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta]))
     voluntarios = q.order_by(Voluntario.nombre, Voluntario.apellido).all()
 
     turnos_semana = (
