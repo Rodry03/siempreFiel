@@ -181,7 +181,7 @@ def listar_perros(
 
     medicaciones_hoy = []
     if ubicacion == "refugio":
-        medicaciones_hoy = (
+        candidatas = (
             db.query(MedicacionPerro)
             .join(Perro, MedicacionPerro.perro_id == Perro.id)
             .join(Ubicacion, and_(
@@ -197,6 +197,11 @@ def listar_perros(
             .order_by(Perro.nombre, MedicacionPerro.medicamento)
             .all()
         )
+        medicaciones_hoy = [
+            m for m in candidatas
+            if not m.frecuencia_dias
+            or (hoy - m.fecha_inicio).days % m.frecuencia_dias == 0
+        ]
 
     return templates.TemplateResponse(request, "perros/list.html", {
         "perros_con_ubicacion": perros_con_ubicacion,
@@ -645,6 +650,7 @@ def agregar_medicacion(
     medicamento: str = Form(...),
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
+    frecuencia_dias: Optional[int] = Form(None),
     turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
@@ -656,6 +662,7 @@ def agregar_medicacion(
         medicamento=medicamento.strip(),
         dosis=dosis or None,
         frecuencia=frecuencia or None,
+        frecuencia_dias=frecuencia_dias or None,
         turno=",".join(turno) if turno else None,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin or None,
@@ -672,6 +679,7 @@ def editar_medicacion(
     medicamento: str = Form(...),
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
+    frecuencia_dias: Optional[int] = Form(None),
     turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
@@ -683,6 +691,7 @@ def editar_medicacion(
         med.medicamento = medicamento.strip()
         med.dosis = dosis or None
         med.frecuencia = frecuencia or None
+        med.frecuencia_dias = frecuencia_dias or None
         med.turno = ",".join(turno) if turno else None
         med.fecha_inicio = fecha_inicio
         med.fecha_fin = fecha_fin or None

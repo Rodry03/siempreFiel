@@ -321,15 +321,16 @@ class CeloPerro(Base):
 class MedicacionPerro(Base):
     __tablename__ = "medicaciones_perro"
 
-    id           = Column(Integer, primary_key=True, index=True)
-    perro_id     = Column(Integer, ForeignKey("perros.id"), nullable=False)
-    medicamento  = Column(String(200), nullable=False)
-    dosis        = Column(String(100), nullable=True)
-    frecuencia   = Column(String(100), nullable=True)
-    turno        = Column(String(20), nullable=True)
-    fecha_inicio = Column(Date, nullable=False, default=date.today)
-    fecha_fin    = Column(Date, nullable=True)
-    notas        = Column(Text, nullable=True)
+    id              = Column(Integer, primary_key=True, index=True)
+    perro_id        = Column(Integer, ForeignKey("perros.id"), nullable=False)
+    medicamento     = Column(String(200), nullable=False)
+    dosis           = Column(String(100), nullable=True)
+    frecuencia      = Column(String(100), nullable=True)
+    frecuencia_dias = Column(Integer, nullable=True)
+    turno           = Column(String(20), nullable=True)
+    fecha_inicio    = Column(Date, nullable=False, default=date.today)
+    fecha_fin       = Column(Date, nullable=True)
+    notas           = Column(Text, nullable=True)
 
     perro = relationship("Perro", back_populates="medicaciones")
 
