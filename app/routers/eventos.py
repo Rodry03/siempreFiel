@@ -29,6 +29,21 @@ def _tipos_list(evento) -> list:
     return [t for t in evento.tipo.split(",") if t]
 
 
+def _duracion(h1: Optional[str], h2: Optional[str]) -> Optional[str]:
+    if not h1 or not h2:
+        return None
+    try:
+        p1 = [int(x) for x in h1.split(":")]
+        p2 = [int(x) for x in h2.split(":")]
+        mins = (p2[0] * 60 + p2[1]) - (p1[0] * 60 + p1[1])
+        if mins <= 0:
+            return None
+        h, m = divmod(mins, 60)
+        return f"{h}h {m:02d}m" if h else f"{m}m"
+    except Exception:
+        return None
+
+
 @router.get("/", dependencies=[Depends(get_current_user)])
 def lista_eventos(request: Request, db: Session = Depends(get_db)):
     eventos = db.query(Evento).order_by(Evento.fecha.desc()).all()
@@ -87,11 +102,13 @@ def detalle_evento(request: Request, evento_id: int, db: Session = Depends(get_d
     if asignados_ids:
         query = query.filter(Voluntario.id.notin_(asignados_ids))
     voluntarios_disponibles = query.order_by(Voluntario.nombre, Voluntario.apellido).all()
+    duraciones = {ep.id: _duracion(ep.hora_llegada, ep.hora_salida) for ep in evento.participantes}
     return templates.TemplateResponse(request, "eventos/detail.html", {
         "evento": evento,
         "tipos_labels": TIPOS_LABELS,
         "evento_tipos": _tipos_list(evento),
         "voluntarios_disponibles": voluntarios_disponibles,
+        "duraciones": duraciones,
     })
 
 
@@ -159,6 +176,26 @@ def agregar_voluntario(
     ).first()
     if not existe:
         db.add(EventoVoluntario(evento_id=evento_id, voluntario_id=voluntario_id))
+        db.commit()
+    return RedirectResponse(f"/eventos/{evento_id}", status_code=303)
+
+
+@router.post("/{evento_id}/voluntario/{voluntario_id}/horario", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
+def guardar_horario_voluntario(
+    request: Request,
+    evento_id: int,
+    voluntario_id: int,
+    hora_llegada: Optional[str] = Form(None),
+    hora_salida: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    ev = db.query(EventoVoluntario).filter(
+        EventoVoluntario.evento_id == evento_id,
+        EventoVoluntario.voluntario_id == voluntario_id,
+    ).first()
+    if ev:
+        ev.hora_llegada = hora_llegada or None
+        ev.hora_salida = hora_salida or None
         db.commit()
     return RedirectResponse(f"/eventos/{evento_id}", status_code=303)
 

@@ -106,19 +106,47 @@
         {% if evento.participantes %}
         <ul class="list-group list-group-flush">
           {% for ep in evento.participantes %}
-          <li class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
-            <div>
-              <a href="/voluntarios/{{ ep.voluntario.id }}" class="text-decoration-none fw-semibold">
-                {{ ep.voluntario.nombre }} {{ ep.voluntario.apellido }}
-              </a>
-              <small class="text-muted ms-2">{{ ep.voluntario.perfil.value.replace('_', ' ') }}</small>
+          <li class="list-group-item px-3 py-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <a href="/voluntarios/{{ ep.voluntario.id }}" class="text-decoration-none fw-semibold">
+                  {{ ep.voluntario.nombre }} {{ ep.voluntario.apellido }}
+                </a>
+                <small class="text-muted ms-2">{{ ep.voluntario.perfil.value.replace('_', ' ') }}</small>
+              </div>
+              {% if not es_veterano %}
+              <form method="post" action="/eventos/{{ evento.id }}/voluntario/{{ ep.voluntario.id }}/eliminar">
+                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar">
+                  <i class="bi bi-x"></i>
+                </button>
+              </form>
+              {% endif %}
             </div>
             {% if not es_veterano %}
-            <form method="post" action="/eventos/{{ evento.id }}/voluntario/{{ ep.voluntario.id }}/eliminar">
-              <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar">
-                <i class="bi bi-x"></i>
+            <form method="post" action="/eventos/{{ evento.id }}/voluntario/{{ ep.voluntario.id }}/horario"
+                  class="d-flex align-items-center gap-2 mt-1">
+              <i class="bi bi-clock text-muted" style="font-size:.8rem"></i>
+              <input type="time" name="hora_llegada" value="{{ ep.hora_llegada or '' }}"
+                     class="form-control form-control-sm" style="width:110px">
+              <span class="text-muted small">–</span>
+              <input type="time" name="hora_salida" value="{{ ep.hora_salida or '' }}"
+                     class="form-control form-control-sm" style="width:110px">
+              {% set dur = duraciones.get(ep.id) %}
+              {% if dur %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">{{ dur }}</span>
+              {% endif %}
+              <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-auto" title="Guardar horario">
+                <i class="bi bi-check-lg"></i>
               </button>
             </form>
+            {% else %}
+            {% if ep.hora_llegada or ep.hora_salida %}
+            <div class="mt-1 small text-muted">
+              <i class="bi bi-clock me-1"></i>{{ ep.hora_llegada or '–' }} – {{ ep.hora_salida or '–' }}
+              {% set dur = duraciones.get(ep.id) %}
+              {% if dur %}<span class="text-success fw-semibold ms-1">{{ dur }}</span>{% endif %}
+            </div>
+            {% endif %}
             {% endif %}
           </li>
           {% endfor %}

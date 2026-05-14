@@ -450,6 +450,8 @@ class EventoVoluntario(Base):
     id            = Column(Integer, primary_key=True, index=True)
     evento_id     = Column(Integer, ForeignKey("eventos.id"), nullable=False)
     voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
+    hora_llegada  = Column(String(5), nullable=True)
+    hora_salida   = Column(String(5), nullable=True)
 
     evento     = relationship("Evento", back_populates="participantes")
     voluntario = relationship("Voluntario")
