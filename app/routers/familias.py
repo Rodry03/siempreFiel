@@ -173,13 +173,18 @@ def eliminar_familia(familia_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/familias/", status_code=303)
 
 
+_MAX_CONTRATO_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 def _subir_contrato_familia(file: UploadFile, familia_id: int) -> tuple:
     cloudinary.config(
         cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
         api_key=os.environ.get("CLOUDINARY_API_KEY"),
         api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
     )
-    contents = file.file.read()
+    contents = file.file.read(_MAX_CONTRATO_BYTES + 1)
+    if len(contents) > _MAX_CONTRATO_BYTES:
+        raise ValueError("El archivo supera el tamaño máximo permitido (10 MB).")
     result = cloudinary.uploader.upload(
         contents,
         resource_type="raw",

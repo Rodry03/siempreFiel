@@ -91,7 +91,10 @@ REGLAS:
 - No inventes datos que no estén en los resultados."""
 
 _DANGEROUS = re.compile(
-    r"\b(DROP|DELETE|UPDATE|INSERT|ALTER|TRUNCATE|CREATE|EXEC|EXECUTE|GRANT|REVOKE|COPY|VACUUM)\b",
+    r"\b(DROP|DELETE|UPDATE|INSERT|ALTER|TRUNCATE|CREATE|EXEC|EXECUTE|GRANT|REVOKE|COPY|VACUUM"
+    r"|pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_export|lo_import|lo_create|lo_unlink"
+    r"|pg_sleep|pg_cancel_backend|pg_terminate_backend|dblink|dblink_exec"
+    r"|PERFORM|DO\s+\$\$|INTO\s+OUTFILE|INTO\s+DUMPFILE)\b",
     re.IGNORECASE,
 )
 
