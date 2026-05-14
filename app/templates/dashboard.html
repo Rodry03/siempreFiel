@@ -5,11 +5,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0">Dashboard</h2>
   {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
-  <form method="post" action="/dbt-run">
-    <button type="submit" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-arrow-repeat me-1"></i>Actualizar analytics
-    </button>
-  </form>
+  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDbtRun" onclick="ejecutarDbt(this)">
+    <i class="bi bi-arrow-repeat me-1"></i>Actualizar analytics
+  </button>
   {% endif %}
 </div>
 <!-- Stat cards -->
@@ -83,12 +81,10 @@
       <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
         <span class="fw-semibold"><i class="bi bi-calendar-check text-primary me-2"></i>Cobertura semanal de turnos</span>
         {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
-        <form method="post" action="/dbt-run-model">
-          <input type="hidden" name="model" value="mart_cobertura_semanal">
-          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Actualizar cobertura">
-            <i class="bi bi-arrow-clockwise"></i>
-          </button>
-        </form>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="Actualizar cobertura"
+                onclick="ejecutarDbtModelo(this, 'mart_cobertura_semanal')">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
         {% endif %}
       </div>
       <div class="card-body">
@@ -900,6 +896,65 @@ function abrirDetalleCard(tipo) {
   } else {
     fetch(cfg.url).then(r => r.json()).then(d => populate(d.items));
   }
+}
+</script>
+
+<script>
+async function ejecutarDbt(btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Ejecutando...';
+  try {
+    const r = await fetch('/dbt-run', {method: 'POST'});
+    const {job_id} = await r.json();
+    await _pollDbt(job_id);
+    _alertaDbt('success', 'Analytics actualizados correctamente.');
+    btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Listo';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+  } catch(e) {
+    _alertaDbt('danger', String(e.message || e));
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+async function ejecutarDbtModelo(btn, model) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  try {
+    const fd = new FormData();
+    fd.append('model', model);
+    const r = await fetch('/dbt-run-model', {method: 'POST', body: fd});
+    const data = await r.json();
+    if (data.status === 'error') throw new Error(data.output);
+    await _pollDbt(data.job_id);
+    _alertaDbt('success', model + ' actualizado correctamente.');
+    btn.innerHTML = '<i class="bi bi-check-circle"></i>';
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+  } catch(e) {
+    _alertaDbt('danger', String(e.message || e));
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+async function _pollDbt(job_id) {
+  while (true) {
+    await new Promise(r => setTimeout(r, 1500));
+    const r = await fetch('/dbt-status/' + job_id);
+    const data = await r.json();
+    if (data.status === 'ok') return;
+    if (data.status === 'error') throw new Error(data.output);
+  }
+}
+
+function _alertaDbt(tipo, msg) {
+  const a = document.createElement('div');
+  a.className = 'alert alert-' + tipo + ' alert-dismissible fade show mb-4';
+  a.innerHTML = '<span style="white-space:pre-wrap">' + msg + '</span>'
+    + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+  document.querySelector('.content').prepend(a);
 }
 </script>
 {% endblock %}

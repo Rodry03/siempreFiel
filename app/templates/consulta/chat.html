@@ -252,6 +252,8 @@ const chatMessages = document.getElementById('chatMessages');
 const chatInput   = document.getElementById('chatInput');
 const btnSend     = document.getElementById('btnSend');
 
+let sqlHistory = [];  // [{role: 'user'|'assistant', content: pregunta|sql}, ...]
+
 function scrollBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -310,7 +312,7 @@ async function sendPregunta(pregunta) {
     const res = await fetch('/consulta/preguntar', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({pregunta}),
+      body: JSON.stringify({pregunta, history: sqlHistory}),
     });
     const data = await res.json();
     removeTyping();
@@ -319,6 +321,11 @@ async function sendPregunta(pregunta) {
       addAntonIABubble('⚠️ ' + data.error, true);
     } else {
       addAntonIABubble(data.respuesta);
+      if (data.sql) {
+        sqlHistory.push({role: 'user', content: pregunta});
+        sqlHistory.push({role: 'assistant', content: data.sql});
+        if (sqlHistory.length > 12) sqlHistory = sqlHistory.slice(-12);
+      }
     }
   } catch (e) {
     removeTyping();

@@ -79,6 +79,85 @@
 </head>
 <body>
 
+{% macro nav_links() %}
+  {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
+  <button type="button" class="nav-link text-start border-0 bg-transparent w-100" onclick="abrirBusqueda()">
+    <i class="bi bi-search me-2"></i>Buscar <span class="text-white-50 small ms-1">/</span>
+  </button>
+  {% if not es_veterano %}
+  <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
+    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+  </a>
+  <a class="nav-link {% if '/consulta' in request.url.path %}active{% endif %}" href="/consulta/"
+     style="background: rgba(49,174,144,.18);">
+    <i class="bi bi-stars me-2"></i>AntonIA
+  </a>
+  {% endif %}
+  <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
+    <i class="bi bi-gitlab me-2"></i>Perros
+  </a>
+  {% if not es_veterano %}
+  <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
+    <i class="bi bi-people me-2"></i>Voluntarios
+  </a>
+  <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
+    <i class="bi bi-door-open me-2"></i>Visitas
+  </a>
+  <a class="nav-link {% if '/familias' in request.url.path %}active{% endif %}" href="/familias/">
+    <i class="bi bi-house-heart me-2"></i>Familias
+  </a>
+  <a class="nav-link {% if '/turnos' in request.url.path %}active{% endif %}" href="/turnos/">
+    <i class="bi bi-calendar-check me-2"></i>Turnos
+  </a>
+  {% endif %}
+  <a class="nav-link {% if '/eventos' in request.url.path %}active{% endif %}" href="/eventos/">
+    <i class="bi bi-calendar-event me-2"></i>Eventos
+  </a>
+  <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
+    <i class="bi bi-tools me-2"></i>Instalaciones
+  </a>
+  <a class="nav-link {% if '/economia' in request.url.path %}active{% endif %}" href="/economia/">
+    <i class="bi bi-cash-coin me-2"></i>Economía
+  </a>
+  <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
+    <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
+  </a>
+  {% set _u = request.state.current_user %}
+  {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
+  <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">
+    <i class="bi bi-journal-check me-2"></i>Notas
+  </a>
+  {% endif %}
+  {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
+  <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
+    <i class="bi bi-shield-lock me-2"></i>Usuarios
+  </a>
+  {% endif %}
+  {% if es_veterano and request.state.current_user.voluntario_id %}
+  <a class="nav-link {% if '/voluntarios/' ~ request.state.current_user.voluntario_id == request.url.path %}active{% endif %}"
+     href="/voluntarios/{{ request.state.current_user.voluntario_id }}">
+    <i class="bi bi-person-circle me-2"></i>Mi perfil
+  </a>
+  {% endif %}
+{% endmacro %}
+
+{% macro sidebar_footer() %}
+  {% if request.state.current_user %}
+  <div class="px-3 pb-3 mt-auto">
+    <div class="text-white-50 small mb-1">
+      <i class="bi bi-person-circle me-1"></i>{{ request.state.current_user.nombre }}
+      <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">
+        {{ request.state.current_user.rol.value }}
+      </span>
+    </div>
+    <button class="btn btn-sm btn-outline-light w-100 mb-2 btn-tema" onclick="toggleTema()"></button>
+    <a href="/logout" class="btn btn-sm btn-outline-light w-100">
+      <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
+    </a>
+  </div>
+  {% endif %}
+{% endmacro %}
+
 <!-- Navbar superior (solo móvil) -->
 <nav class="navbar mobile-navbar d-md-none px-3 py-2">
   <button class="btn btn-link text-white p-0 me-3" type="button"
@@ -103,81 +182,10 @@
     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column p-0">
-    {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
     <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
-      <button type="button" class="nav-link text-start border-0 bg-transparent w-100" onclick="abrirBusqueda()">
-        <i class="bi bi-search me-2"></i>Buscar <span class="text-white-50 small ms-1">/</span>
-      </button>
-      {% if not es_veterano %}
-      <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
-        <i class="bi bi-speedometer2 me-2"></i>Dashboard
-      </a>
-      <a class="nav-link {% if '/consulta' in request.url.path %}active{% endif %}" href="/consulta/"
-         style="background: rgba(49,174,144,.18);">
-        <i class="bi bi-stars me-2"></i>AntonIA
-      </a>
-      {% endif %}
-      <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
-        <i class="bi bi-gitlab me-2"></i>Perros
-      </a>
-      {% if not es_veterano %}
-      <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
-        <i class="bi bi-people me-2"></i>Voluntarios
-      </a>
-      <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
-        <i class="bi bi-door-open me-2"></i>Visitas
-      </a>
-      <a class="nav-link {% if '/familias' in request.url.path %}active{% endif %}" href="/familias/">
-        <i class="bi bi-house-heart me-2"></i>Familias
-      </a>
-      <a class="nav-link {% if '/turnos' in request.url.path %}active{% endif %}" href="/turnos/">
-        <i class="bi bi-calendar-check me-2"></i>Turnos
-      </a>
-      {% endif %}
-      <a class="nav-link {% if '/eventos' in request.url.path %}active{% endif %}" href="/eventos/">
-        <i class="bi bi-calendar-event me-2"></i>Eventos
-      </a>
-      <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
-        <i class="bi bi-tools me-2"></i>Instalaciones
-      </a>
-      <a class="nav-link {% if '/economia' in request.url.path %}active{% endif %}" href="/economia/">
-        <i class="bi bi-cash-coin me-2"></i>Economía
-      </a>
-      <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
-        <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
-      </a>
-      {% set _u = request.state.current_user %}
-      {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
-      <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">
-        <i class="bi bi-journal-check me-2"></i>Notas
-      </a>
-      {% endif %}
-      {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
-      <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
-        <i class="bi bi-shield-lock me-2"></i>Usuarios
-      </a>
-      {% endif %}
-      {% if es_veterano and request.state.current_user.voluntario_id %}
-      <a class="nav-link {% if '/voluntarios/' ~ request.state.current_user.voluntario_id == request.url.path %}active{% endif %}"
-         href="/voluntarios/{{ request.state.current_user.voluntario_id }}">
-        <i class="bi bi-person-circle me-2"></i>Mi perfil
-      </a>
-      {% endif %}
+      {{ nav_links() }}
     </nav>
-    {% if request.state.current_user %}
-    <div class="px-3 pb-3 mt-auto">
-      <div class="text-white-50 small mb-1">
-        <i class="bi bi-person-circle me-1"></i>{{ request.state.current_user.nombre }}
-        <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">
-          {{ request.state.current_user.rol.value }}
-        </span>
-      </div>
-      <button class="btn btn-sm btn-outline-light w-100 mb-2 btn-tema" onclick="toggleTema()"></button>
-      <a href="/logout" class="btn btn-sm btn-outline-light w-100">
-        <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
-      </a>
-    </div>
-    {% endif %}
+    {{ sidebar_footer() }}
   </div>
 </div>
 
@@ -191,81 +199,10 @@
         <img src="/static/img/logo.png" alt="Logo" style="height:28px; width:28px; object-fit:contain; background:white; border-radius:6px; padding:2px;"> Siempre Fiel
         <small>Gestión de refugio</small>
       </a>
-      {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}
       <nav class="nav flex-column mt-2 flex-grow-1 sidebar-nav">
-        <button type="button" class="nav-link text-start border-0 bg-transparent w-100" onclick="abrirBusqueda()">
-          <i class="bi bi-search me-2"></i>Buscar <span class="text-white-50 small ms-1">/</span>
-        </button>
-        {% if not es_veterano %}
-        <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
-          <i class="bi bi-speedometer2 me-2"></i>Dashboard
-        </a>
-        <a class="nav-link {% if '/consulta' in request.url.path %}active{% endif %}" href="/consulta/"
-           style="background: rgba(49,174,144,.18);">
-          <i class="bi bi-stars me-2"></i>AntonIA
-        </a>
-        {% endif %}
-        <a class="nav-link {% if '/perros' in request.url.path %}active{% endif %}" href="/perros/">
-          <i class="bi bi-gitlab me-2"></i>Perros
-        </a>
-        {% if not es_veterano %}
-        <a class="nav-link {% if '/voluntarios' in request.url.path %}active{% endif %}" href="/voluntarios/">
-          <i class="bi bi-people me-2"></i>Voluntarios
-        </a>
-        <a class="nav-link {% if '/visitas' in request.url.path %}active{% endif %}" href="/visitas/">
-          <i class="bi bi-door-open me-2"></i>Visitas
-        </a>
-        <a class="nav-link {% if '/familias' in request.url.path %}active{% endif %}" href="/familias/">
-          <i class="bi bi-house-heart me-2"></i>Familias
-        </a>
-        <a class="nav-link {% if '/turnos' in request.url.path %}active{% endif %}" href="/turnos/">
-          <i class="bi bi-calendar-check me-2"></i>Turnos
-        </a>
-        {% endif %}
-        <a class="nav-link {% if '/eventos' in request.url.path %}active{% endif %}" href="/eventos/">
-          <i class="bi bi-calendar-event me-2"></i>Eventos
-        </a>
-        <a class="nav-link {% if '/instalaciones' in request.url.path %}active{% endif %}" href="/instalaciones/">
-          <i class="bi bi-tools me-2"></i>Instalaciones
-        </a>
-        <a class="nav-link {% if '/economia' in request.url.path %}active{% endif %}" href="/economia/">
-          <i class="bi bi-cash-coin me-2"></i>Economía
-        </a>
-        <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
-          <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
-        </a>
-        {% set _u = request.state.current_user %}
-        {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
-        <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">
-          <i class="bi bi-journal-check me-2"></i>Notas
-        </a>
-        {% endif %}
-        {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
-        <a class="nav-link {% if '/usuarios' in request.url.path %}active{% endif %}" href="/usuarios/">
-          <i class="bi bi-shield-lock me-2"></i>Usuarios
-        </a>
-        {% endif %}
-        {% if es_veterano and request.state.current_user.voluntario_id %}
-        <a class="nav-link {% if '/voluntarios/' ~ request.state.current_user.voluntario_id == request.url.path %}active{% endif %}"
-           href="/voluntarios/{{ request.state.current_user.voluntario_id }}">
-          <i class="bi bi-person-circle me-2"></i>Mi perfil
-        </a>
-        {% endif %}
+        {{ nav_links() }}
       </nav>
-      {% if request.state.current_user %}
-      <div class="px-3 pb-3 mt-auto">
-        <div class="text-white-50 small mb-1">
-          <i class="bi bi-person-circle me-1"></i>{{ request.state.current_user.nombre }}
-          <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">
-            {{ request.state.current_user.rol.value }}
-          </span>
-        </div>
-        <button class="btn btn-sm btn-outline-light w-100 mb-2 btn-tema" onclick="toggleTema()"></button>
-        <a href="/logout" class="btn btn-sm btn-outline-light w-100">
-          <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
-        </a>
-      </div>
-      {% endif %}
+      {{ sidebar_footer() }}
     </div>
 
     <!-- Contenido principal -->

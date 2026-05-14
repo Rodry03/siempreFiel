@@ -99,8 +99,14 @@ def _validar_select(sql: str) -> bool:
     return True
 
 
+class MensajeHistorial(BaseModel):
+    role: str
+    content: str
+
+
 class Pregunta(BaseModel):
     pregunta: str
+    history: list[MensajeHistorial] = []
 
 
 @router.get("/")
@@ -122,20 +128,23 @@ async def preguntar(body: Pregunta, db: Session = Depends(get_db)):
         from groq import Groq
         client = Groq(api_key=api_key)
 
-        # Paso 1: generar SQL
+        # Paso 1: generar SQL (con historial de conversación)
+        messages_sql = [{"role": "system", "content": _SYSTEM_SQL}]
+        for h in body.history[-12:]:  # máx 6 intercambios anteriores
+            if h.role in ("user", "assistant"):
+                messages_sql.append({"role": h.role, "content": h.content})
+        messages_sql.append({"role": "user", "content": pregunta})
+
         sql_resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": _SYSTEM_SQL},
-                {"role": "user", "content": pregunta},
-            ],
+            messages=messages_sql,
             temperature=0,
             max_tokens=500,
         )
         sql_raw = sql_resp.choices[0].message.content.strip()
 
         if "NO_PUEDO_RESPONDER" in sql_raw.upper():
-            return JSONResponse({"respuesta": "No tengo suficientes datos para responder esa pregunta con la información disponible."})
+            return JSONResponse({"respuesta": "No tengo suficientes datos para responder esa pregunta con la información disponible.", "sql": None})
 
         sql = _extraer_sql(sql_raw)
 
@@ -165,7 +174,7 @@ async def preguntar(body: Pregunta, db: Session = Depends(get_db)):
             max_tokens=400,
         )
         respuesta = answer_resp.choices[0].message.content.strip()
-        return JSONResponse({"respuesta": respuesta})
+        return JSONResponse({"respuesta": respuesta, "sql": sql})
 
     except Exception as e:
         logger.exception("Error en asistente IA: %s", e)

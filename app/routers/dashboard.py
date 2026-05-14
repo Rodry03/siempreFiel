@@ -1,18 +1,72 @@
+import asyncio
 import logging
 import os
 import subprocess
+import uuid
 from datetime import date
 from fastapi import APIRouter, Request, Depends, Query
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text, extract, func
 from app.database import get_db
 from app.templates_config import templates
-from app.auth import get_current_user, require_not_veterano, require_admin, flash
+from app.auth import get_current_user, require_not_veterano, require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
+
+_dbt_jobs: dict[str, dict] = {}
+
+
+def _dbt_subprocess(cmd: list[str], dbt_dir: str, env: dict, timeout: int) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=dbt_dir, capture_output=True, text=True, timeout=timeout, env=env)
+
+
+async def _run_dbt_full(job_id: str):
+    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
+    env = {**os.environ}
+    try:
+        deps = await asyncio.to_thread(_dbt_subprocess, ["dbt", "deps"], dbt_dir, env, 60)
+        if deps.returncode != 0:
+            output = (deps.stderr or deps.stdout or "").strip()
+            logger.error("dbt deps FAILED:\n%s", output)
+            _dbt_jobs[job_id] = {"status": "error", "output": f"Error en dbt deps:\n{output[-500:]}"}
+            return
+
+        result = await asyncio.to_thread(_dbt_subprocess, ["dbt", "run"], dbt_dir, env, 180)
+        if result.returncode == 0:
+            logger.info("dbt run OK")
+            _dbt_jobs[job_id] = {"status": "ok", "output": "Analytics actualizados correctamente."}
+        else:
+            output = (result.stderr or result.stdout or "").strip()
+            last_lines = "\n".join(output.splitlines()[-20:])
+            logger.error("dbt run FAILED:\n%s", output)
+            _dbt_jobs[job_id] = {"status": "error", "output": f"Error en dbt run:\n{last_lines}"}
+    except subprocess.TimeoutExpired:
+        _dbt_jobs[job_id] = {"status": "error", "output": "dbt superó el tiempo límite."}
+    except Exception as e:
+        logger.exception("dbt run excepción: %s", e)
+        _dbt_jobs[job_id] = {"status": "error", "output": str(e)}
+
+
+async def _run_dbt_model(job_id: str, model: str):
+    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
+    env = {**os.environ}
+    try:
+        result = await asyncio.to_thread(
+            _dbt_subprocess, ["dbt", "run", "--select", model], dbt_dir, env, 60
+        )
+        if result.returncode == 0:
+            _dbt_jobs[job_id] = {"status": "ok", "output": f"{model} actualizado correctamente."}
+        else:
+            output = (result.stderr or result.stdout or "").strip()
+            _dbt_jobs[job_id] = {"status": "error", "output": f"Error: {output[-300:]}"}
+    except subprocess.TimeoutExpired:
+        _dbt_jobs[job_id] = {"status": "error", "output": "dbt superó el tiempo límite."}
+    except Exception as e:
+        logger.exception("dbt run-model excepción: %s", e)
+        _dbt_jobs[job_id] = {"status": "error", "output": str(e)}
 
 
 _ALLOWED_VIEWS = {
@@ -320,47 +374,19 @@ def detalle_voluntarios_activos(db: Session = Depends(get_db)):
 
 
 @router.post("/dbt-run", dependencies=[Depends(require_admin)])
-def ejecutar_dbt(request: Request):
-    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
-    env = {**os.environ}
-    try:
-        deps = subprocess.run(
-            ["dbt", "deps"],
-            cwd=dbt_dir,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            env=env,
-        )
-        if deps.returncode != 0:
-            output = (deps.stderr or deps.stdout or "Sin salida").strip()
-            logger.error("dbt deps FAILED:\n%s", output)
-            flash(request, f"Error al instalar dependencias dbt:\n{output[-500:]}", "danger")
-            return RedirectResponse("/", status_code=303)
+async def ejecutar_dbt(request: Request):
+    job_id = str(uuid.uuid4())[:8]
+    _dbt_jobs[job_id] = {"status": "running", "output": ""}
+    asyncio.create_task(_run_dbt_full(job_id))
+    return JSONResponse({"job_id": job_id})
 
-        result = subprocess.run(
-            ["dbt", "run"],
-            cwd=dbt_dir,
-            capture_output=True,
-            text=True,
-            timeout=180,
-            env=env,
-        )
-        if result.returncode == 0:
-            logger.info("dbt run OK:\n%s", result.stdout)
-            flash(request, "Analytics actualizados correctamente.", "success")
-        else:
-            output = (result.stderr or result.stdout or "Sin salida").strip()
-            last_lines = "\n".join(output.splitlines()[-20:])
-            logger.error("dbt run FAILED (code %d):\n%s", result.returncode, output)
-            flash(request, f"Error al ejecutar dbt run:\n{last_lines}", "danger")
-    except subprocess.TimeoutExpired:
-        logger.error("dbt run timeout")
-        flash(request, "dbt run superó el tiempo límite.", "danger")
-    except Exception as e:
-        logger.exception("dbt run excepción: %s", e)
-        flash(request, f"Error inesperado al ejecutar dbt: {e}", "danger")
-    return RedirectResponse("/", status_code=303)
+
+@router.get("/dbt-status/{job_id}", dependencies=[Depends(require_admin)])
+def dbt_status(job_id: str):
+    job = _dbt_jobs.get(job_id)
+    if not job:
+        return JSONResponse({"status": "unknown"}, status_code=404)
+    return JSONResponse(job)
 
 
 _ALLOWED_MODELS = {
@@ -375,26 +401,8 @@ async def ejecutar_dbt_model(request: Request):
     form = await request.form()
     model = form.get("model", "")
     if model not in _ALLOWED_MODELS:
-        flash(request, "Modelo no permitido.", "danger")
-        return RedirectResponse("/", status_code=303)
-    dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
-    env = {**os.environ}
-    try:
-        result = subprocess.run(
-            ["dbt", "run", "--select", model],
-            cwd=dbt_dir,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            env=env,
-        )
-        if result.returncode == 0:
-            flash(request, f"{model} actualizado correctamente.", "success")
-        else:
-            output = (result.stderr or result.stdout or "Sin salida").strip()
-            flash(request, f"Error actualizando {model}: {output[-300:]}", "danger")
-    except subprocess.TimeoutExpired:
-        flash(request, "dbt run superó el tiempo límite.", "danger")
-    except Exception as e:
-        flash(request, f"Error inesperado: {e}", "danger")
-    return RedirectResponse("/", status_code=303)
+        return JSONResponse({"status": "error", "output": "Modelo no permitido."})
+    job_id = str(uuid.uuid4())[:8]
+    _dbt_jobs[job_id] = {"status": "running", "output": ""}
+    asyncio.create_task(_run_dbt_model(job_id, model))
+    return JSONResponse({"job_id": job_id})
