@@ -1,7 +1,10 @@
 with semanas as (
-    select distinct semana
-    from {{ ref('stg_turnos_voluntarios') }}
-    where semana >= (current_date - interval '20 weeks')::date
+    select date_trunc('week', gs)::date as semana
+    from generate_series(
+        date_trunc('week', current_date - interval '19 weeks')::date,
+        date_trunc('week', current_date)::date,
+        '1 week'::interval
+    ) gs
 ),
 
 dias_semana as (
