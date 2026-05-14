@@ -339,7 +339,26 @@
             </tr>
           </thead>
           <tbody>
+            {% set ns = namespace(mes_actual=None) %}
             {% for item in turnos_recientes %}
+            {% if item.mes != ns.mes_actual %}
+              {% set ns.mes_actual = item.mes %}
+              {% set rm = resumen_mensual.get(item.mes, {}) %}
+              <tr class="table-secondary">
+                <td colspan="3" class="py-1 px-3">
+                  <span class="fw-semibold small">{{ item.mes_label }}</span>
+                  <span class="text-muted small ms-2">
+                    {% set total_r = rm.get('realizados', 0) %}
+                    {% set total_m = rm.get('medio', 0) %}
+                    {% if total_r == 0 and total_m == 0 %}
+                      Sin turnos
+                    {% else %}
+                      {{ total_r }} realizado{{ 's' if total_r != 1 }}{% if total_m %} · {{ total_m }} medio turno{{ 's' if total_m != 1 }}{% endif %}
+                    {% endif %}
+                  </span>
+                </td>
+              </tr>
+            {% endif %}
             <tr class="{% if item.sin_turno %}table-danger{% elif item.es_actual and not item.turnos and not item.en_apoyo %}table-warning bg-opacity-25{% endif %}">
               <td class="text-muted small text-nowrap">
                 {{ item.semana.strftime('%d/%m') }} – {{ item.semana_fin.strftime('%d/%m/%Y') }}

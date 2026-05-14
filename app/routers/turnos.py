@@ -51,6 +51,17 @@ FRANJA_LABELS = {"manana": "Mañana", "tarde": "Tarde"}
 FECHA_INICIO_SALDO = date(2025, 8, 4)
 
 
+def _mes_semana(lunes: date) -> tuple:
+    """Devuelve (year, month) del mes al que pertenece la semana por mayoría de días."""
+    domingo = lunes + timedelta(days=6)
+    if lunes.month == domingo.month:
+        return (lunes.year, lunes.month)
+    dias_en_mes_lunes = sum(1 for i in range(7) if (lunes + timedelta(days=i)).month == lunes.month)
+    if dias_en_mes_lunes >= 4:
+        return (lunes.year, lunes.month)
+    return (domingo.year, domingo.month)
+
+
 def calcular_tiempo_voluntario(fecha_alta) -> str:
     hoy = date.today()
     anos = hoy.year - fecha_alta.year - ((hoy.month, hoy.day) < (fecha_alta.month, fecha_alta.day))
@@ -138,6 +149,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                     if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
                 )
                 saldo_semana = wv - 1.0
+            mes_key = _mes_semana(lunes)
+            mes_label = f"{MESES_ES[mes_key[1]]} {mes_key[0]}"
             turnos_recientes.append({
                 "semana": lunes,
                 "semana_fin": lunes_fin,
@@ -146,9 +159,22 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 "sin_turno": not turnos and not en_apoyo and not es_actual,
                 "es_actual": es_actual,
                 "saldo_semana": saldo_semana,
+                "mes": mes_key,
+                "mes_label": mes_label,
             })
             lunes += timedelta(days=7)
         turnos_recientes.reverse()
+
+        resumen_mensual = {}
+        for entry in turnos_recientes:
+            mk = entry["mes"]
+            if mk not in resumen_mensual:
+                resumen_mensual[mk] = {"label": entry["mes_label"], "realizados": 0, "medio": 0}
+            for t in entry["turnos"]:
+                if t.estado == EstadoTurno.realizado:
+                    resumen_mensual[mk]["realizados"] += 1
+                elif t.estado == EstadoTurno.medio_turno:
+                    resumen_mensual[mk]["medio"] += 1
 
     from app.models import MiembroGrupoTarea, EjecucionGrupoTarea
     hoy = date.today()
@@ -183,6 +209,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "grupos_voluntario": grupos_voluntario,
         "semana_actual": semana_actual,
         "turnos_recientes": turnos_recientes,
+        "resumen_mensual": resumen_mensual if hace_turnos else {},
         "dias_labels": DIAS_ES,
         "franja_labels": FRANJA_LABELS,
     })

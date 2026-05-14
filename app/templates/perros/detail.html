@@ -397,8 +397,16 @@
                 <input type="text" name="frecuencia" class="form-control form-control-sm" placeholder="Ej: Cada 8h">
               </div>
               <div class="col-md-2">
-                <label class="form-label small fw-semibold">Repetir cada (días) <span class="text-muted fw-normal">vacío=siempre</span></label>
+                <label class="form-label small fw-semibold">Cada (días) <span class="text-muted fw-normal">vacío=siempre</span></label>
                 <input type="number" name="frecuencia_dias" class="form-control form-control-sm" min="1" placeholder="Ej: 90">
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small fw-semibold">Ciclo activo</label>
+                <input type="number" name="ciclo_activo_dias" class="form-control form-control-sm" min="1" placeholder="días">
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small fw-semibold">Ciclo pausa</label>
+                <input type="number" name="ciclo_pausa_dias" class="form-control form-control-sm" min="1" placeholder="días">
               </div>
               <div class="col-md-1">
                 <label class="form-label small fw-semibold d-block">Turno</label>
@@ -449,7 +457,11 @@
               <td class="text-muted small">{{ m.dosis or '—' }}</td>
               <td class="text-muted small">
                 {{ m.frecuencia or '—' }}
-                {% if m.frecuencia_dias %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">c/{{ m.frecuencia_dias }}d</span>{% endif %}
+                {% if m.ciclo_activo_dias and m.ciclo_pausa_dias %}
+                  <span class="badge bg-info text-dark ms-1" style="font-size:0.65rem;">{{ m.ciclo_activo_dias }}d ON / {{ m.ciclo_pausa_dias }}d OFF</span>
+                {% elif m.frecuencia_dias %}
+                  <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">c/{{ m.frecuencia_dias }}d</span>
+                {% endif %}
               </td>
               <td class="text-nowrap">
                 {% if m.turno %}
@@ -466,7 +478,7 @@
               {% if not es_veterano %}
               <td class="text-end text-nowrap">
                 <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                  onclick="abrirEditarMedicacion({{ m.id }}, '{{ m.medicamento | e }}', '{{ (m.dosis or '') | e }}', '{{ (m.frecuencia or '') | e }}', {{ m.frecuencia_dias or 'null' }}, '{{ m.turno or '' }}', '{{ m.fecha_inicio }}', '{{ m.fecha_fin or '' }}', '{{ (m.notas or '') | e }}')">
+                  onclick="abrirEditarMedicacion({{ m.id }}, '{{ m.medicamento | e }}', '{{ (m.dosis or '') | e }}', '{{ (m.frecuencia or '') | e }}', {{ m.frecuencia_dias or 'null' }}, {{ m.ciclo_activo_dias or 'null' }}, {{ m.ciclo_pausa_dias or 'null' }}, '{{ m.turno or '' }}', '{{ m.fecha_inicio }}', '{{ m.fecha_fin or '' }}', '{{ (m.notas or '') | e }}')">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-danger py-0"
@@ -515,6 +527,14 @@
                     <div class="col-md-3">
                       <label class="form-label small fw-semibold">Cada (días)</label>
                       <input type="number" name="frecuencia_dias" id="editMedFrecuenciaDias" class="form-control form-control-sm" min="1" placeholder="vacío=siempre">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Ciclo activo (días)</label>
+                      <input type="number" name="ciclo_activo_dias" id="editMedCicloActivo" class="form-control form-control-sm" min="1" placeholder="Ej: 60">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small fw-semibold">Ciclo pausa (días)</label>
+                      <input type="number" name="ciclo_pausa_dias" id="editMedCicloPausa" class="form-control form-control-sm" min="1" placeholder="Ej: 30">
                     </div>
                     <div class="col-md-2">
                       <label class="form-label small fw-semibold d-block">Turno</label>
@@ -728,12 +748,14 @@
   {% endif %}
 
   {% if not es_veterano %}
-  function abrirEditarMedicacion(id, medicamento, dosis, frecuencia, frecuenciaDias, turno, fechaInicio, fechaFin, notas) {
+  function abrirEditarMedicacion(id, medicamento, dosis, frecuencia, frecuenciaDias, cicloActivo, cicloPausa, turno, fechaInicio, fechaFin, notas) {
     document.getElementById('formEditarMedicacion').action = '/perros/{{ perro.id }}/medicacion/' + id + '/editar';
     document.getElementById('editMedMedicamento').value = medicamento;
     document.getElementById('editMedDosis').value = dosis;
     document.getElementById('editMedFrecuencia').value = frecuencia;
     document.getElementById('editMedFrecuenciaDias').value = frecuenciaDias || '';
+    document.getElementById('editMedCicloActivo').value = cicloActivo || '';
+    document.getElementById('editMedCicloPausa').value = cicloPausa || '';
     const turnos = turno ? turno.split(',') : [];
     document.getElementById('editMedTurnoManana').checked = turnos.includes('manana');
     document.getElementById('editMedTurnoTarde').checked = turnos.includes('tarde');

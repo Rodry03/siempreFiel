@@ -16,6 +16,15 @@ import cloudinary.uploader
 _MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
 
 
+def _toca_hoy(med, hoy: date) -> bool:
+    dias = (hoy - med.fecha_inicio).days
+    if med.ciclo_activo_dias and med.ciclo_pausa_dias:
+        return dias % (med.ciclo_activo_dias + med.ciclo_pausa_dias) < med.ciclo_activo_dias
+    if med.frecuencia_dias:
+        return dias % med.frecuencia_dias == 0
+    return True
+
+
 def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
     if not file or not file.filename:
         return None
@@ -197,11 +206,7 @@ def listar_perros(
             .order_by(Perro.nombre, MedicacionPerro.medicamento)
             .all()
         )
-        medicaciones_hoy = [
-            m for m in candidatas
-            if not m.frecuencia_dias
-            or (hoy - m.fecha_inicio).days % m.frecuencia_dias == 0
-        ]
+        medicaciones_hoy = [m for m in candidatas if _toca_hoy(m, hoy)]
 
     return templates.TemplateResponse(request, "perros/list.html", {
         "perros_con_ubicacion": perros_con_ubicacion,
@@ -651,6 +656,8 @@ def agregar_medicacion(
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
     frecuencia_dias: Optional[int] = Form(None),
+    ciclo_activo_dias: Optional[int] = Form(None),
+    ciclo_pausa_dias: Optional[int] = Form(None),
     turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
@@ -663,6 +670,8 @@ def agregar_medicacion(
         dosis=dosis or None,
         frecuencia=frecuencia or None,
         frecuencia_dias=frecuencia_dias or None,
+        ciclo_activo_dias=ciclo_activo_dias or None,
+        ciclo_pausa_dias=ciclo_pausa_dias or None,
         turno=",".join(turno) if turno else None,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin or None,
@@ -680,6 +689,8 @@ def editar_medicacion(
     dosis: Optional[str] = Form(None),
     frecuencia: Optional[str] = Form(None),
     frecuencia_dias: Optional[int] = Form(None),
+    ciclo_activo_dias: Optional[int] = Form(None),
+    ciclo_pausa_dias: Optional[int] = Form(None),
     turno: List[str] = Form(default=[]),
     fecha_inicio: date = Form(...),
     fecha_fin: Optional[date] = Form(None),
@@ -692,6 +703,8 @@ def editar_medicacion(
         med.dosis = dosis or None
         med.frecuencia = frecuencia or None
         med.frecuencia_dias = frecuencia_dias or None
+        med.ciclo_activo_dias = ciclo_activo_dias or None
+        med.ciclo_pausa_dias = ciclo_pausa_dias or None
         med.turno = ",".join(turno) if turno else None
         med.fecha_inicio = fecha_inicio
         med.fecha_fin = fecha_fin or None
