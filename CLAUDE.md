@@ -162,6 +162,12 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - CRUD en `app/routers/eventos.py` (prefix `/eventos/`), visible para junta/admin
 - Tipos libres seleccionables con checkboxes múltiples; se almacenan como texto separado por comas
 
+### EventoVoluntario
+- `evento_id`, `voluntario_id`, `hora_llegada` (String HH:MM, nullable), `hora_salida` (String HH:MM, nullable)
+- `POST /eventos/{id}/voluntario/{vid}/horario` guarda hora_llegada y hora_salida (junta/admin)
+- La duración se calcula en el router (`_duracion()`) y se pasa al template como dict `{ep.id: "Xh YYm"}`
+- En detail.html: junta/admin ven inputs time editables + badge verde con duración; veteranos ven solo lectura
+
 ### MovimientoEconomico
 - `tipo`: TipoMovimiento enum — **ingreso**, **gasto**, **deuda**
 - `concepto` (String), `categoria` (String libre, nullable), `importe` (Float), `fecha`, `pagado` (Boolean, para deudas), `notas` (nullable)
@@ -255,7 +261,7 @@ app/
       form.html       — Create/edit, rol selector, volunteer dropdown (toggleVol JS)
     eventos/
       list.html       — Lista de eventos con badges de tipo
-      detail.html     — Detalle + gestión de voluntarios participantes
+      detail.html     — Detalle + gestión de voluntarios participantes + hora_llegada/hora_salida editable por participante con duración calculada
       form.html       — Create/edit con checkboxes multi-tipo
     economia/
       list.html       — Tarjetas resumen + filtro por tipo + tabla con acciones
@@ -298,6 +304,12 @@ INSERT INTO razas (nombre) VALUES ('Nueva Raza');
 ```sql
 ALTER TYPE nombre_enum RENAME VALUE 'old' TO 'new';
 ALTER TYPE nombre_enum ADD VALUE 'new_value';
+```
+
+### Añadir columnas hora asistencia eventos (migración ya aplicada)
+```sql
+ALTER TABLE evento_voluntarios ADD COLUMN hora_llegada VARCHAR(5);
+ALTER TABLE evento_voluntarios ADD COLUMN hora_salida VARCHAR(5);
 ```
 
 ### Run dbt (prod/Neon)
