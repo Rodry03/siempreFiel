@@ -908,9 +908,8 @@ async function ejecutarDbt(btn) {
     const r = await fetch('/dbt-run', {method: 'POST'});
     const {job_id} = await r.json();
     await _pollDbt(job_id);
-    _alertaDbt('success', 'Analytics actualizados correctamente.');
     btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Listo';
-    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+    setTimeout(() => location.reload(), 1200);
   } catch(e) {
     _alertaDbt('danger', String(e.message || e));
     btn.innerHTML = orig;
@@ -929,9 +928,8 @@ async function ejecutarDbtModelo(btn, model) {
     const data = await r.json();
     if (data.status === 'error') throw new Error(data.output);
     await _pollDbt(data.job_id);
-    _alertaDbt('success', model + ' actualizado correctamente.');
     btn.innerHTML = '<i class="bi bi-check-circle"></i>';
-    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+    setTimeout(() => location.reload(), 1200);
   } catch(e) {
     _alertaDbt('danger', String(e.message || e));
     btn.innerHTML = orig;
