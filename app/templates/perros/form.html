@@ -46,6 +46,12 @@
           <label class="form-label fw-semibold">Color</label>
           <input type="text" name="color" class="form-control" value="{{ perro.color if perro and perro.color else '' }}">
         </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tasa de adopción (€)</label>
+          <input type="number" name="tasa" class="form-control" step="0.01" min="0"
+            value="{{ perro.tasa if perro and perro.tasa is not none else '' }}"
+            placeholder="0.00">
+        </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Número de chip</label>
           <input type="text" name="num_chip" class="form-control"

@@ -253,6 +253,7 @@ def crear_perro(
     num_chip: Optional[str] = Form(None),
     num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
+    tasa: Optional[float] = Form(None),
     notas: Optional[str] = Form(None),
     foto: Optional[UploadFile] = File(None),
     ubicacion_tipo: str = Form("refugio"),
@@ -278,6 +279,7 @@ def crear_perro(
         num_chip=num_chip or None,
         num_pasaporte=num_pasaporte or None,
         color=color or None,
+        tasa=tasa,
         notas=notas or None,
     )
     db.add(perro)
@@ -348,6 +350,7 @@ def editar_perro(
     num_chip: Optional[str] = Form(None),
     num_pasaporte: Optional[str] = Form(None),
     color: Optional[str] = Form(None),
+    tasa: Optional[float] = Form(None),
     notas: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -376,6 +379,7 @@ def editar_perro(
     perro.num_chip = num_chip or None
     perro.num_pasaporte = num_pasaporte or None
     perro.color = color or None
+    perro.tasa = tasa
     perro.notas = notas or None
 
     ubicacion_actual = _ubicacion_actual(perro)

@@ -112,6 +112,7 @@ class Perro(Base):
     estado = Column(Enum(EstadoPerro), default=EstadoPerro.libre, nullable=False)
     fecha_adopcion = Column(Date, nullable=True)
     fecha_reserva = Column(Date, nullable=True)
+    tasa = Column(Float, nullable=True)
     notas = Column(Text, nullable=True)
     foto_url = Column(String, nullable=True)
 
