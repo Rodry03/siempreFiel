@@ -52,6 +52,15 @@
             value="{{ perro.tasa if perro and perro.tasa is not none else '' }}"
             placeholder="0.00">
         </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tamaño</label>
+          <select name="tamano" class="form-select">
+            <option value="">—</option>
+            {% for opt in ['Pequeño', 'Mediano', 'Grande', 'Gigante'] %}
+            <option value="{{ opt }}" {% if perro and perro.tamano == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Número de chip</label>
           <input type="text" name="num_chip" class="form-control"

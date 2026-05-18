@@ -5,7 +5,7 @@ import cloudinary
 import cloudinary.uploader
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
@@ -171,6 +171,25 @@ def eliminar_familia(familia_id: int, db: Session = Depends(get_db)):
         db.delete(familia)
         db.commit()
     return RedirectResponse("/familias/", status_code=303)
+
+
+@router.get("/{familia_id}/contrato-adopcion")
+def generar_contrato_adopcion(familia_id: int, db: Session = Depends(get_db)):
+    familia = db.query(Familia).filter(Familia.id == familia_id).first()
+    if not familia or not familia.perro:
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    from app.utils.contrato_adopcion import generar_contrato_adopcion as _gen
+    try:
+        pdf_bytes = _gen(familia, familia.perro)
+    except Exception as e:
+        logger.error("Error generando contrato adopción familia %s: %s", familia_id, e)
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    nombre_archivo = f"contrato_adopcion_{familia.apellidos.replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
+    )
 
 
 _MAX_CONTRATO_BYTES = 10 * 1024 * 1024  # 10 MB

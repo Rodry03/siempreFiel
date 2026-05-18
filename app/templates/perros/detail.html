@@ -75,6 +75,9 @@
           {% if perro.tasa is not none %}
           <tr><th class="text-muted">Tasa adopción</th><td>{{ "%.2f"|format(perro.tasa) }} €</td></tr>
           {% endif %}
+          {% if perro.tamano %}
+          <tr><th class="text-muted">Tamaño</th><td>{{ perro.tamano }}</td></tr>
+          {% endif %}
           {% if not es_veterano %}
           <tr><th class="text-muted">Chip</th><td>{{ perro.num_chip or '—' }}</td></tr>
           <tr><th class="text-muted">Pasaporte</th><td>{{ perro.num_pasaporte or '—' }}</td></tr>

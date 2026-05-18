@@ -113,6 +113,7 @@ class Perro(Base):
     fecha_adopcion = Column(Date, nullable=True)
     fecha_reserva = Column(Date, nullable=True)
     tasa = Column(Float, nullable=True)
+    tamano = Column(String(20), nullable=True)
     notas = Column(Text, nullable=True)
     foto_url = Column(String, nullable=True)
 
