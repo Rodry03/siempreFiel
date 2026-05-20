@@ -116,8 +116,10 @@ class Perro(Base):
     tamano = Column(String(20), nullable=True)
     notas = Column(Text, nullable=True)
     foto_url = Column(String, nullable=True)
+    familia_id = Column(Integer, ForeignKey("familias.id"), nullable=True)
 
     raza = relationship("Raza", back_populates="perros")
+    familia = relationship("Familia", back_populates="perros", foreign_keys=[familia_id])
     vacunas = relationship("Vacuna", back_populates="perro", cascade="all, delete-orphan")
     ubicaciones = relationship("Ubicacion", back_populates="perro", cascade="all, delete-orphan", order_by="Ubicacion.fecha_inicio.desc()")
     pesos = relationship("PesoPerro", back_populates="perro", cascade="all, delete-orphan", order_by="PesoPerro.fecha.desc()")
@@ -347,7 +349,6 @@ class Familia(Base):
     apellidos     = Column(String(150), nullable=False)
     dni           = Column(String(20), nullable=False, unique=True)
     tipo          = Column(String(20), nullable=True)   # 'adopcion' | 'acogida'
-    perro_id      = Column(Integer, ForeignKey("perros.id"), nullable=True)
     email         = Column(String(150), nullable=True)
     telefono      = Column(String(30), nullable=True)
     direccion     = Column(String(200), nullable=True)
@@ -360,7 +361,7 @@ class Familia(Base):
     contrato_firmado_fecha = Column(Date, nullable=True)
     contrato_firmado_nombre = Column(String(200), nullable=True)
 
-    perro = relationship("Perro")
+    perros = relationship("Perro", back_populates="familia", foreign_keys="Perro.familia_id")
 
 
 class SaldoMensual(Base):

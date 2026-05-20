@@ -309,7 +309,7 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
     familias_adopcion = db.query(Familia).filter(
         Familia.tipo == "adopcion"
     ).order_by(Familia.apellidos, Familia.nombre).all()
-    familia_actual = db.query(Familia).filter(Familia.perro_id == perro_id).first()
+    familia_actual = perro.familia
     return templates.TemplateResponse(request, "perros/detail.html", {
         "perro": perro,
         "vacunas": vacunas,
@@ -543,12 +543,11 @@ def cambiar_ubicacion(
             if not perro.fecha_adopcion:
                 perro.fecha_adopcion = fecha_inicio
             if familia_id:
-                familia = db.query(Familia).filter(Familia.id == familia_id).first()
-                if familia:
-                    familia.perro_id = perro_id
+                perro.familia_id = familia_id
         elif tipo in ("refugio", "acogida", "residencia"):
             if perro.estado == EstadoPerro.adoptado:
                 perro.estado = EstadoPerro.libre
+                perro.familia_id = None
     db.commit()
     flash(request, "Ubicación actualizada.")
     return RedirectResponse(f"/perros/{perro_id}", status_code=303)

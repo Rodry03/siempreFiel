@@ -83,7 +83,6 @@ def crear_familia(
         apellidos=apellidos.strip(),
         dni=dni.strip().upper(),
         tipo=tipo or None,
-        perro_id=perro_id or None,
         email=email or None,
         telefono=telefono or None,
         direccion=direccion or None,
@@ -94,11 +93,14 @@ def crear_familia(
         fecha_contrato=fecha_contrato,
     )
     db.add(familia)
-    if perro_id and tasa_perro is not None:
-        perro = db.query(Perro).filter(Perro.id == perro_id).first()
-        if perro:
-            perro.tasa = tasa_perro
     try:
+        db.flush()
+        if perro_id:
+            perro = db.query(Perro).filter(Perro.id == perro_id).first()
+            if perro:
+                perro.familia_id = familia.id
+                if tasa_perro is not None:
+                    perro.tasa = tasa_perro
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -119,11 +121,38 @@ def detalle_familia(request: Request, familia_id: int, db: Session = Depends(get
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
     if not familia:
         return RedirectResponse("/familias/", status_code=303)
+    perros_disponibles = db.query(Perro).filter(
+        Perro.familia_id.is_(None),
+        Perro.estado != EstadoPerro.fallecido,
+    ).order_by(Perro.nombre).all()
     return templates.TemplateResponse(request, "familias/detail.html", {
         "familia": familia,
         "tipo_labels": TIPO_LABELS,
         "tipo_colors": TIPO_COLORS,
+        "perros_disponibles": perros_disponibles,
     })
+
+
+@router.post("/{familia_id}/vincular-perro")
+def vincular_perro(
+    request: Request,
+    familia_id: int,
+    perro_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    familia = db.query(Familia).filter(Familia.id == familia_id).first()
+    if not familia:
+        return RedirectResponse("/familias/", status_code=303)
+    perro = db.query(Perro).filter(
+        Perro.id == perro_id,
+        Perro.familia_id.is_(None),
+        Perro.estado != EstadoPerro.fallecido,
+    ).first()
+    if perro:
+        perro.familia_id = familia_id
+        db.commit()
+        flash(request, f"{perro.nombre} vinculado a la familia.")
+    return RedirectResponse(f"/familias/{familia_id}", status_code=303)
 
 
 @router.get("/{familia_id}/editar")
@@ -131,12 +160,8 @@ def editar_familia_form(request: Request, familia_id: int, db: Session = Depends
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
     if not familia:
         return RedirectResponse("/familias/", status_code=303)
-    perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
-    tasas_perros = {p.id: p.tasa for p in perros}
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": familia,
-        "perros": perros,
-        "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
     })
@@ -150,8 +175,6 @@ def editar_familia(
     apellidos: str = Form(...),
     dni: str = Form(...),
     tipo: Optional[str] = Form(None),
-    perro_id: Optional[int] = Form(None),
-    tasa_perro: Optional[float] = Form(None),
     email: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
@@ -169,7 +192,6 @@ def editar_familia(
     familia.apellidos = apellidos.strip()
     familia.dni = dni.strip().upper()
     familia.tipo = tipo or None
-    familia.perro_id = perro_id or None
     familia.email = email or None
     familia.telefono = telefono or None
     familia.direccion = direccion or None
@@ -178,10 +200,6 @@ def editar_familia(
     familia.codigo_postal = codigo_postal or None
     familia.notas = notas or None
     familia.fecha_contrato = fecha_contrato
-    if perro_id and tasa_perro is not None:
-        perro = db.query(Perro).filter(Perro.id == perro_id).first()
-        if perro:
-            perro.tasa = tasa_perro
     try:
         db.commit()
     except IntegrityError:
@@ -199,14 +217,15 @@ def eliminar_familia(familia_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/familias/", status_code=303)
 
 
-@router.get("/{familia_id}/contrato-adopcion")
-def generar_contrato_adopcion(familia_id: int, db: Session = Depends(get_db)):
+@router.get("/{familia_id}/contrato-adopcion/{perro_id}")
+def generar_contrato_adopcion(familia_id: int, perro_id: int, db: Session = Depends(get_db)):
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
-    if not familia or not familia.perro:
+    perro = db.query(Perro).filter(Perro.id == perro_id, Perro.familia_id == familia_id).first()
+    if not familia or not perro:
         return RedirectResponse(f"/familias/{familia_id}", status_code=303)
     from app.utils.contrato_adopcion import generar_contrato_adopcion as _gen
     try:
-        pdf_bytes, docx_bytes = _gen(familia, familia.perro)
+        pdf_bytes, docx_bytes = _gen(familia, perro)
     except Exception as e:
         logger.error("Error generando contrato adopción familia %s: %s", familia_id, e)
         return RedirectResponse(f"/familias/{familia_id}", status_code=303)

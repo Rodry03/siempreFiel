@@ -56,8 +56,10 @@
             {% else %}—{% endif %}
           </td>
           <td>
-            {% if f.perro %}
-              <a href="/perros/{{ f.perro.id }}" class="text-decoration-none small">{{ f.perro.nombre }}</a>
+            {% if f.perros %}
+              {% for p in f.perros %}
+                <a href="/perros/{{ p.id }}" class="text-decoration-none small">{{ p.nombre }}</a>{% if not loop.last %}, {% endif %}
+              {% endfor %}
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td>
           <td class="small">{{ f.telefono or '—' }}</td>

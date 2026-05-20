@@ -11,11 +11,26 @@
 </div>
 
 <!-- Botones de contrato -->
-<div class="d-flex gap-2 mb-4">
-  {% if familia.perro %}
-  <a href="/familias/{{ familia.id }}/contrato-adopcion" class="btn btn-outline-success">
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  {% if familia.perros | length == 1 %}
+  <a href="/familias/{{ familia.id }}/contrato-adopcion/{{ familia.perros[0].id }}" class="btn btn-outline-success">
     <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
   </a>
+  {% elif familia.perros | length > 1 %}
+  <div class="dropdown">
+    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+      <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
+    </button>
+    <ul class="dropdown-menu">
+      {% for p in familia.perros %}
+      <li>
+        <a class="dropdown-item" href="/familias/{{ familia.id }}/contrato-adopcion/{{ p.id }}">
+          {{ p.nombre }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
   {% else %}
   <button class="btn btn-outline-success" disabled title="Asigna un perro a esta familia para generar el contrato">
     <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
@@ -125,35 +140,49 @@
     </div>
   </div>
 
-  <!-- Perro asociado -->
+  <!-- Perros asociados -->
   <div class="col-md-6">
     <div class="card h-100">
-      <div class="card-header bg-white fw-semibold border-0 pt-3">
-        <i class="bi bi-heart me-2"></i>Perro asociado
+      <div class="card-header bg-white fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-heart me-2"></i>Perros asociados</span>
+        <div class="d-flex align-items-center gap-2">
+          {% if familia.perros %}
+          <span class="badge bg-secondary rounded-pill">{{ familia.perros | length }}</span>
+          {% endif %}
+          {% if perros_disponibles %}
+          <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalVincularPerro" title="Vincular perro">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          {% endif %}
+        </div>
       </div>
       <div class="card-body">
-        {% if familia.perro %}
-          {% set p = familia.perro %}
-          <div class="d-flex align-items-center gap-3">
-            {% if p.foto_url %}
-              <img src="{{ p.foto_url.replace('/upload/', '/upload/c_fill,w_72,h_72/') }}"
-                   class="rounded" width="72" height="72" style="object-fit:cover;">
-            {% else %}
-              <div class="rounded bg-light d-flex align-items-center justify-content-center"
-                   style="width:72px;height:72px;">
-                <i class="bi bi-camera text-muted" style="font-size:1.5rem;"></i>
+        {% if familia.perros %}
+          <div class="d-flex flex-column gap-3">
+          {% for p in familia.perros %}
+            <div class="d-flex align-items-center gap-3">
+              {% if p.foto_url %}
+                <img src="{{ p.foto_url.replace('/upload/', '/upload/c_fill,w_72,h_72/') }}"
+                     class="rounded" width="72" height="72" style="object-fit:cover;">
+              {% else %}
+                <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                     style="width:72px;height:72px;">
+                  <i class="bi bi-camera text-muted" style="font-size:1.5rem;"></i>
+                </div>
+              {% endif %}
+              <div>
+                <div class="fw-semibold fs-5">
+                  <a href="/perros/{{ p.id }}" class="text-decoration-none text-dark">{{ p.nombre }}</a>
+                </div>
+                {% if p.num_chip %}<div class="text-muted small">Chip: {{ p.num_chip }}</div>{% endif %}
+                <span class="badge bg-secondary mt-1">{{ p.estado.value }}</span>
+                {% if p.tasa is not none %}<span class="badge bg-light text-dark border mt-1">{{ p.tasa | int }}€</span>{% endif %}
               </div>
-            {% endif %}
-            <div>
-              <div class="fw-semibold fs-5">
-                <a href="/perros/{{ p.id }}" class="text-decoration-none text-dark">{{ p.nombre }}</a>
-              </div>
-              {% if p.num_chip %}<div class="text-muted small">Chip: {{ p.num_chip }}</div>{% endif %}
-              <span class="badge bg-secondary mt-1">{{ p.estado.value }}</span>
             </div>
+          {% endfor %}
           </div>
         {% else %}
-          <p class="text-muted mb-0">Sin perro asignado.</p>
+          <p class="text-muted mb-0">Sin perros asignados. Se vinculan desde la ficha de cada perro al cambiar su ubicación a casa adoptiva.</p>
         {% endif %}
       </div>
     </div>
@@ -173,4 +202,33 @@
   </div>
   {% endif %}
 </div>
+
+{% if perros_disponibles %}
+<div class="modal fade" id="modalVincularPerro" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-semibold">Vincular perro</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/familias/{{ familia.id }}/vincular-perro">
+        <div class="modal-body">
+          <select name="perro_id" class="form-select" required>
+            <option value="">— Selecciona un perro —</option>
+            {% for p in perros_disponibles %}
+            <option value="{{ p.id }}">
+              {{ p.nombre }}{% if p.num_chip %} · {{ p.num_chip }}{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sm btn-primary">Vincular</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

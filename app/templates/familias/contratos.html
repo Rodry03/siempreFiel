@@ -61,8 +61,10 @@
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td>
           <td class="small">
-            {% if f.perro %}
-            <a href="/perros/{{ f.perro.id }}" class="text-decoration-none">{{ f.perro.nombre }}</a>
+            {% if f.perros %}
+              {% for p in f.perros %}
+                <a href="/perros/{{ p.id }}" class="text-decoration-none">{{ p.nombre }}</a>{% if not loop.last %}, {% endif %}
+              {% endfor %}
             {% else %}<span class="text-muted">—</span>{% endif %}
           </td>
           <td class="text-muted small">{{ f.fecha_contrato.strftime('%d/%m/%Y') }}</td>

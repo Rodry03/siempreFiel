@@ -69,21 +69,23 @@
             {% endfor %}
           </select>
         </div>
+        {% if not familia %}
         <div class="col-md-8">
-          <label class="form-label fw-semibold">Perro</label>
+          <label class="form-label fw-semibold">Perro inicial</label>
           <select name="perro_id" class="form-select">
             <option value="">— Sin asignar —</option>
             {% for p in perros %}
-            <option value="{{ p.id }}" {% if familia and familia.perro_id == p.id %}selected{% endif %}>
+            <option value="{{ p.id }}">
               {{ p.nombre }}{% if p.num_chip %} · chip {{ p.num_chip }}{% endif %}
             </option>
             {% endfor %}
           </select>
+          <div class="form-text">Los perros adicionales se vinculan desde la ficha de cada perro.</div>
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">Fecha del contrato *</label>
           <input type="date" name="fecha_contrato" class="form-control"
-                 value="{{ familia.fecha_contrato.isoformat() if familia else hoy }}" required>
+                 value="{{ hoy }}" required>
         </div>
         <div class="col-md-4" id="bloque-tasa" style="display:none;">
           <label class="form-label fw-semibold">Tasa del perro (€)</label>
@@ -91,6 +93,13 @@
                  placeholder="Sin tasa">
           <div class="form-text">Se actualizará en la ficha del perro.</div>
         </div>
+        {% else %}
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Fecha del contrato *</label>
+          <input type="date" name="fecha_contrato" class="form-control"
+                 value="{{ familia.fecha_contrato.isoformat() }}" required>
+        </div>
+        {% endif %}
         <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ familia.notas or '' }}</textarea>
@@ -107,6 +116,7 @@
   </div>
 </div>
 
+{% if not familia %}
 <script>
 const tasasPerros = {{ tasas_perros | tojson }};
 
@@ -142,4 +152,5 @@ document.getElementById('tasa_perro').addEventListener('input', function() {
 
 actualizarTasa();
 </script>
+{% endif %}
 {% endblock %}
