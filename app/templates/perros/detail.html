@@ -151,7 +151,7 @@
             <div class="row g-2">
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Nueva ubicación</label>
-                <select name="tipo" class="form-select form-select-sm">
+                <select name="tipo" id="selectTipoUbicacion" class="form-select form-select-sm">
                   {% for t in tipos_ubicacion %}
                   <option value="{{ t }}">{{ ubicacion_labels[t] }}</option>
                   {% endfor %}
@@ -160,6 +160,17 @@
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Fecha inicio</label>
                 <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ hoy }}" required>
+              </div>
+              <div class="col-12 d-none" id="rowFamiliaAdopcion">
+                <label class="form-label small fw-semibold">Familia adoptante</label>
+                <select name="familia_id" class="form-select form-select-sm">
+                  <option value="">— Sin vincular —</option>
+                  {% for f in familias_adopcion %}
+                  <option value="{{ f.id }}" {% if familia_actual and familia_actual.id == f.id %}selected{% endif %}>
+                    {{ f.apellidos }}, {{ f.nombre }} {% if f.dni %}({{ f.dni }}){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
               </div>
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Nombre contacto</label>
@@ -835,6 +846,16 @@
 </div>
 
 <script>
+  (function () {
+    const sel = document.getElementById('selectTipoUbicacion');
+    const row = document.getElementById('rowFamiliaAdopcion');
+    if (sel && row) {
+      function toggle() { row.classList.toggle('d-none', sel.value !== 'casa_adoptiva'); }
+      sel.addEventListener('change', toggle);
+      toggle();
+    }
+  })();
+
   document.getElementById('modalEditUbicacion').addEventListener('show.bs.modal', function (e) {
     const btn = e.relatedTarget;
     const id = btn.dataset.id;

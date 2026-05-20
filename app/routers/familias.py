@@ -36,6 +36,16 @@ def listar_familias(request: Request, tipo: Optional[str] = None, db: Session = 
     })
 
 
+@router.get("/contratos")
+def contratos_familias(request: Request, db: Session = Depends(get_db)):
+    familias = db.query(Familia).order_by(Familia.apellidos.asc(), Familia.nombre.asc()).all()
+    return templates.TemplateResponse(request, "familias/contratos.html", {
+        "familias": familias,
+        "tipo_labels": TIPO_LABELS,
+        "tipo_colors": TIPO_COLORS,
+    })
+
+
 @router.get("/nueva")
 def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
     perros = db.query(Perro).filter(Perro.estado != EstadoPerro.fallecido).order_by(Perro.nombre).all()

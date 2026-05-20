@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_, or_
 from typing import List, Optional
 from app.database import get_db
-from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro
+from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro, Familia
 from app.templates_config import templates
 import cloudinary
 import cloudinary.uploader
@@ -306,6 +306,10 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         return RedirectResponse("/perros/", status_code=303)
     vacunas = sorted(perro.vacunas, key=lambda v: v.fecha_administracion, reverse=True)
     hoy_date = date.today()
+    familias_adopcion = db.query(Familia).filter(
+        Familia.tipo == "adopcion"
+    ).order_by(Familia.apellidos, Familia.nombre).all()
+    familia_actual = db.query(Familia).filter(Familia.perro_id == perro_id).first()
     return templates.TemplateResponse(request, "perros/detail.html", {
         "perro": perro,
         "vacunas": vacunas,
@@ -320,6 +324,8 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         "tipos_vacuna": TIPOS_VACUNA,
         "edad": _calcular_edad(perro.fecha_nacimiento),
         "error": error,
+        "familias_adopcion": familias_adopcion,
+        "familia_actual": familia_actual,
     })
 
 
@@ -507,6 +513,7 @@ def cambiar_ubicacion(
     nombre_contacto: Optional[str] = Form(None),
     telefono_contacto: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    familia_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     ubicacion_actual = db.query(Ubicacion).filter(
@@ -535,6 +542,10 @@ def cambiar_ubicacion(
             perro.estado = EstadoPerro.adoptado
             if not perro.fecha_adopcion:
                 perro.fecha_adopcion = fecha_inicio
+            if familia_id:
+                familia = db.query(Familia).filter(Familia.id == familia_id).first()
+                if familia:
+                    familia.perro_id = perro_id
         elif tipo in ("refugio", "acogida", "residencia"):
             if perro.estado == EstadoPerro.adoptado:
                 perro.estado = EstadoPerro.libre
