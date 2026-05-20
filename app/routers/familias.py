@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 from datetime import date
@@ -5,7 +6,7 @@ import cloudinary
 import cloudinary.uploader
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
@@ -180,15 +181,21 @@ def generar_contrato_adopcion(familia_id: int, db: Session = Depends(get_db)):
         return RedirectResponse(f"/familias/{familia_id}", status_code=303)
     from app.utils.contrato_adopcion import generar_contrato_adopcion as _gen
     try:
-        pdf_bytes = _gen(familia, familia.perro)
+        pdf_bytes, docx_bytes = _gen(familia, familia.perro)
     except Exception as e:
         logger.error("Error generando contrato adopción familia %s: %s", familia_id, e)
         return RedirectResponse(f"/familias/{familia_id}", status_code=303)
-    nombre_archivo = f"contrato_adopcion_{familia.apellidos.replace(' ', '_')}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
+    nombre_base = f"contrato_adopcion_{familia.apellidos.replace(' ', '_')}"
+    if pdf_bytes:
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{nombre_base}.pdf"'},
+        )
+    return StreamingResponse(
+        io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_base}.docx"'},
     )
 
 

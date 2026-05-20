@@ -1,87 +1,140 @@
 import io
+import logging
 import os
+import tempfile
 from datetime import date
 
-import fitz  # PyMuPDF
+from docx import Document
 
-_MESES_ES = {
-    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
-    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
-    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
-}
+logger = logging.getLogger(__name__)
 
-_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "contrato_adopcion.pdf")
-
-
-def _white(page, x0, y0, x1, y1):
-    page.draw_rect(fitz.Rect(x0, y0, x1, y1), color=(1, 1, 1), fill=(1, 1, 1), width=0)
+_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "contracts", "contrato_adopcion.docx")
+_MESES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
 
 
-def _txt(page, x, y, text, fontsize=8.5):
-    if not text:
-        return
-    page.insert_text((x, y), text, fontname="helv", fontsize=fontsize, color=(0, 0, 0))
+def _set_run(para, run_idx: int, value: str):
+    """Overwrite a specific run's text; adds a run if index doesn't exist."""
+    runs = para.runs
+    if run_idx < len(runs):
+        runs[run_idx].text = value
+    else:
+        para.add_run(value)
 
 
-def _txt_fit(page, x0, y, x1, text, max_fontsize=8.5):
-    """Inserta texto entre x0 y x1, reduciendo el tamaño de fuente si es necesario."""
-    if not text:
-        return
-    available = x1 - x0
-    fs = max_fontsize
-    length = fitz.get_text_length(text, fontname="helv", fontsize=fs)
-    if length > available:
-        fs = fs * available / length
-    page.insert_text((x0, y), text, fontname="helv", fontsize=fs, color=(0, 0, 0))
+def _append_run(para, value: str):
+    """Add a plain (non-bold) run at the end of a paragraph."""
+    para.add_run(value)
 
 
-def generar_contrato_adopcion(familia, perro) -> bytes:
-    doc = fitz.open(os.path.abspath(_TEMPLATE_PATH))
-    p1 = doc[0]
-    p4 = doc[3]
+def _fill_tasa(doc, tasa):
+    tasa_str = f"{tasa:.2f}" if tasa is not None else "0.00"
+    for p in doc.paragraphs:
+        if "cantidad de" in p.text:
+            for r in p.runs:
+                if "cantidad de" in r.text:
+                    # "la cantidad de  € para costear" → "la cantidad de X € para costear"
+                    r.text = r.text.replace("la cantidad de  €", f"la cantidad de {tasa_str} €")
+            break
 
-    # ── Tabla persona (página 1) ──────────────────────────────────────────
-    _txt(p1, 194, 338, f"{familia.nombre} {familia.apellidos}")
-    _txt(p1, 97,  357, familia.dni or "")
-    _txt(p1, 400, 357, familia.email or "")
-    _txt(p1, 137, 375, familia.direccion or "")
-    _txt(p1, 140, 396, familia.municipio or "")
-    _txt(p1, 337, 396, familia.provincia or "")
-    _txt(p1, 95,  415, familia.codigo_postal or "")
-    _txt(p1, 335, 415, familia.telefono or "")
 
-    # ── Tabla perro (página 1) ────────────────────────────────────────────
-    _txt(p1, 121, 657, perro.nombre)
-    _txt(p1, 132, 680, perro.num_chip or "")
-    _txt(p1, 435, 680, perro.num_pasaporte or "")
-    _txt(p1, 106, 704, perro.raza.nombre if perro.raza else "")
-    _txt(p1, 250, 703, perro.sexo.value.upper() if perro.sexo else "")
-    if perro.fecha_nacimiento:
-        _txt(p1, 436, 704, perro.fecha_nacimiento.strftime("%d/%m/%Y"))
-    _txt(p1, 105, 727, perro.color or "")
-    _txt(p1, 265, 727, perro.tamano or "")
-
-    # Esterilizado: la plantilla ya trae "PEND. ADOP"; si está esterilizado lo tapamos
-    if perro.esterilizado:
-        _white(p1, 436, 717, 493, 730)
-        _txt(p1, 437, 727, "SÍ")
-
-    # ── Tasa adopción — cláusula 21 (página 4) ───────────────────────────
-    # Línea original: "...la cantidad de € para costear parte"
-    # Tapamos desde "de" hasta el final de la línea y reescribimos todo con font dinámico
-    tasa_str = f"{perro.tasa:.2f}" if perro.tasa is not None else "0.00"
-    texto_clausula = f"de {tasa_str} € para costear parte"
-    _white(p4, 408, 259, 526, 276)
-    _txt_fit(p4, 410, 272, 524, texto_clausula)
-
-    # ── Fecha (página 4) ─────────────────────────────────────────────────
+def _fill_fecha(doc):
     hoy = date.today()
-    fecha_str = f"{hoy.day} de {_MESES_ES[hoy.month]} de {hoy.year}"
-    # Tapamos "29  de Abril de 2026." y escribimos la fecha actual
-    _white(p4, 428, 666, 524, 682)
-    _txt(p4, 429, 679, fecha_str, fontsize=9)
+    nueva = f"  En Salamanca, a {hoy.day} de {_MESES[hoy.month - 1]} de {hoy.year}.          "
+    for p in doc.paragraphs:
+        if "En Salamanca" in p.text:
+            for r in p.runs:
+                if "En Salamanca" in r.text:
+                    r.text = nueva
+            break
+
+
+def _generar_docx(familia, perro) -> bytes:
+    doc = Document(os.path.abspath(_TEMPLATE_PATH))
+    t0 = doc.tables[0]  # datos familia
+    t1 = doc.tables[1]  # datos perro
+
+    # ── Tabla 0: datos de la familia ────────────────────────────────────────
+    # Fila 0 (celda fusionada): NOMBRE Y APELLIDOS — run[1] es el valor
+    _set_run(t0.rows[0].cells[0].paragraphs[0], 1, f"{familia.nombre} {familia.apellidos}")
+
+    # Fila 1: DNI (1 run) | CORREO ELECTRÓNICO (run[1] es valor)
+    _append_run(t0.rows[1].cells[0].paragraphs[0], familia.dni or "")
+    _set_run(t0.rows[1].cells[1].paragraphs[0], 1, familia.email or "")
+
+    # Fila 2 (celda fusionada): DIRECCIÓN — 1 run, añadir valor
+    _append_run(t0.rows[2].cells[0].paragraphs[0], familia.direccion or "")
+
+    # Fila 3: LOCALIDAD (run[1] es valor) | PROVINCIA (1 run)
+    _set_run(t0.rows[3].cells[0].paragraphs[0], 1, familia.municipio or "")
+    _append_run(t0.rows[3].cells[1].paragraphs[0], familia.provincia or "")
+
+    # Fila 4: C.P (1 run) | TELÉFONO (1 run)
+    _append_run(t0.rows[4].cells[0].paragraphs[0], familia.codigo_postal or "")
+    _append_run(t0.rows[4].cells[1].paragraphs[0], familia.telefono or "")
+
+    # ── Tabla 1: datos del perro ─────────────────────────────────────────────
+    # Fila 0 (cols 0-1 fusionadas): NOMBRE — run[1] limpiar espacio, run[2] valor
+    _set_run(t1.rows[0].cells[0].paragraphs[0], 1, "")
+    _set_run(t1.rows[0].cells[0].paragraphs[0], 2, perro.nombre)
+
+    # Fila 1 (cols 0-1 fusionadas): MICROCHIP — run[1] limpiar, run[2] valor
+    _set_run(t1.rows[1].cells[0].paragraphs[0], 1, "")
+    _set_run(t1.rows[1].cells[0].paragraphs[0], 2, perro.num_chip or "")
+
+    # Fila 1 (cols 2-3 fusionadas): Nº PASAPORTE — run[2] limpiar espacio, run[3] valor
+    _set_run(t1.rows[1].cells[2].paragraphs[0], 2, "")
+    _set_run(t1.rows[1].cells[2].paragraphs[0], 3, perro.num_pasaporte or "")
+
+    # Fila 2 col 0: RAZA — run[2] es valor (bold)
+    _set_run(t1.rows[2].cells[0].paragraphs[0], 2, perro.raza.nombre if perro.raza else "")
+
+    # Fila 2 col 1: SEXO — run[1] es valor
+    _set_run(t1.rows[2].cells[1].paragraphs[0], 1, perro.sexo.value.upper() if perro.sexo else "")
+
+    # Fila 2 (cols 2-3 fusionadas): F.NACIMIENTO — run[1] limpiar espacios, run[2] valor
+    _set_run(t1.rows[2].cells[2].paragraphs[0], 1, "")
+    fecha_str = perro.fecha_nacimiento.strftime("%d/%m/%Y") if perro.fecha_nacimiento else ""
+    _set_run(t1.rows[2].cells[2].paragraphs[0], 2, fecha_str)
+
+    # Fila 3 col 0: CAPA — run[1] es valor
+    _set_run(t1.rows[3].cells[0].paragraphs[0], 1, perro.color or "")
+
+    # Fila 3 col 1: TAMAÑO — run[1] es valor
+    _set_run(t1.rows[3].cells[1].paragraphs[0], 1, perro.tamano or "")
+
+    # Fila 3 (cols 2-3 fusionadas): ESTERILIZADO — run[1] es valor (reemplaza "PEND. ADOP")
+    _set_run(t1.rows[3].cells[2].paragraphs[0], 1, "SÍ" if perro.esterilizado else "PEND. ADOP")
+
+    # ── Párrafo 21: tasa adopción ────────────────────────────────────────────
+    _fill_tasa(doc, perro.tasa)
+
+    # ── Párrafo fecha firma ──────────────────────────────────────────────────
+    _fill_fecha(doc)
 
     buf = io.BytesIO()
     doc.save(buf)
-    doc.close()
     return buf.getvalue()
+
+
+def generar_contrato_adopcion(familia, perro) -> tuple[bytes | None, bytes]:
+    """Devuelve (pdf_bytes_o_None, docx_bytes)."""
+    from app.utils.pdf_utils import docx_a_pdf
+
+    docx_bytes = _generar_docx(familia, perro)
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        tmp.write(docx_bytes)
+        docx_path = tmp.name
+
+    try:
+        pdf_bytes = docx_a_pdf(docx_path)
+    except Exception as e:
+        logger.error("Error convirtiendo contrato adopción a PDF: %s", e)
+        pdf_bytes = None
+    finally:
+        os.unlink(docx_path)
+
+    return pdf_bytes, docx_bytes
