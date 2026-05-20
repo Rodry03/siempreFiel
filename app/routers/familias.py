@@ -48,10 +48,12 @@ def contratos_familias(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/nueva")
 def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
-    perros = db.query(Perro).filter(Perro.estado != EstadoPerro.fallecido).order_by(Perro.nombre).all()
+    perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
+    tasas_perros = {p.id: p.tasa for p in perros}
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": None,
         "perros": perros,
+        "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
     })
@@ -65,6 +67,7 @@ def crear_familia(
     dni: str = Form(...),
     tipo: Optional[str] = Form(None),
     perro_id: Optional[int] = Form(None),
+    tasa_perro: Optional[float] = Form(None),
     email: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
@@ -91,15 +94,20 @@ def crear_familia(
         fecha_contrato=fecha_contrato,
     )
     db.add(familia)
+    if perro_id and tasa_perro is not None:
+        perro = db.query(Perro).filter(Perro.id == perro_id).first()
+        if perro:
+            perro.tasa = tasa_perro
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         flash(request, "Ya existe una familia con ese DNI.", "danger")
-        perros = db.query(Perro).filter(Perro.estado != EstadoPerro.fallecido).order_by(Perro.nombre).all()
+        perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
         return templates.TemplateResponse(request, "familias/form.html", {
             "familia": None,
             "perros": perros,
+            "tasas_perros": {p.id: p.tasa for p in perros},
             "tipo_labels": TIPO_LABELS,
             "hoy": fecha_contrato.isoformat(),
         })
@@ -123,10 +131,12 @@ def editar_familia_form(request: Request, familia_id: int, db: Session = Depends
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
     if not familia:
         return RedirectResponse("/familias/", status_code=303)
-    perros = db.query(Perro).filter(Perro.estado != EstadoPerro.fallecido).order_by(Perro.nombre).all()
+    perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
+    tasas_perros = {p.id: p.tasa for p in perros}
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": familia,
         "perros": perros,
+        "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
     })
@@ -141,6 +151,7 @@ def editar_familia(
     dni: str = Form(...),
     tipo: Optional[str] = Form(None),
     perro_id: Optional[int] = Form(None),
+    tasa_perro: Optional[float] = Form(None),
     email: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
@@ -167,6 +178,10 @@ def editar_familia(
     familia.codigo_postal = codigo_postal or None
     familia.notas = notas or None
     familia.fecha_contrato = fecha_contrato
+    if perro_id and tasa_perro is not None:
+        perro = db.query(Perro).filter(Perro.id == perro_id).first()
+        if perro:
+            perro.tasa = tasa_perro
     try:
         db.commit()
     except IntegrityError:

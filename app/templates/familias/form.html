@@ -85,6 +85,12 @@
           <input type="date" name="fecha_contrato" class="form-control"
                  value="{{ familia.fecha_contrato.isoformat() if familia else hoy }}" required>
         </div>
+        <div class="col-md-4" id="bloque-tasa" style="display:none;">
+          <label class="form-label fw-semibold">Tasa del perro (€)</label>
+          <input type="number" name="tasa_perro" id="tasa_perro" class="form-control" min="0" step="0.01"
+                 placeholder="Sin tasa">
+          <div class="form-text">Se actualizará en la ficha del perro.</div>
+        </div>
         <div class="col-12">
           <label class="form-label fw-semibold">Notas</label>
           <textarea name="notas" class="form-control" rows="3">{{ familia.notas or '' }}</textarea>
@@ -100,4 +106,40 @@
     </form>
   </div>
 </div>
+
+<script>
+const tasasPerros = {{ tasas_perros | tojson }};
+
+function actualizarTasa() {
+  const tipo = document.querySelector('[name="tipo"]').value;
+  const perroId = document.querySelector('[name="perro_id"]').value;
+  const bloque = document.getElementById('bloque-tasa');
+  const input = document.getElementById('tasa_perro');
+
+  if (tipo === 'adopcion' && perroId) {
+    bloque.style.display = '';
+    if (input.dataset.autoset !== 'false') {
+      const tasa = tasasPerros[parseInt(perroId)];
+      input.value = (tasa !== null && tasa !== undefined) ? tasa : '';
+      input.dataset.autoset = 'true';
+    }
+  } else {
+    bloque.style.display = 'none';
+  }
+}
+
+document.querySelector('[name="tipo"]').addEventListener('change', function() {
+  document.getElementById('tasa_perro').dataset.autoset = 'true';
+  actualizarTasa();
+});
+document.querySelector('[name="perro_id"]').addEventListener('change', function() {
+  document.getElementById('tasa_perro').dataset.autoset = 'true';
+  actualizarTasa();
+});
+document.getElementById('tasa_perro').addEventListener('input', function() {
+  this.dataset.autoset = 'false';
+});
+
+actualizarTasa();
+</script>
 {% endblock %}

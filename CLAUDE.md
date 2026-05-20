@@ -106,10 +106,11 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - `turno`: checkboxes múltiples en el formulario; se guarda como string separado por coma. Badges: Mañana (amarillo), Tarde (azul)
 
 ### Sincronización estado ↔ ubicación
-- Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había
+- Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había; opcionalmente se vincula a una `Familia` (dropdown en el formulario, solo familias tipo='adopcion')
 - Cambiar ubicación a física (refugio/acogida/residencia) estando adoptado → `estado = libre`
 - Guardar formulario con `estado = adoptado` y ubicación actual ≠ `casa_adoptiva` → se crea automáticamente registro `casa_adoptiva` (sin datos de contacto, rellenar después)
 - Guardar formulario con `estado ≠ adoptado` viniendo de adoptado con `casa_adoptiva` → se cierra `casa_adoptiva` y se crea `refugio`
+- Vincular familia: el select aparece en el form de cambio de ubicación solo cuando se elige `casa_adoptiva` (JS). Actualiza `Familia.perro_id = perro_id`.
 
 ### PesoPerro
 - `perro_id`, `fecha`, `peso_kg` (Float), `notas` (nullable)
@@ -179,12 +180,13 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - Representa familias adoptantes o acogedoras de perros.
 - Campos obligatorios: `nombre`, `apellidos`, `dni` (unique, guardado en mayúsculas)
 - `tipo`: String nullable — `'adopcion'` | `'acogida'`
-- `perro_id`: FK nullable a `perros.id`
+- `perro_id`: FK nullable a `perros.id` — se vincula al cambiar ubicación del perro a `casa_adoptiva`
 - Campos opcionales: `email`, `telefono`, `direccion`, `municipio`, `provincia`, `codigo_postal`, `notas`
 - `fecha_contrato`: Date (obligatoria, default hoy) — fecha de firma del contrato
 - `contrato_firmado_url`, `contrato_firmado_fecha`, `contrato_firmado_nombre`: upload del contrato firmado a Cloudinary (`protectora/contratos/contrato_familia_{id}`, resource_type=raw)
 - CRUD en `app/routers/familias.py` (prefix `/familias/`), **solo junta/admin** (oculto a veteranos)
-- Detalle: dos botones deshabilitados para generar contrato adopción/acogida (pendiente recibir plantillas Word); tarjeta upload contrato firmado igual que voluntarios
+- Detalle: botón generar contrato adopción (activo si tiene perro asignado) + botón acogida (deshabilitado, pendiente plantilla de Lucía); tarjeta upload contrato firmado igual que voluntarios
+- Vista `/familias/contratos`: resumen con/sin contrato firmado + tabla descargable, igual que voluntarios
 - Sidebar: entre Visitas y Turnos
 
 ---
@@ -234,7 +236,7 @@ app/
     usuarios.py       — User management (admin-only)
     eventos.py        — CRUD eventos + asignación de voluntarios. Prefix: /eventos/
     economia.py       — CRUD movimientos económicos (ingreso/gasto/deuda). Prefix: /economia/
-    familias.py       — CRUD familias adoptantes/acogedoras + upload contrato firmado (Cloudinary). Prefix: /familias/
+    familias.py       — CRUD familias + upload contrato firmado (Cloudinary) + GET /contratos. Prefix: /familias/
     consulta.py       — Asistente AntonIA: Text-to-SQL con Groq. GET /consulta/ (UI chat), POST /consulta/preguntar (AJAX). Solo junta/admin. Requiere GROQ_API_KEY.
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
@@ -266,7 +268,10 @@ app/
     economia/
       list.html       — Tarjetas resumen + filtro por tipo + tabla con acciones
     familias/
-      ...
+      list.html       — Lista con filtro por tipo + botón "Contratos"
+      detail.html     — Ficha + botón generar contrato adopción (activo si tiene perro) + botón acogida (disabled) + tarjeta contrato firmado
+      form.html       — Create/edit con dropdown de perros (no fallecidos)
+      contratos.html  — Resumen con/sin contrato firmado + tabla descargable (igual que voluntarios/contratos_firmados.html)
     consulta/
       chat.html       — UI de chat: burbujas, typing dots, chips de sugerencias, autoexpand textarea
       list.html       — Lista con filtro por tipo (adopcion/acogida), columnas: nombre, apellidos, DNI, tipo, perro, teléfono, fecha contrato
@@ -366,7 +371,9 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 26. **Medicación visible a veteranos:** A diferencia de vacunas/pesos, `MedicacionPerro` es visible para todos los roles en el perfil del perro. Solo junta/admin pueden añadir/editar/eliminar.
 27. **Economía oculta a veteranos:** `MovimientoEconomico` solo accesible a junta/admin. Tipos: ingreso, gasto, deuda. Las deudas tienen campo `pagado` (toggle). Categoría es texto libre.
 28. **Fórmula saldo turnos:** `sum(valores_semana) - 1` por semana (no `sum(valores_semana)`). 1 turno = neutro (0), no +1. Aplica igual en Python (`calcular_saldo`) y dbt (`mart_saldo_turnos_semanal`). La semana actual nunca penaliza.
-29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin. Los botones de generación de contrato están deshabilitados hasta recibir las plantillas Word (mismo mecanismo que voluntarios).
+29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin.
+33. **Contrato adopción (DOCX→PDF):** Igual que el contrato de voluntario. Template en `app/contracts/contrato_adopcion.docx`. Lógica en `app/utils/contrato_adopcion.py`. Conversión compartida en `app/utils/pdf_utils.py` (`docx_a_pdf`): Word COM en local (Windows), LibreOffice en Render. Devuelve PDF si la conversión tiene éxito, DOCX como fallback. El campo "Capa" del DOCX se rellena con `perro.color`. Contrato acogida pendiente de plantilla de Lucía.
+34. **Vínculo familia al cambiar a casa_adoptiva:** Al cambiar la ubicación de un perro a `casa_adoptiva`, el formulario muestra un select con las familias de tipo='adopcion'. Si se selecciona una, se actualiza `Familia.perro_id`. El select aparece/desaparece con JS según el tipo elegido.
 30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
 31. **AntonIA (Text-to-SQL):** Asistente IA en `/consulta/` solo para junta/admin. Flujo: pregunta en lenguaje natural → Groq genera SQL → validación estricta (solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE/CREATE) → ejecuta en Neon → Groq formatea respuesta. Modelo: `llama-3.3-70b-versatile`. Requiere `GROQ_API_KEY` en env vars. El tiempo en la protectora usa `COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada` para perros ya adoptados.
 32. **Gestión de errores HTTP:** Handler para 404 (`404.html`) y 500 (`500.html`). Handler global para excepciones Python no controladas (`Exception`) → loguea el traceback y muestra `500.html`. Endpoint `/health` (GET+HEAD) para el health check de Render.
