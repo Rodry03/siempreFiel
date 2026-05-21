@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
 from app.models import Usuario, RolUsuario, Voluntario, PerfilVoluntario, SesionUsuario
-from app.auth import get_current_user, require_admin, hash_password, flash
+from app.auth import get_current_user, require_admin, hash_password, verify_password, flash
 from app.templates_config import templates
 
 SESSION_MAX_AGE = timedelta(hours=8)
@@ -202,6 +202,45 @@ def eliminar_usuario(
     db.commit()
     flash(request, f"Usuario {nombre} eliminado.", "warning")
     return RedirectResponse("/usuarios/", status_code=303)
+
+
+@router.get("/cambiar-password")
+def form_cambiar_password(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user),
+):
+    return templates.TemplateResponse(request, "usuarios/cambiar_password.html", {
+        "current_user": current_user,
+    })
+
+
+@router.post("/cambiar-password")
+def cambiar_password(
+    request: Request,
+    password_actual: str = Form(...),
+    password_nuevo: str = Form(...),
+    password_confirmar: str = Form(...),
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    def _render(error):
+        return templates.TemplateResponse(request, "usuarios/cambiar_password.html", {
+            "current_user": current_user,
+            "error": error,
+        })
+
+    if not verify_password(password_actual, current_user.password_hash):
+        return _render("La contraseña actual no es correcta.")
+    if len(password_nuevo) < 6:
+        return _render("La nueva contraseña debe tener al menos 6 caracteres.")
+    if password_nuevo != password_confirmar:
+        return _render("Las contraseñas nuevas no coinciden.")
+
+    usuario = db.query(Usuario).filter(Usuario.id == current_user.id).first()
+    usuario.password_hash = hash_password(password_nuevo)
+    db.commit()
+    flash(request, "Contraseña actualizada correctamente.")
+    return RedirectResponse("/usuarios/cambiar-password", status_code=303)
 
 
 @router.get("/sesiones")
