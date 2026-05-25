@@ -13,7 +13,9 @@
 <!-- Botones de contrato -->
 <div class="d-flex gap-2 mb-4 flex-wrap">
   {% if familia.perros | length == 1 %}
-  <a href="/familias/{{ familia.id }}/contrato-adopcion/{{ familia.perros[0].id }}" class="btn btn-outline-success">
+  <a href="/familias/{{ familia.id }}/contrato-adopcion/{{ familia.perros[0].id }}"
+     class="btn btn-outline-success contrato-adopcion-btn"
+     data-perro-id="{{ familia.perros[0].id }}">
     <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
   </a>
   {% elif familia.perros | length > 1 %}
@@ -24,7 +26,9 @@
     <ul class="dropdown-menu">
       {% for p in familia.perros %}
       <li>
-        <a class="dropdown-item" href="/familias/{{ familia.id }}/contrato-adopcion/{{ p.id }}">
+        <a class="dropdown-item contrato-adopcion-btn"
+           href="/familias/{{ familia.id }}/contrato-adopcion/{{ p.id }}"
+           data-perro-id="{{ p.id }}">
           {{ p.nombre }}
         </a>
       </li>
@@ -203,6 +207,30 @@
   {% endif %}
 </div>
 
+<!-- Modal aviso campos faltantes -->
+<div class="modal fade" id="modalCamposFaltantes" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-semibold text-warning">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Campos sin rellenar
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">El contrato se generará con los siguientes campos vacíos:</p>
+        <ul id="listaCamposFaltantes" class="mb-0"></ul>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <a id="btnContinuarContrato" href="#" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-file-earmark-text me-1"></i>Generar de todas formas
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if perros_disponibles %}
 <div class="modal fade" id="modalVincularPerro" tabindex="-1">
   <div class="modal-dialog modal-sm">
@@ -231,4 +259,22 @@
   </div>
 </div>
 {% endif %}
+
+<script>
+(function () {
+  const camposFaltantes = {{ campos_faltantes_json | safe }};
+  document.querySelectorAll('.contrato-adopcion-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      const perroId = btn.dataset.perroId;
+      const faltantes = camposFaltantes[perroId] || [];
+      if (faltantes.length === 0) return;
+      e.preventDefault();
+      const lista = document.getElementById('listaCamposFaltantes');
+      lista.innerHTML = faltantes.map(function (c) { return '<li>' + c + '</li>'; }).join('');
+      document.getElementById('btnContinuarContrato').href = btn.href;
+      new bootstrap.Modal(document.getElementById('modalCamposFaltantes')).show();
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 from datetime import date
@@ -17,6 +18,25 @@ from app.templates_config import templates
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/familias", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
+
+
+def _campos_faltantes_contrato(familia, perro) -> list[str]:
+    campos = []
+    if not familia.email:        campos.append("Email de la familia")
+    if not familia.telefono:     campos.append("Teléfono de la familia")
+    if not familia.direccion:    campos.append("Dirección de la familia")
+    if not familia.municipio:    campos.append("Municipio de la familia")
+    if not familia.provincia:    campos.append("Provincia de la familia")
+    if not familia.codigo_postal: campos.append("Código postal de la familia")
+    if not perro.num_chip:       campos.append(f"Microchip de {perro.nombre}")
+    if not perro.num_pasaporte:  campos.append(f"Nº pasaporte de {perro.nombre}")
+    if not perro.raza:           campos.append(f"Raza de {perro.nombre}")
+    if not perro.sexo:           campos.append(f"Sexo de {perro.nombre}")
+    if not perro.fecha_nacimiento: campos.append(f"Fecha de nacimiento de {perro.nombre}")
+    if not perro.color:          campos.append(f"Capa/color de {perro.nombre}")
+    if not perro.tamano:         campos.append(f"Tamaño de {perro.nombre}")
+    if perro.tasa is None:       campos.append(f"Tasa de adopción de {perro.nombre}")
+    return campos
 
 TIPO_LABELS = {"adopcion": "Adopción", "acogida": "Acogida"}
 TIPO_COLORS = {"adopcion": "success", "acogida": "primary"}
@@ -125,11 +145,16 @@ def detalle_familia(request: Request, familia_id: int, db: Session = Depends(get
         Perro.familia_id.is_(None),
         Perro.estado != EstadoPerro.fallecido,
     ).order_by(Perro.nombre).all()
+    campos_faltantes = {
+        p.id: _campos_faltantes_contrato(familia, p)
+        for p in familia.perros
+    }
     return templates.TemplateResponse(request, "familias/detail.html", {
         "familia": familia,
         "tipo_labels": TIPO_LABELS,
         "tipo_colors": TIPO_COLORS,
         "perros_disponibles": perros_disponibles,
+        "campos_faltantes_json": json.dumps(campos_faltantes),
     })
 
 

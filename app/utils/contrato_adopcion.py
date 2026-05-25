@@ -15,18 +15,28 @@ _MESES = [
 ]
 
 
+_DATA_FONT = "Times New Roman"
+
+
+def _apply_font(run):
+    run.font.name = _DATA_FONT
+    run.font.bold = True
+
+
 def _set_run(para, run_idx: int, value: str):
-    """Overwrite a specific run's text; adds a run if index doesn't exist."""
+    value = value.upper()
     runs = para.runs
     if run_idx < len(runs):
         runs[run_idx].text = value
+        _apply_font(runs[run_idx])
     else:
-        para.add_run(value)
+        r = para.add_run(value)
+        _apply_font(r)
 
 
 def _append_run(para, value: str):
-    """Add a plain (non-bold) run at the end of a paragraph."""
-    para.add_run(value)
+    r = para.add_run(value.upper())
+    _apply_font(r)
 
 
 def _fill_tasa(doc, tasa):
@@ -35,8 +45,8 @@ def _fill_tasa(doc, tasa):
         if "cantidad de" in p.text:
             for r in p.runs:
                 if "cantidad de" in r.text:
-                    # "la cantidad de  € para costear" → "la cantidad de X € para costear"
                     r.text = r.text.replace("la cantidad de  €", f"la cantidad de {tasa_str} €")
+                    _apply_font(r)
             break
 
 
@@ -48,6 +58,7 @@ def _fill_fecha(doc):
             for r in p.runs:
                 if "En Salamanca" in r.text:
                     r.text = nueva
+                    _apply_font(r)
             break
 
 
