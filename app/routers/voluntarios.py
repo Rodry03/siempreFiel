@@ -102,8 +102,9 @@ def listar_voluntarios(
         "perfil": Voluntario.perfil,
         "fecha_alta": Voluntario.fecha_alta,
     }
-    col = _cols.get(sort, Voluntario.nombre)
-    query = query.order_by(col.desc() if order == "desc" else col.asc())
+    if sort != "saldo":
+        col = _cols.get(sort, Voluntario.nombre)
+        query = query.order_by(col.desc() if order == "desc" else col.asc())
 
     perfil_qs = "&".join(f"perfil={p}" for p in perfiles_filtro)
 
@@ -114,6 +115,13 @@ def listar_voluntarios(
         for v in voluntarios
         if v.perfil not in PERFILES_SIN_TURNOS
     }
+
+    if sort == "saldo":
+        voluntarios = sorted(
+            voluntarios,
+            key=lambda v: (saldos.get(v.id) is None, saldos.get(v.id, 0)),
+            reverse=(order == "desc"),
+        )
 
     return templates.TemplateResponse(request, "voluntarios/list.html", {
         "voluntarios": voluntarios,
