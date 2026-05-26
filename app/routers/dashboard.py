@@ -189,6 +189,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     evolucion_saldo_mensual = [
         {
             "semana_label": r["semana_label"],
+            "semana_iso": str(r["semana"]) if r.get("semana") else "",
             "saldo_medio": float(r["saldo_medio"]) if r.get("saldo_medio") is not None else 0.0,
             "n_voluntarios": r["n_voluntarios"],
             "n_con_deuda": r["n_con_deuda"],
@@ -369,6 +370,42 @@ def detalle_voluntarios_activos(db: Session = Depends(get_db)):
             "telefono": v.telefono or "—",
         }
         for v in voluntarios
+    ]
+    return JSONResponse({"items": items})
+
+
+@router.get("/dashboard/detalle-saldo-semana")
+def detalle_saldo_semana(
+    semana: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        semana_date = date.fromisoformat(semana)
+    except ValueError:
+        return JSONResponse({"error": "semana inválida"}, status_code=400)
+
+    rows = db.execute(
+        text("""
+            SELECT voluntario_id, nombre, apellido, perfil,
+                   turnos_semana, saldo_semana, saldo_acumulado
+            FROM analytics.mart_saldo_turnos_semanal
+            WHERE semana = :semana
+              AND perfil NOT IN ('directiva', 'guagua', 'eventos', 'colaboradores')
+            ORDER BY saldo_acumulado ASC, nombre ASC
+        """),
+        {"semana": semana_date},
+    ).mappings().all()
+
+    items = [
+        {
+            "id": r["voluntario_id"],
+            "nombre": f"{r['nombre']} {r['apellido']}",
+            "perfil": r["perfil"],
+            "turnos_semana": float(r["turnos_semana"]),
+            "saldo_semana": float(r["saldo_semana"]),
+            "saldo_acumulado": float(r["saldo_acumulado"]),
+        }
+        for r in rows
     ]
     return JSONResponse({"items": items})
 

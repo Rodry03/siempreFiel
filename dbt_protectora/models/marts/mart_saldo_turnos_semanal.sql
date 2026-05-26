@@ -14,6 +14,7 @@ semanas as (
 voluntarios as (
     select * from {{ ref('stg_voluntarios') }}
     where perfil not in ('directiva', 'guagua', 'eventos', 'colaboradores')
+      and activo = true
 ),
 
 turnos as (
