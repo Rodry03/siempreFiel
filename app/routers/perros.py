@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_, or_
 from typing import List, Optional
 from app.database import get_db
-from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro, Familia
+from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro, Familia, Voluntario, PerfilVoluntario
 from app.templates_config import templates
 import cloudinary
 import cloudinary.uploader
@@ -310,6 +310,11 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         Familia.tipo == "adopcion"
     ).order_by(Familia.apellidos, Familia.nombre).all()
     familia_actual = perro.familia
+    _PERFILES_ACOGIDA = {PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta, PerfilVoluntario.voluntario}
+    voluntarios_acogida = db.query(Voluntario).filter(
+        Voluntario.activo == True,
+        Voluntario.perfil.in_(_PERFILES_ACOGIDA),
+    ).order_by(Voluntario.nombre).all()
     return templates.TemplateResponse(request, "perros/detail.html", {
         "perro": perro,
         "vacunas": vacunas,
@@ -326,6 +331,7 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         "error": error,
         "familias_adopcion": familias_adopcion,
         "familia_actual": familia_actual,
+        "voluntarios_acogida": voluntarios_acogida,
     })
 
 
@@ -514,6 +520,7 @@ def cambiar_ubicacion(
     telefono_contacto: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     familia_id: Optional[int] = Form(None),
+    voluntario_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     ubicacion_actual = db.query(Ubicacion).filter(
@@ -528,13 +535,23 @@ def cambiar_ubicacion(
     if ubicacion_actual:
         ubicacion_actual.fecha_fin = fecha_inicio
 
+    _voluntario_id = voluntario_id if tipo == "acogida" else None
+    _nombre = nombre_contacto or None
+    _telefono = telefono_contacto or None
+    if _voluntario_id:
+        vol = db.query(Voluntario).filter(Voluntario.id == _voluntario_id).first()
+        if vol:
+            _nombre = _nombre or vol.nombre
+            _telefono = _telefono or vol.telefono
+
     db.add(Ubicacion(
         perro_id=perro_id,
         tipo=TipoUbicacion(tipo),
         fecha_inicio=fecha_inicio,
-        nombre_contacto=nombre_contacto or None,
-        telefono_contacto=telefono_contacto or None,
+        nombre_contacto=_nombre,
+        telefono_contacto=_telefono,
         notas=notas or None,
+        voluntario_id=_voluntario_id,
     ))
     perro = db.query(Perro).filter(Perro.id == perro_id).first()
     if perro:
@@ -563,6 +580,7 @@ def editar_ubicacion(
     nombre_contacto: Optional[str] = Form(None),
     telefono_contacto: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
+    voluntario_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     ubicacion = db.query(Ubicacion).filter(
@@ -578,6 +596,7 @@ def editar_ubicacion(
     ubicacion.nombre_contacto = nombre_contacto or None
     ubicacion.telefono_contacto = telefono_contacto or None
     ubicacion.notas = notas or None
+    ubicacion.voluntario_id = voluntario_id if tipo == "acogida" else None
 
     # Sincronizar estado del perro si es la ubicación activa (sin fecha_fin)
     if not ubicacion.fecha_fin:

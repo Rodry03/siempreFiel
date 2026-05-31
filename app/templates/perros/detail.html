@@ -129,12 +129,19 @@
             data-fecha-fin="{{ ubicacion_actual.fecha_fin or '' }}"
             data-contacto="{{ ubicacion_actual.nombre_contacto or '' }}"
             data-telefono="{{ ubicacion_actual.telefono_contacto or '' }}"
-            data-notas="{{ ubicacion_actual.notas or '' }}">
+            data-notas="{{ ubicacion_actual.notas or '' }}"
+            data-voluntario-id="{{ ubicacion_actual.voluntario_id or '' }}">
             <i class="bi bi-pencil"></i>
           </button>
           {% endif %}
         </div>
-        {% if ubicacion_actual.nombre_contacto %}
+        {% if ubicacion_actual.voluntario %}
+        <p class="mb-0 text-muted small">
+          <i class="bi bi-person-fill me-1 text-success"></i>
+          <a href="/voluntarios/{{ ubicacion_actual.voluntario.id }}" class="text-decoration-none">{{ ubicacion_actual.voluntario.nombre }} {{ ubicacion_actual.voluntario.apellido }}</a>
+          {% if ubicacion_actual.telefono_contacto %} · {{ ubicacion_actual.telefono_contacto }}{% endif %}
+        </p>
+        {% elif ubicacion_actual.nombre_contacto %}
         <p class="mb-0 text-muted small">
           <i class="bi bi-person me-1"></i>{{ ubicacion_actual.nombre_contacto }}
           {% if ubicacion_actual.telefono_contacto %} · {{ ubicacion_actual.telefono_contacto }}{% endif %}
@@ -172,13 +179,24 @@
                   {% endfor %}
                 </select>
               </div>
+              <div class="col-12 d-none" id="rowVoluntarioAcogida">
+                <label class="form-label small fw-semibold">Voluntario en acogida</label>
+                <select name="voluntario_id" id="selectVoluntarioAcogida" class="form-select form-select-sm">
+                  <option value="">— Sin vincular —</option>
+                  {% for v in voluntarios_acogida %}
+                  <option value="{{ v.id }}" data-nombre="{{ v.nombre }} {{ v.apellido }}" data-telefono="{{ v.telefono or '' }}">
+                    {{ v.nombre }} {{ v.apellido }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Nombre contacto</label>
-                <input type="text" name="nombre_contacto" class="form-control form-control-sm" placeholder="Opcional">
+                <input type="text" name="nombre_contacto" id="inputNombreContacto" class="form-control form-control-sm" placeholder="Opcional (se rellena con el voluntario)">
               </div>
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Teléfono contacto</label>
-                <input type="text" name="telefono_contacto" class="form-control form-control-sm" placeholder="Opcional">
+                <input type="text" name="telefono_contacto" id="inputTelefonoContacto" class="form-control form-control-sm" placeholder="Opcional">
               </div>
               <div class="col-12">
                 <label class="form-label small fw-semibold">Notas</label>
@@ -206,7 +224,13 @@
               <td><span class="badge badge-{{ u.tipo.value }} text-white">{{ ubicacion_labels[u.tipo.value] }}</span></td>
               <td>{{ u.fecha_inicio }}</td>
               <td>{{ u.fecha_fin or 'Actual' }}</td>
-              <td>{{ u.nombre_contacto or '—' }}</td>
+              <td>
+                {% if u.voluntario %}
+                  <a href="/voluntarios/{{ u.voluntario.id }}" class="text-decoration-none small">{{ u.voluntario.nombre }} {{ u.voluntario.apellido }}</a>
+                {% else %}
+                  {{ u.nombre_contacto or '—' }}
+                {% endif %}
+              </td>
               {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
               <td class="d-flex gap-1">
                 <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1" style="font-size:.75rem;"
@@ -217,7 +241,8 @@
                   data-fecha-fin="{{ u.fecha_fin or '' }}"
                   data-contacto="{{ u.nombre_contacto or '' }}"
                   data-telefono="{{ u.telefono_contacto or '' }}"
-                  data-notas="{{ u.notas or '' }}">
+                  data-notas="{{ u.notas or '' }}"
+                  data-voluntario-id="{{ u.voluntario_id or '' }}">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <form id="form-ubi-{{ u.id }}" method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar" class="d-none"></form>
@@ -822,6 +847,15 @@
               <label class="form-label small fw-semibold">Fecha fin <span class="text-muted">(vacío = actual)</span></label>
               <input type="date" name="fecha_fin" id="editUbicFechaFin" class="form-control form-control-sm">
             </div>
+            <div class="col-12 d-none" id="editRowVoluntarioAcogida">
+              <label class="form-label small fw-semibold">Voluntario en acogida</label>
+              <select name="voluntario_id" id="editUbicVoluntario" class="form-select form-select-sm">
+                <option value="">— Sin vincular —</option>
+                {% for v in voluntarios_acogida %}
+                <option value="{{ v.id }}">{{ v.nombre }} {{ v.apellido }}</option>
+                {% endfor %}
+              </select>
+            </div>
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Nombre contacto</label>
               <input type="text" name="nombre_contacto" id="editUbicContacto" class="form-control form-control-sm">
@@ -848,11 +882,28 @@
 <script>
   (function () {
     const sel = document.getElementById('selectTipoUbicacion');
-    const row = document.getElementById('rowFamiliaAdopcion');
-    if (sel && row) {
-      function toggle() { row.classList.toggle('d-none', sel.value !== 'casa_adoptiva'); }
-      sel.addEventListener('change', toggle);
-      toggle();
+    const rowFamilia = document.getElementById('rowFamiliaAdopcion');
+    const rowVol = document.getElementById('rowVoluntarioAcogida');
+    if (sel) {
+      function toggleRows() {
+        if (rowFamilia) rowFamilia.classList.toggle('d-none', sel.value !== 'casa_adoptiva');
+        if (rowVol) rowVol.classList.toggle('d-none', sel.value !== 'acogida');
+      }
+      sel.addEventListener('change', toggleRows);
+      toggleRows();
+    }
+
+    const selVol = document.getElementById('selectVoluntarioAcogida');
+    const inputNombre = document.getElementById('inputNombreContacto');
+    const inputTel = document.getElementById('inputTelefonoContacto');
+    if (selVol) {
+      selVol.addEventListener('change', function () {
+        const opt = selVol.options[selVol.selectedIndex];
+        if (opt && opt.value) {
+          if (inputNombre && !inputNombre.value) inputNombre.value = opt.dataset.nombre || '';
+          if (inputTel && !inputTel.value) inputTel.value = opt.dataset.telefono || '';
+        }
+      });
     }
   })();
 
@@ -860,12 +911,27 @@
     const btn = e.relatedTarget;
     const id = btn.dataset.id;
     document.getElementById('formEditUbicacion').action = `/perros/{{ perro.id }}/ubicacion/${id}/editar`;
-    document.getElementById('editUbicTipo').value = btn.dataset.tipo;
+    const tipo = btn.dataset.tipo;
+    document.getElementById('editUbicTipo').value = tipo;
     document.getElementById('editUbicFechaInicio').value = btn.dataset.fechaInicio;
     document.getElementById('editUbicFechaFin').value = btn.dataset.fechaFin;
     document.getElementById('editUbicContacto').value = btn.dataset.contacto;
     document.getElementById('editUbicTelefono').value = btn.dataset.telefono;
     document.getElementById('editUbicNotas').value = btn.dataset.notas;
+    const rowEditVol = document.getElementById('editRowVoluntarioAcogida');
+    if (rowEditVol) rowEditVol.classList.toggle('d-none', tipo !== 'acogida');
+    const editVol = document.getElementById('editUbicVoluntario');
+    if (editVol) editVol.value = btn.dataset.voluntarioId || '';
   });
+
+  (function () {
+    const editTipo = document.getElementById('editUbicTipo');
+    const rowEditVol = document.getElementById('editRowVoluntarioAcogida');
+    if (editTipo && rowEditVol) {
+      editTipo.addEventListener('change', function () {
+        rowEditVol.classList.toggle('d-none', this.value !== 'acogida');
+      });
+    }
+  })();
 </script>
 {% endblock %}

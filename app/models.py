@@ -152,8 +152,10 @@ class Ubicacion(Base):
     nombre_contacto = Column(String(150), nullable=True)
     telefono_contacto = Column(String(30), nullable=True)
     notas = Column(Text, nullable=True)
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
 
     perro = relationship("Perro", back_populates="ubicaciones")
+    voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
 
 
 class Voluntario(Base):
@@ -361,7 +363,10 @@ class Familia(Base):
     contrato_firmado_fecha = Column(Date, nullable=True)
     contrato_firmado_nombre = Column(String(200), nullable=True)
 
+    voluntario_id = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
+
     perros = relationship("Perro", back_populates="familia", foreign_keys="Perro.familia_id")
+    voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
 
 
 class SaldoMensual(Base):

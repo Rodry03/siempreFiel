@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.auth import get_current_user, require_not_veterano, flash
 from app.database import get_db
-from app.models import Voluntario, PerfilVoluntario, EstadoTurno
+from app.models import Voluntario, PerfilVoluntario, EstadoTurno, Ubicacion, TipoUbicacion, Familia
 from app.routers.voluntarios import CONTRATO_LABELS, CONTRATO_COLORS
 from app.templates_config import templates
 
@@ -194,6 +194,16 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         for p in voluntario.periodos_apoyo
     )
 
+    perros_acogida = db.query(Ubicacion).filter(
+        Ubicacion.voluntario_id == voluntario_id,
+        Ubicacion.fecha_fin.is_(None),
+        Ubicacion.tipo == TipoUbicacion.acogida,
+    ).all()
+
+    familia_vinculada = db.query(Familia).filter(
+        Familia.voluntario_id == voluntario_id
+    ).first()
+
     return templates.TemplateResponse(request, "voluntarios/detail.html", {
         "voluntario": voluntario,
         "hace_turnos": hace_turnos,
@@ -212,6 +222,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "resumen_mensual": resumen_mensual if hace_turnos else {},
         "dias_labels": DIAS_ES,
         "franja_labels": FRANJA_LABELS,
+        "perros_acogida": perros_acogida,
+        "familia_vinculada": familia_vinculada,
     })
 
 

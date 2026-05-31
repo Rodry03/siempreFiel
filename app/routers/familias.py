@@ -12,12 +12,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.database import get_db
-from app.models import Familia, Perro, EstadoPerro
+from app.models import Familia, Perro, EstadoPerro, Voluntario, PerfilVoluntario
 from app.templates_config import templates
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/familias", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
+
+
+def _voluntarios_activos(db):
+    return db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre).all()
 
 
 def _campos_faltantes_contrato(familia, perro) -> list[str]:
@@ -76,6 +80,7 @@ def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
         "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
+        "voluntarios": _voluntarios_activos(db),
     })
 
 
@@ -96,6 +101,7 @@ def crear_familia(
     codigo_postal: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_contrato: date = Form(...),
+    voluntario_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     familia = Familia(
@@ -111,6 +117,7 @@ def crear_familia(
         codigo_postal=codigo_postal or None,
         notas=notas or None,
         fecha_contrato=fecha_contrato,
+        voluntario_id=voluntario_id or None,
     )
     db.add(familia)
     try:
@@ -132,6 +139,7 @@ def crear_familia(
             "tasas_perros": {p.id: p.tasa for p in perros},
             "tipo_labels": TIPO_LABELS,
             "hoy": fecha_contrato.isoformat(),
+            "voluntarios": _voluntarios_activos(db),
         })
     return RedirectResponse(f"/familias/{familia.id}", status_code=303)
 
@@ -185,10 +193,14 @@ def editar_familia_form(request: Request, familia_id: int, db: Session = Depends
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
     if not familia:
         return RedirectResponse("/familias/", status_code=303)
+    perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": familia,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
+        "voluntarios": _voluntarios_activos(db),
+        "perros": perros,
+        "tasas_perros": {p.id: p.tasa for p in perros},
     })
 
 
@@ -208,6 +220,7 @@ def editar_familia(
     codigo_postal: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_contrato: date = Form(...),
+    voluntario_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
@@ -225,6 +238,7 @@ def editar_familia(
     familia.codigo_postal = codigo_postal or None
     familia.notas = notas or None
     familia.fecha_contrato = fecha_contrato
+    familia.voluntario_id = voluntario_id or None
     try:
         db.commit()
     except IntegrityError:

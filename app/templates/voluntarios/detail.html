@@ -246,6 +246,56 @@
       </div>
     </div>
     {% endif %}
+
+    {% if perros_acogida %}
+    <div class="card mt-2">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-house-heart me-2"></i>Perros en acogida
+        <span class="badge bg-secondary ms-1">{{ perros_acogida | length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm align-middle mb-0">
+          <tbody>
+            {% for ub in perros_acogida %}
+            <tr>
+              <td>
+                {% if ub.perro.foto_url %}
+                <img src="{{ ub.perro.foto_url | replace('/upload/', '/upload/c_fill,w_32,h_32/') }}"
+                     class="rounded-circle me-2" width="32" height="32" style="object-fit:cover;">
+                {% endif %}
+                <a href="/perros/{{ ub.perro.id }}" class="text-decoration-none fw-semibold">{{ ub.perro.nombre }}</a>
+              </td>
+              <td class="text-muted small">desde {{ ub.fecha_inicio }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if familia_vinculada %}
+    <div class="card mt-2">
+      <div class="card-header bg-white fw-semibold border-0 pt-3">
+        <i class="bi bi-people me-2"></i>Familia
+      </div>
+      <div class="card-body">
+        <a href="/familias/{{ familia_vinculada.id }}" class="text-decoration-none fw-semibold">
+          {{ familia_vinculada.apellidos }}, {{ familia_vinculada.nombre }}
+        </a>
+        {% if familia_vinculada.tipo %}
+        <span class="badge bg-secondary ms-1 fw-normal" style="font-size:.75rem;">{{ familia_vinculada.tipo }}</span>
+        {% endif %}
+        {% if familia_vinculada.perros %}
+        <div class="mt-2 d-flex flex-wrap gap-1">
+          {% for p in familia_vinculada.perros %}
+          <a href="/perros/{{ p.id }}" class="badge bg-light text-dark border text-decoration-none">{{ p.nombre }}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- Periodos de apoyo -->

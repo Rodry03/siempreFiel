@@ -139,6 +139,15 @@
 
           <dt class="col-sm-4 text-muted fw-normal small">Contrato</dt>
           <dd class="col-sm-8">{{ familia.fecha_contrato.strftime('%d/%m/%Y') }}</dd>
+
+          {% if familia.voluntario %}
+          <dt class="col-sm-4 text-muted fw-normal small">Voluntario/a</dt>
+          <dd class="col-sm-8">
+            <a href="/voluntarios/{{ familia.voluntario.id }}" class="text-decoration-none">
+              <i class="bi bi-person-fill-check me-1 text-success"></i>{{ familia.voluntario.nombre }} {{ familia.voluntario.apellido }}
+            </a>
+          </dd>
+          {% endif %}
         </dl>
       </div>
     </div>
