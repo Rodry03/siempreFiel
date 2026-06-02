@@ -283,6 +283,42 @@
     </div>
     {% endif %}
 
+    {% if hace_turnos and (voluntario.saldo_manual is not none or not es_veterano) %}
+    <!-- Saldo efectivo -->
+    {% set sm = voluntario.saldo_manual %}
+    <div class="card border-0 mt-2
+      {% if sm is not none %}{% if sm > 0 %}bg-success bg-opacity-10{% elif sm < 0 %}bg-danger bg-opacity-10{% else %}bg-light{% endif %}{% else %}bg-light{% endif %}">
+      <div class="card-body text-center py-4">
+        <div class="text-muted small mb-1">Saldo efectivo</div>
+        {% if sm is not none %}
+        <div class="display-4 fw-bold
+          {% if sm > 0 %}text-success{% elif sm < 0 %}text-danger{% else %}text-secondary{% endif %}">
+          {% if sm > 0 %}+{% endif %}{{ sm | int if sm == sm | int else sm | round(1) }}
+        </div>
+        <div class="text-muted small mt-1">
+          {% if sm > 0 %}Va adelantado{% elif sm < 0 %}Debe {{ (sm|abs)|int }} turno{% if sm < -1 %}s{% endif %}{% else %}Al día{% endif %}
+        </div>
+        {% if voluntario.notas_saldo_manual %}
+        <div class="text-muted mt-2" style="font-size:0.75rem;">{{ voluntario.notas_saldo_manual }}</div>
+        {% endif %}
+        {% else %}
+        <div class="text-muted">Sin anotar</div>
+        {% endif %}
+        {% if not es_veterano %}
+        <form method="post" action="/voluntarios/{{ voluntario.id }}/saldo-gestor" class="d-flex flex-column gap-2 mt-3 text-start">
+          <input type="number" step="0.5" name="saldo_manual" class="form-control form-control-sm"
+            placeholder="Ej: -2"
+            value="{{ sm if sm is not none else '' }}">
+          <input type="text" name="notas_saldo_manual" class="form-control form-control-sm"
+            placeholder="Notas (temporada anterior...)"
+            value="{{ voluntario.notas_saldo_manual or '' }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     {% if grupos_voluntario %}
     <div class="card mt-2">
       <div class="card-header bg-white fw-semibold border-0 pt-3">

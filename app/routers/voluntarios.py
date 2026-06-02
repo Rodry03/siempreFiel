@@ -462,6 +462,23 @@ def reactivar(request: Request, voluntario_id: int, db: Session = Depends(get_db
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
+@router.post("/{voluntario_id}/saldo-gestor", dependencies=[Depends(require_not_veterano)])
+def guardar_saldo_gestor(
+    request: Request,
+    voluntario_id: int,
+    saldo_manual: Optional[float] = Form(None),
+    notas_saldo_manual: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
+    if voluntario:
+        voluntario.saldo_manual = saldo_manual
+        voluntario.notas_saldo_manual = notas_saldo_manual.strip() if notas_saldo_manual else None
+        db.commit()
+        flash(request, "Saldo del gestor actualizado.", "success")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
 @router.post("/{voluntario_id}/cambiar-perfil")
 def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = Depends(get_db)):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
