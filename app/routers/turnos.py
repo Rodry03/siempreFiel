@@ -176,7 +176,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 elif t.estado == EstadoTurno.medio_turno:
                     resumen_mensual[mk]["medio"] += 1
 
-    from app.models import MiembroGrupoTarea, EjecucionGrupoTarea
+    from app.models import MiembroGrupoTarea, EjecucionGrupoTarea, Evento, EventoVoluntario
     hoy = date.today()
     semana_actual = hoy - timedelta(days=hoy.weekday())
     memberships = db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).all()
@@ -193,6 +193,17 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         p.fecha_inicio <= hoy_date and (p.fecha_fin is None or p.fecha_fin >= hoy_date)
         for p in voluntario.periodos_apoyo
     )
+
+    proximo_evento = (
+        db.query(Evento)
+        .filter(Evento.fecha >= hoy_date)
+        .order_by(Evento.fecha.asc(), Evento.hora_inicio.asc())
+        .first()
+    )
+    ya_apuntado = proximo_evento and db.query(EventoVoluntario).filter(
+        EventoVoluntario.evento_id == proximo_evento.id,
+        EventoVoluntario.voluntario_id == voluntario_id,
+    ).first() is not None
 
     perros_acogida = db.query(Ubicacion).filter(
         Ubicacion.voluntario_id == voluntario_id,
@@ -224,6 +235,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         "franja_labels": FRANJA_LABELS,
         "perros_acogida": perros_acogida,
         "familia_vinculada": familia_vinculada,
+        "proximo_evento": proximo_evento,
+        "ya_apuntado": ya_apuntado,
     })
 
 

@@ -83,6 +83,9 @@ def login(
 
     request.session["user_id"] = user.id
     request.session["sesion_id"] = sesion.id
+    from app.models import RolUsuario
+    if user.rol == RolUsuario.veterano and user.voluntario_id:
+        return RedirectResponse(f"/voluntarios/{user.voluntario_id}", status_code=303)
     return RedirectResponse("/", status_code=303)
 
 

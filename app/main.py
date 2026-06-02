@@ -76,6 +76,10 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticated):
 
 @app.exception_handler(NotAuthorized)
 async def not_authorized_handler(request: Request, exc: NotAuthorized):
+    user = getattr(request.state, "current_user", None)
+    from app.models import RolUsuario
+    if user and user.rol == RolUsuario.veterano and user.voluntario_id:
+        return RedirectResponse(f"/voluntarios/{user.voluntario_id}", status_code=303)
     return RedirectResponse("/perros/", status_code=303)
 
 

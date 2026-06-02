@@ -200,6 +200,35 @@ def guardar_horario_voluntario(
     return RedirectResponse(f"/eventos/{evento_id}", status_code=303)
 
 
+@router.post("/{evento_id}/apuntarme", dependencies=[Depends(get_current_user)])
+def apuntarme_evento(
+    request: Request,
+    evento_id: int,
+    hora_llegada: Optional[str] = Form(None),
+    hora_salida: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    user = request.state.current_user
+    voluntario_id = user.voluntario_id
+    if not voluntario_id:
+        flash(request, "No tienes un voluntario asociado.", "danger")
+        return RedirectResponse(f"/eventos/{evento_id}", status_code=303)
+    existe = db.query(EventoVoluntario).filter(
+        EventoVoluntario.evento_id == evento_id,
+        EventoVoluntario.voluntario_id == voluntario_id,
+    ).first()
+    if not existe:
+        db.add(EventoVoluntario(
+            evento_id=evento_id,
+            voluntario_id=voluntario_id,
+            hora_llegada=hora_llegada or None,
+            hora_salida=hora_salida or None,
+        ))
+        db.commit()
+        flash(request, "¡Apuntado al evento!", "success")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
 @router.post("/{evento_id}/voluntario/{voluntario_id}/eliminar", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 def quitar_voluntario(
     request: Request,
