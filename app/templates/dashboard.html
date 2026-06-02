@@ -37,9 +37,30 @@
     </div>
   </div>
   <div class="col-sm-6 col-xl">
-    <div class="card stat-card border-danger p-3" style="cursor:pointer" onclick="abrirDetalleCard('esterilizados')" title="Ver detalle">
-      <div class="text-muted small">Sin esterilizar</div>
-      <div class="fs-2 fw-bold text-danger">{{ no_esterilizados | length }}</div>
+    <div class="card border-primary h-100 p-3">
+      <div class="mb-2">
+        <a href="/eventos/" class="text-decoration-none text-muted small fw-semibold"><i class="bi bi-calendar-event text-primary me-1"></i>Próximos eventos</a>
+      </div>
+      {% if proximos_eventos %}
+        {% for ev in proximos_eventos[:1] %}
+        <a href="/eventos/{{ ev.id }}" class="text-decoration-none text-dark">
+          <div class="d-flex align-items-start gap-2">
+            <div class="text-center bg-primary text-white rounded px-2 py-1 flex-shrink-0" style="min-width:38px; line-height:1.1;">
+              <div class="fw-bold" style="font-size:1rem;">{{ ev.fecha.strftime('%d') }}</div>
+              <div style="font-size:0.65rem;">{{ ev.fecha.strftime('%b').upper() }}</div>
+            </div>
+            <div style="min-width:0;">
+              <div class="fw-semibold text-truncate" style="font-size:0.8rem;">{{ ev.titulo }}</div>
+              <div class="text-muted text-truncate" style="font-size:0.7rem;">
+                {% if ev.hora_inicio %}{{ ev.hora_inicio }}{% if ev.hora_fin %} – {{ ev.hora_fin }}{% endif %} · {% endif %}{{ ev.ubicacion or '—' }}
+              </div>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small mb-0">Sin eventos próximos.</p>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -144,6 +165,7 @@
   </div>
   {% endif %}
 </div>
+
 
 
 <div class="row g-4">

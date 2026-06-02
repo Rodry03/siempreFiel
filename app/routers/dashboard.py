@@ -134,7 +134,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion
+    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion, Evento
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
@@ -154,6 +154,14 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
             dist_ubicacion["sin_ubicacion"] += 1
 
     hoy = date.today()
+    proximos_eventos = (
+        db.query(Evento)
+        .filter(Evento.fecha >= hoy)
+        .order_by(Evento.fecha.asc(), Evento.hora_inicio.asc())
+        .limit(8)
+        .all()
+    )
+
     voluntarios_top = [
         {"voluntario": v, "dias": (hoy - v.fecha_alta).days}
         for v in db.query(Voluntario)
@@ -214,6 +222,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "conversion_visitantes": conversion_visitantes,
         "evolucion_saldo_mensual": evolucion_saldo_mensual,
         "dist_ubicacion": dist_ubicacion,
+        "proximos_eventos": proximos_eventos,
         "dbt_status": dbt,
     })
 
