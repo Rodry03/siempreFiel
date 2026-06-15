@@ -56,7 +56,8 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - Can view **only perros in refugio with estado=activos** (no filters, no tabs, no location change)
 - Can view **own volunteer profile** only (profile + turnos + medicación perros)
 - Cannot: register turnos, edit profile, change perfil, see other profiles
-- **Redirect target on auth fail:** `/perros/` (not `/`), avoids infinite loop
+- **Login redirect:** goes directly to `/voluntarios/{voluntario_id}` (their own profile), not to `/`
+- **Redirect target on auth fail:** `/voluntarios/{voluntario_id}` if has voluntario_id, else `/perros/`
 - Associated with a `Usuario.voluntario_id` (can be null for admin/junta)
 
 **Access control:**
@@ -136,6 +137,8 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - `fecha_contrato`, `contrato_estado`: EstadoContrato (pendiente, enviado, firmado)
 - `teaming`: boolean
 - `activo`: boolean
+- `saldo_manual` (Float, nullable): **Saldo efectivo** anotado manualmente por el gestor. Independiente del saldo automático. Editable por junta/admin via `POST /voluntarios/{id}/saldo-gestor`. Visible (solo lectura) también por veteranos en su perfil.
+- `notas_saldo_manual` (Text, nullable): contexto del saldo efectivo (ej. "Deuda temporada anterior").
 - Turnos: one-to-many `TurnoVoluntario`
 - Periodos de apoyo: one-to-many `PeriodoApoyo` (`fecha_inicio`, `fecha_fin` nullable). Las semanas cubiertas por un periodo de apoyo se neutralizan en el saldo (no suman ni restan).
 
@@ -159,6 +162,7 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 
 ### Evento
 - `titulo`, `fecha`, `hora_inicio`/`hora_fin` (String HH:MM, nullable), `ubicacion` (nullable), `tipo` (Text, comma-separated, nullable), `notas` (nullable)
+- **`tipo` es TEXT** (no enum) — se almacena como string separado por comas. Históricamente existía un enum `tipoevento` que fue eliminado (`ALTER TABLE eventos ALTER COLUMN tipo TYPE TEXT USING tipo::TEXT`)
 - `participantes`: one-to-many `EventoVoluntario` (UniqueConstraint evento_id+voluntario_id)
 - CRUD en `app/routers/eventos.py` (prefix `/eventos/`), visible para junta/admin
 - Tipos libres seleccionables con checkboxes múltiples; se almacenan como texto separado por comas
@@ -166,6 +170,7 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 ### EventoVoluntario
 - `evento_id`, `voluntario_id`, `hora_llegada` (String HH:MM, nullable), `hora_salida` (String HH:MM, nullable)
 - `POST /eventos/{id}/voluntario/{vid}/horario` guarda hora_llegada y hora_salida (junta/admin)
+- `POST /eventos/{id}/apuntarme` — veterano se apunta a sí mismo con hora_llegada/hora_salida opcionales (accesible a todos los roles autenticados)
 - La duración se calcula en el router (`_duracion()`) y se pasa al template como dict `{ep.id: "Xh YYm"}`
 - En detail.html: junta/admin ven inputs time editables + badge verde con duración; veteranos ven solo lectura
 
@@ -224,7 +229,7 @@ app/
   auth.py             — get_current_user, require_not_veterano, require_admin
   database.py         — Session factory
   templates_config.py — Jinja2 setup
-  main.py             — FastAPI app, NotAuthorized redirect to /perros/
+  main.py             — FastAPI app, NotAuthorized redirect to /voluntarios/{id} para veteranos con voluntario_id, else /perros/
   estadillo_parser.py — Parser del estadillo semanal (texto → turnos). (T.C.) se ignora; otras anotaciones entre paréntesis en veterano → medio_turno; "Visita" se omite.
   routers/
     dashboard.py      — Dashboard stats, dbt run button (admin-only), GET /dashboard/detalle-mes, GET /dashboard/detalle-conversion (drill-down charts)
@@ -241,14 +246,14 @@ app/
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
     login.html        — Login form (with logo). Fondo gradiente verde marca
-    dashboard.html    — Stat cards + charts + dbt button. Drill-down en entradas/adopciones y conversión visitantes. Gráficos: entradas/salidas, conversión visitantes, cobertura semanal (20 semanas), evolución saldo (20 semanas), tiempo adopción, tiempo acogida.
+    dashboard.html    — Stat cards (incl. widget próximo evento) + charts + dbt button. Drill-down en entradas/adopciones y conversión visitantes. Gráficos: entradas/salidas, conversión visitantes, cobertura semanal (20 semanas), evolución saldo (20 semanas), tiempo adopción, tiempo acogida.
     perros/
       list.html       — Tabs: En refugio / En acogida / Reservados / Adoptados / Todos. 35 por página. Contador. Ordenación preservada al paginar.
       detail.html     — Photo, edit/delete, pesos, celos, medicaciones (visible a todos), vacunas (ocultas a veterano). Ubicaciones: cambio + edición individual. Botón atrás usa history.back().
       form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
     voluntarios/
-      list.html       — Active volunteers
-      detail.html     — Profile + historial turnos (desde 04/08/2025, semanas vacías en rojo con -1, apoyo en azul)
+      list.html       — Active volunteers. Columnas: Saldo app (automático) + Saldo efectivo (manual).
+      detail.html     — Profile + historial turnos (desde 04/08/2025, semanas vacías en rojo con -1, apoyo en azul). Tarjetas paralelas: Saldo de turnos (automático) + Saldo efectivo (manual, editable por junta/admin). Widget próximo evento con botón "Apuntarme" (solo veterano).
       form.html       — Create/edit. fecha_veterano + fecha_fin_veterano (rellenar fin → fuerza perfil a voluntario)
     turnos/
       list.html       — Vista semanal con nav ◀▶, filtro por perfil, modal añadir, eliminar. Botón "Limpiar semana" (admin). Saldo en float (1 decimal).
@@ -377,6 +382,11 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
 31. **AntonIA (Text-to-SQL):** Asistente IA en `/consulta/` solo para junta/admin. Flujo: pregunta en lenguaje natural → Groq genera SQL → validación estricta (solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE/CREATE) → ejecuta en Neon → Groq formatea respuesta. Modelo: `llama-3.3-70b-versatile`. Requiere `GROQ_API_KEY` en env vars. El tiempo en la protectora usa `COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada` para perros ya adoptados.
 32. **Gestión de errores HTTP:** Handler para 404 (`404.html`) y 500 (`500.html`). Handler global para excepciones Python no controladas (`Exception`) → loguea el traceback y muestra `500.html`. Endpoint `/health` (GET+HEAD) para el health check de Render.
+35. **Evento.tipo es TEXT:** La columna `tipo` de `eventos` fue migrada de enum `tipoevento` a `TEXT` (`ALTER TABLE eventos ALTER COLUMN tipo TYPE TEXT USING tipo::TEXT; DROP TYPE IF EXISTS tipoevento`). Se almacena como string separado por comas.
+36. **Dashboard widget próximo evento:** Stat card que muestra el siguiente evento (fecha badge + título + horario). Sustituye a la antigua stat card "Sin esterilizar". La tarjeta grande de "Pendientes de esterilizar" se mantiene en la sección inferior.
+37. **Veterano landing page:** Al hacer login, el veterano va directamente a `/voluntarios/{voluntario_id}` en lugar de pasar por el dashboard. El handler `NotAuthorized` también redirige a su perfil (no a `/perros/`) si tiene `voluntario_id`.
+38. **Widget próximo evento en perfil veterano:** En `voluntarios/detail.html`, los veteranos ven un widget del próximo evento con botón "Apuntarme" que abre un modal para indicar hora de llegada/salida. Endpoint: `POST /eventos/{id}/apuntarme` (accesible a todos los roles).
+39. **Saldo efectivo paralelo al saldo automático:** `Voluntario.saldo_manual` (Float, nullable) y `Voluntario.notas_saldo_manual` (Text, nullable) almacenan el saldo anotado manualmente por el gestor. Nunca se combina con `calcular_saldo()` — son dos sistemas paralelos independientes. Visibles en lista (columna "Saldo efectivo") y perfil (tarjeta con mismo estilo que "Saldo de turnos"). Editable solo por junta/admin.
 
 ---
 
@@ -392,7 +402,7 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 
 ## Troubleshooting
 
-**Veterano infinite redirect loop:** Fixed by redirecting `NotAuthorized` to `/perros/` (not `/`).
+**Veterano infinite redirect loop:** El handler `NotAuthorized` redirige a `/voluntarios/{id}` si el veterano tiene `voluntario_id`, o a `/perros/` como fallback. El login redirige directamente al perfil del veterano. No redirigir a `/` (causa loop con el dashboard que requiere `require_not_veterano`).
 
 **Cloudinary config empty:** Move `cloudinary.config()` inside the upload function so it reads env vars at request time, not import time.
 

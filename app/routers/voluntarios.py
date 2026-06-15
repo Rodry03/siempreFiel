@@ -88,7 +88,9 @@ def listar_voluntarios(
     db: Session = Depends(get_db),
 ):
     query = db.query(Voluntario)
-    if not bajas:
+    if bajas:
+        query = query.filter(Voluntario.activo == False)
+    else:
         query = query.filter(Voluntario.activo == True)
     valores_validos = {p.value for p in PerfilVoluntario}
     perfiles_filtro = [p for p in perfil if p in valores_validos]
