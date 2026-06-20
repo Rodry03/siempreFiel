@@ -13,6 +13,9 @@
       <span class="badge bg-success">Activo</span>
     {% else %}
       <span class="badge bg-secondary">Baja</span>
+      {% if voluntario.fecha_baja %}
+        <span class="text-muted small">desde {{ voluntario.fecha_baja.strftime('%d/%m/%Y') }}</span>
+      {% endif %}
     {% endif %}
   </div>
   {% set es_veterano = request.state.current_user and request.state.current_user.rol.value == 'veterano' %}

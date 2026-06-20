@@ -447,6 +447,7 @@ def dar_de_baja(request: Request, voluntario_id: int, db: Session = Depends(get_
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         voluntario.activo = False
+        voluntario.fecha_baja = date.today()
         db.query(GrupoTarea).filter(GrupoTarea.capitan_id == voluntario_id).update({"capitan_id": None})
         db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
         db.commit()
@@ -459,6 +460,7 @@ def reactivar(request: Request, voluntario_id: int, db: Session = Depends(get_db
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         voluntario.activo = True
+        voluntario.fecha_baja = None
         db.commit()
         flash(request, f"{voluntario.nombre} {voluntario.apellido} reactivado/a.")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)

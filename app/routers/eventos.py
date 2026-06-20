@@ -82,7 +82,7 @@ def crear_evento(
         hora_inicio=hora_inicio or None,
         hora_fin=hora_fin or None,
         ubicacion=ubicacion.strip() if ubicacion else None,
-        tipo=",".join(tipo) if tipo else None,
+        tipo=",".join(tipo) if tipo else "",
         notas=notas.strip() if notas else None,
     )
     db.add(evento)
@@ -146,7 +146,7 @@ def editar_evento(
     evento.hora_inicio = hora_inicio or None
     evento.hora_fin = hora_fin or None
     evento.ubicacion = ubicacion.strip() if ubicacion else None
-    evento.tipo = ",".join(tipo) if tipo else None
+    evento.tipo = ",".join(tipo) if tipo else ""
     evento.notas = notas.strip() if notas else None
     db.commit()
     flash(request, "Evento actualizado.", "success")
