@@ -2,7 +2,11 @@ import asyncio
 import logging
 import os
 import subprocess
+import sys
 import uuid
+from pathlib import Path
+
+_DBT_BIN = str(Path(sys.executable).parent / "dbt")
 from datetime import date
 from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import JSONResponse
@@ -27,14 +31,14 @@ async def _run_dbt_full(job_id: str):
     dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
     env = {**os.environ}
     try:
-        deps = await asyncio.to_thread(_dbt_subprocess, ["dbt", "deps"], dbt_dir, env, 60)
+        deps = await asyncio.to_thread(_dbt_subprocess, [_DBT_BIN, "deps"], dbt_dir, env, 60)
         if deps.returncode != 0:
             output = (deps.stderr or deps.stdout or "").strip()
             logger.error("dbt deps FAILED:\n%s", output)
             _dbt_jobs[job_id] = {"status": "error", "output": f"Error en dbt deps:\n{output[-500:]}"}
             return
 
-        result = await asyncio.to_thread(_dbt_subprocess, ["dbt", "run"], dbt_dir, env, 180)
+        result = await asyncio.to_thread(_dbt_subprocess, [_DBT_BIN, "run"], dbt_dir, env, 180)
         if result.returncode == 0:
             logger.info("dbt run OK")
             _dbt_jobs[job_id] = {"status": "ok", "output": "Analytics actualizados correctamente."}
@@ -55,7 +59,7 @@ async def _run_dbt_model(job_id: str, model: str):
     env = {**os.environ}
     try:
         result = await asyncio.to_thread(
-            _dbt_subprocess, ["dbt", "run", "--select", model], dbt_dir, env, 60
+            _dbt_subprocess, [_DBT_BIN, "run", "--select", model], dbt_dir, env, 60
         )
         if result.returncode == 0:
             _dbt_jobs[job_id] = {"status": "ok", "output": f"{model} actualizado correctamente."}
