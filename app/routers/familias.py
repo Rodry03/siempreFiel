@@ -43,6 +43,23 @@ def _campos_faltantes_contrato(familia, perro) -> list[str]:
     return campos
 
 
+def _campos_faltantes_contrato_preadopcion(familia, perro) -> list[str]:
+    campos = []
+    if not familia.email:        campos.append("Email de la familia")
+    if not familia.telefono:     campos.append("Teléfono de la familia")
+    if not familia.direccion:    campos.append("Dirección de la familia")
+    if not familia.municipio:    campos.append("Municipio de la familia")
+    if not familia.provincia:    campos.append("Provincia de la familia")
+    if not familia.codigo_postal: campos.append("Código postal de la familia")
+    if not perro.num_chip:       campos.append(f"Microchip de {perro.nombre}")
+    if not perro.raza:           campos.append(f"Raza de {perro.nombre}")
+    if not perro.sexo:           campos.append(f"Sexo de {perro.nombre}")
+    if not perro.fecha_nacimiento: campos.append(f"Fecha de nacimiento de {perro.nombre}")
+    if not perro.color:          campos.append(f"Capa/color de {perro.nombre}")
+    if not perro.tamano:         campos.append(f"Tamaño de {perro.nombre}")
+    return campos
+
+
 def _campos_faltantes_contrato_acogida(familia, perro) -> list[str]:
     campos = []
     if not familia.email:        campos.append("Email de la familia")
@@ -178,6 +195,10 @@ def detalle_familia(request: Request, familia_id: int, db: Session = Depends(get
         p.id: _campos_faltantes_contrato_acogida(familia, p)
         for p in familia.perros
     }
+    campos_faltantes_preadopcion = {
+        p.id: _campos_faltantes_contrato_preadopcion(familia, p)
+        for p in familia.perros
+    }
     return templates.TemplateResponse(request, "familias/detail.html", {
         "familia": familia,
         "tipo_labels": TIPO_LABELS,
@@ -185,6 +206,7 @@ def detalle_familia(request: Request, familia_id: int, db: Session = Depends(get
         "perros_disponibles": perros_disponibles,
         "campos_faltantes_json": json.dumps(campos_faltantes),
         "campos_faltantes_acogida_json": json.dumps(campos_faltantes_acogida),
+        "campos_faltantes_preadopcion_json": json.dumps(campos_faltantes_preadopcion),
     })
 
 
@@ -291,6 +313,32 @@ def generar_contrato_adopcion(familia_id: int, perro_id: int, db: Session = Depe
         logger.error("Error generando contrato adopción familia %s: %s", familia_id, e)
         return RedirectResponse(f"/familias/{familia_id}", status_code=303)
     nombre_base = f"contrato_adopcion_{familia.apellidos.replace(' ', '_')}"
+    if pdf_bytes:
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{nombre_base}.pdf"'},
+        )
+    return StreamingResponse(
+        io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_base}.docx"'},
+    )
+
+
+@router.get("/{familia_id}/contrato-preadopcion/{perro_id}")
+def generar_contrato_preadopcion(familia_id: int, perro_id: int, db: Session = Depends(get_db)):
+    familia = db.query(Familia).filter(Familia.id == familia_id).first()
+    perro = db.query(Perro).filter(Perro.id == perro_id, Perro.familia_id == familia_id).first()
+    if not familia or not perro:
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    from app.utils.contrato_preadopcion import generar_contrato_preadopcion as _gen
+    try:
+        pdf_bytes, docx_bytes = _gen(familia, perro)
+    except Exception as e:
+        logger.error("Error generando contrato preadopción familia %s: %s", familia_id, e)
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    nombre_base = f"contrato_preadopcion_{familia.apellidos.replace(' ', '_')}"
     if pdf_bytes:
         return StreamingResponse(
             io.BytesIO(pdf_bytes),

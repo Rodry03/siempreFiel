@@ -13,34 +13,6 @@
 <!-- Botones de contrato -->
 <div class="d-flex gap-2 mb-4 flex-wrap">
   {% if familia.perros | length == 1 %}
-  <a href="/familias/{{ familia.id }}/contrato-adopcion/{{ familia.perros[0].id }}"
-     class="btn btn-outline-success contrato-adopcion-btn"
-     data-perro-id="{{ familia.perros[0].id }}">
-    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
-  </a>
-  {% elif familia.perros | length > 1 %}
-  <div class="dropdown">
-    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-      <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
-    </button>
-    <ul class="dropdown-menu">
-      {% for p in familia.perros %}
-      <li>
-        <a class="dropdown-item contrato-adopcion-btn"
-           href="/familias/{{ familia.id }}/contrato-adopcion/{{ p.id }}"
-           data-perro-id="{{ p.id }}">
-          {{ p.nombre }}
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% else %}
-  <button class="btn btn-outline-success" disabled title="Asigna un perro a esta familia para generar el contrato">
-    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
-  </button>
-  {% endif %}
-  {% if familia.perros | length == 1 %}
   <a href="/familias/{{ familia.id }}/contrato-acogida/{{ familia.perros[0].id }}"
      class="btn btn-outline-primary contrato-acogida-btn"
      data-perro-id="{{ familia.perros[0].id }}">
@@ -66,6 +38,62 @@
   {% else %}
   <button class="btn btn-outline-primary" disabled title="Asigna un perro a esta familia para generar el contrato">
     <i class="bi bi-file-earmark-text me-1"></i>Generar contrato acogida
+  </button>
+  {% endif %}
+  {% if familia.perros | length == 1 %}
+  <a href="/familias/{{ familia.id }}/contrato-preadopcion/{{ familia.perros[0].id }}"
+     class="btn btn-outline-warning contrato-preadopcion-btn"
+     data-perro-id="{{ familia.perros[0].id }}">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato pre-adopción
+  </a>
+  {% elif familia.perros | length > 1 %}
+  <div class="dropdown">
+    <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+      <i class="bi bi-file-earmark-text me-1"></i>Generar contrato pre-adopción
+    </button>
+    <ul class="dropdown-menu">
+      {% for p in familia.perros %}
+      <li>
+        <a class="dropdown-item contrato-preadopcion-btn"
+           href="/familias/{{ familia.id }}/contrato-preadopcion/{{ p.id }}"
+           data-perro-id="{{ p.id }}">
+          {{ p.nombre }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <button class="btn btn-outline-warning" disabled title="Asigna un perro a esta familia para generar el contrato">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato pre-adopción
+  </button>
+  {% endif %}
+  {% if familia.perros | length == 1 %}
+  <a href="/familias/{{ familia.id }}/contrato-adopcion/{{ familia.perros[0].id }}"
+     class="btn btn-outline-success contrato-adopcion-btn"
+     data-perro-id="{{ familia.perros[0].id }}">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
+  </a>
+  {% elif familia.perros | length > 1 %}
+  <div class="dropdown">
+    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+      <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
+    </button>
+    <ul class="dropdown-menu">
+      {% for p in familia.perros %}
+      <li>
+        <a class="dropdown-item contrato-adopcion-btn"
+           href="/familias/{{ familia.id }}/contrato-adopcion/{{ p.id }}"
+           data-perro-id="{{ p.id }}">
+          {{ p.nombre }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <button class="btn btn-outline-success" disabled title="Asigna un perro a esta familia para generar el contrato">
+    <i class="bi bi-file-earmark-text me-1"></i>Generar contrato adopción
   </button>
   {% endif %}
   <a href="/familias/{{ familia.id }}/editar" class="btn btn-outline-secondary ms-auto">
@@ -298,6 +326,7 @@
 (function () {
   const camposFaltantes = {{ campos_faltantes_json | safe }};
   const camposFaltantesAcogida = {{ campos_faltantes_acogida_json | safe }};
+  const camposFaltantesPreadopcion = {{ campos_faltantes_preadopcion_json | safe }};
 
   function attachWarning(selector, dict) {
     document.querySelectorAll(selector).forEach(function (btn) {
@@ -316,6 +345,7 @@
 
   attachWarning('.contrato-adopcion-btn', camposFaltantes);
   attachWarning('.contrato-acogida-btn', camposFaltantesAcogida);
+  attachWarning('.contrato-preadopcion-btn', camposFaltantesPreadopcion);
 })();
 </script>
 {% endblock %}
