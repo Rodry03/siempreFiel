@@ -10,6 +10,16 @@ from app.database import init_db
 from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias, consulta
 from app.routers import login as login_router
 from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
+from openinference.instrumentation.groq import GroqInstrumentor
+from langfuse import get_client
+
+# Esto es lo que faltaba: conecta el exportador de OpenTelemetry con tu proyecto
+# de Langfuse, leyendo LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL
+# del entorno. Sin esto, GroqInstrumentor genera trazas que no van a ningún sitio.
+langfuse = get_client()
+assert langfuse.auth_check(), "Langfuse: claves incorrectas o no configuradas en el entorno"
+
+GroqInstrumentor().instrument()
 
 logger = logging.getLogger(__name__)
 

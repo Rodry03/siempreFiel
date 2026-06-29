@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -62,12 +63,19 @@ analytics.mart_saldo_turnos_semanal (voluntario_id, nombre TEXT, apellido TEXT, 
   Usa SIEMPRE esta tabla para preguntas sobre saldo, deuda de turnos o voluntarios al día.
 """
 
-_SYSTEM_SQL = f"""Eres un asistente de base de datos para la protectora de perros "Siempre Fiel".
-Dado el esquema y una pregunta en español, genera ÚNICAMENTE una consulta SQL SELECT válida para PostgreSQL.
+_SYSTEM_SQL = f"""Eres el asistente de base de datos de la protectora de perros "Siempre Fiel".
+Tienes disponibles DOS herramientas:
+
+- buscar_perro_por_nombre: úsala SOLO cuando la pregunta sea sobre UN perro concreto
+  identificado por su nombre (su estado, raza o ubicación actual). Es más rápida y
+  segura que generar SQL para este caso, úsala siempre que aplique.
+- ejecutar_consulta_sql: úsala para cualquier otra pregunta (listados, conteos, filtros,
+  agregaciones, turnos, economía, vacunas, etc.), generando tú mismo el SQL.
+
+Si decides usar ejecutar_consulta_sql, sigue estas reglas para el SQL que generes:
 
 REGLAS ESTRICTAS:
 - Solo SELECT. NUNCA uses DROP, DELETE, UPDATE, INSERT, ALTER, TRUNCATE, CREATE.
-- Responde SOLO con la query SQL, sin explicación, sin markdown, sin comillas alrededor.
 - Usa ILIKE para comparaciones de texto libre (nombres, notas, etc.).
 - Las columnas de tipo enum (estado, perfil, franja, sexo, tipo en ubicaciones/movimientos/visitantes) son enums de PostgreSQL: usa siempre `= 'valor'` (NO ILIKE ni LIKE), o `::text = 'valor'` si necesitas cast.
 - Los nombres de perros están en MAYÚSCULAS; usa UPPER() o ILIKE al comparar.
@@ -75,7 +83,9 @@ REGLAS ESTRICTAS:
 - Para calcular cuánto tiempo estuvo un perro en la protectora: usa COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada. Si ya fue adoptado, el período termina en fecha_adopcion, no hoy.
 - "perros en el refugio/acogida/residencia" → filtra por ubicaciones.tipo y fecha_fin IS NULL. NUNCA uses perros.estado para responder preguntas sobre ubicación física.
 - Añade siempre LIMIT 50 salvo que el usuario pida un número concreto.
-- Si la pregunta no puede responderse con los datos disponibles, responde exactamente: NO_PUEDO_RESPONDER
+
+Si la pregunta no puede responderse con los datos disponibles, NO uses ninguna herramienta:
+responde directamente en texto explicando que no tienes esos datos.
 
 ESQUEMA:
 {_SCHEMA}"""
@@ -98,12 +108,72 @@ _DANGEROUS = re.compile(
     re.IGNORECASE,
 )
 
+MAX_INTENTOS_SQL = 3  # límite para evitar bucles infinitos si el modelo no logra corregir el SQL
 
-def _extraer_sql(texto: str) -> str:
-    m = re.search(r"```(?:sql)?\s*([\s\S]+?)\s*```", texto, re.IGNORECASE)
-    if m:
-        return m.group(1).strip()
-    return texto.strip()
+
+_TOOLS_SCHEMA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "buscar_perro_por_nombre",
+            "description": (
+                "Busca un perro por su nombre (exacto o parcial) y devuelve sus datos "
+                "básicos: raza, estado y ubicación actual. Úsala SOLO para preguntas "
+                "sobre un perro concreto identificado por nombre."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "nombre": {"type": "string", "description": "Nombre del perro a buscar"}
+                },
+                "required": ["nombre"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ejecutar_consulta_sql",
+            "description": (
+                "Ejecuta una consulta SQL SELECT sobre la base de datos de la protectora. "
+                "Úsala para listados, conteos, filtros, agregaciones, turnos, economía, "
+                "vacunas y cualquier pregunta que no sea una búsqueda simple por nombre."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {"type": "string", "description": "La consulta SQL SELECT completa para PostgreSQL"}
+                },
+                "required": ["sql"],
+            },
+        },
+    },
+]
+
+
+def _buscar_perro_por_nombre(db: Session, nombre: str) -> dict:
+    """Consulta directa y parametrizada -- no hay SQL generado por el modelo aquí,
+    así que no hace falta reintento: o encuentra filas, o no las encuentra, pero
+    nunca puede romperse por una columna mal escrita o un JOIN incorrecto."""
+    nombre = (nombre or "").strip()
+    if not nombre:
+        return {"error": "No se indicó ningún nombre de perro."}
+
+    sql = text("""
+        SELECT p.nombre, p.fecha_nacimiento, p.estado, r.nombre AS raza, u.tipo AS ubicacion_actual
+        FROM perros p
+        LEFT JOIN razas r ON r.id = p.raza_id
+        LEFT JOIN ubicaciones u ON u.perro_id = p.id AND u.fecha_fin IS NULL
+        WHERE p.nombre ILIKE :patron
+        LIMIT 5
+    """)
+    rows = db.execute(sql, {"patron": f"%{nombre}%"}).fetchall()
+
+    if not rows:
+        return {"error": f"No encontré ningún perro llamado '{nombre}'."}
+
+    columnas = ["nombre", "fecha_nacimiento", "estado", "raza", "ubicacion_actual"]
+    return {"perros": [dict(zip(columnas, row)) for row in rows]}
 
 
 def _validar_select(sql: str) -> bool:
@@ -144,48 +214,111 @@ async def preguntar(body: Pregunta, db: Session = Depends(get_db)):
         from groq import Groq
         client = Groq(api_key=api_key)
 
-        # Paso 1: generar SQL (con historial de conversación)
-        messages_sql = [{"role": "system", "content": _SYSTEM_SQL}]
+        # Decisión + ejecución: el modelo elige qué herramienta usar, con reintento
+        # si ejecutar_consulta_sql falla (mismo patrón del Bloque 2/4, ahora con el
+        # protocolo de tool calling real -- role:"tool", no un mensaje de usuario fingido).
+        messages = [{"role": "system", "content": _SYSTEM_SQL}]
         for h in body.history[-12:]:  # máx 6 intercambios anteriores
             if h.role in ("user", "assistant"):
-                messages_sql.append({"role": h.role, "content": h.content})
-        messages_sql.append({"role": "user", "content": pregunta})
+                messages.append({"role": h.role, "content": h.content})
+        messages.append({"role": "user", "content": pregunta})
 
-        sql_resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages_sql,
-            temperature=0,
-            max_tokens=500,
-        )
-        sql_raw = sql_resp.choices[0].message.content.strip()
+        sql = None
+        datos = None
 
-        if "NO_PUEDO_RESPONDER" in sql_raw.upper():
-            return JSONResponse({"respuesta": "No tengo suficientes datos para responder esa pregunta con la información disponible.", "sql": None})
+        for intento in range(MAX_INTENTOS_SQL):
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                tools=_TOOLS_SCHEMA,
+                temperature=0,
+                max_tokens=500,
+            )
+            msg = resp.choices[0].message
 
-        sql = _extraer_sql(sql_raw)
+            if not msg.tool_calls:
+                # No usó ninguna herramienta -- normalmente porque decidió que no
+                # puede responder con los datos disponibles. Se lo pasamos al usuario tal cual.
+                return JSONResponse({"respuesta": msg.content, "sql": None})
 
-        if not _validar_select(sql):
-            logger.warning("SQL inseguro o inválido generado: %s", sql)
-            return JSONResponse({"error": "No pude generar una consulta válida para esa pregunta."}, status_code=400)
+            messages.append(msg)
+            hubo_error_este_turno = False
 
-        # Paso 2: ejecutar SQL
-        try:
-            result = db.execute(text(sql))
-            rows = result.fetchall()
-            columns = list(result.keys())
-            datos = [dict(zip(columns, row)) for row in rows]
-        except Exception as e:
-            logger.error("Error ejecutando SQL '%s': %s", sql, e)
-            return JSONResponse({"error": "Error al consultar la base de datos. Intenta reformular la pregunta."}, status_code=500)
+            # Puede pedir varias herramientas en el mismo turno (Bloque 2/3): hay que
+            # responder a TODAS con un mensaje "tool", o la siguiente llamada falla.
+            for tool_call in msg.tool_calls:
+                nombre_funcion = tool_call.function.name
+                try:
+                    argumentos = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    argumentos = {}
+
+                if nombre_funcion == "buscar_perro_por_nombre":
+                    resultado = _buscar_perro_por_nombre(db, argumentos.get("nombre", ""))
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(resultado, default=str)})
+                    datos = resultado
+                    sql = f"-- buscar_perro_por_nombre(nombre='{argumentos.get('nombre', '')}')"
+
+                elif nombre_funcion == "ejecutar_consulta_sql":
+                    sql_candidato = argumentos.get("sql", "")
+
+                    if not _validar_select(sql_candidato):
+                        logger.warning("Intento %d: SQL inseguro o inválido: %s", intento, sql_candidato)
+                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": (
+                            "Esa consulta no es válida: debe ser un único SELECT, sin instrucciones peligrosas. "
+                            "Genera de nuevo SOLO la consulta SQL corregida."
+                        )})
+                        hubo_error_este_turno = True
+                        continue
+
+                    try:
+                        result = db.execute(text(sql_candidato))
+                        rows = result.fetchall()
+                        columns = list(result.keys())
+                        datos = [dict(zip(columns, row)) for row in rows]
+                        sql = sql_candidato
+                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": f"OK, {len(datos)} fila(s) devueltas."})
+                        logger.warning("SQL correcto en el intento %d (de %d posibles)", intento, MAX_INTENTOS_SQL)
+                    except Exception as e:
+                        # Ver Bloque 6 anterior: el rollback es imprescindible, sin él
+                        # el siguiente intento fallaría también con un error distinto.
+                        db.rollback()
+                        logger.warning("Intento %d: error ejecutando SQL '%s': %s", intento, sql_candidato, e)
+                        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": (
+                            f"Esa consulta falló al ejecutarse en PostgreSQL con este error real:\n{e}\n"
+                            "Genera de nuevo SOLO la consulta SQL corregida, teniendo en cuenta el error."
+                        )})
+                        hubo_error_este_turno = True
+
+                else:
+                    messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": f"Herramienta desconocida: {nombre_funcion}"})
+                    hubo_error_este_turno = True
+
+            if not hubo_error_este_turno:
+                break  # todas las herramientas de este turno tuvieron éxito
+
+        if datos is None:
+            # Se acabaron los intentos: nos rendimos con elegancia (Bloque 1, punto 4d).
+            return JSONResponse({"error": "No pude generar una consulta válida para esa pregunta tras varios intentos. Intenta reformularla."}, status_code=500)
 
         # Paso 3: formatear respuesta en lenguaje natural
-        datos_str = str(datos[:50]) if datos else "[]"
+        if isinstance(datos, list):
+            datos_str = str(datos[:50]) if datos else "[]"
+        else:
+            datos_str = str(datos) if datos else "[]"
+        messages_answer = [{"role": "system", "content": _SYSTEM_ANSWER}]
+        # OJO: el historial guarda el SQL real en los turnos "assistant" (correcto
+        # para el Paso 1, que sí necesita precisión técnica). Aquí solo queremos las
+        # preguntas anteriores del usuario, en lenguaje natural -- nunca el SQL,
+        # porque _SYSTEM_ANSWER tiene prohibido explícitamente mencionar nada técnico.
+        for h in body.history[-4:]:
+            if h.role == "user":
+                messages_answer.append({"role": "user", "content": h.content})
+        messages_answer.append({"role": "user", "content": f"Pregunta: {pregunta}\n\nResultados de la base de datos: {datos_str}"})
+
         answer_resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": _SYSTEM_ANSWER},
-                {"role": "user", "content": f"Pregunta: {pregunta}\n\nResultados de la base de datos: {datos_str}"},
-            ],
+            messages=messages_answer,
             temperature=0.3,
             max_tokens=400,
         )
