@@ -13,3 +13,5 @@ python-docx
 docx2pdf
 cloudinary
 groq
+langfuse
+openinference-instrumentation-groq

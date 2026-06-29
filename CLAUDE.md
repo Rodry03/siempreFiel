@@ -190,7 +190,7 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - `fecha_contrato`: Date (obligatoria, default hoy) — fecha de firma del contrato
 - `contrato_firmado_url`, `contrato_firmado_fecha`, `contrato_firmado_nombre`: upload del contrato firmado a Cloudinary (`protectora/contratos/contrato_familia_{id}`, resource_type=raw)
 - CRUD en `app/routers/familias.py` (prefix `/familias/`), **solo junta/admin** (oculto a veteranos)
-- Detalle: botón generar contrato adopción (activo si tiene perro asignado) + botón acogida (deshabilitado, pendiente plantilla de Lucía); tarjeta upload contrato firmado igual que voluntarios
+- Detalle: tres botones de contrato (acogida azul, pre-adopción amarillo, adopción verde) activos si tiene perro asignado; tarjeta upload contrato firmado igual que voluntarios
 - Vista `/familias/contratos`: resumen con/sin contrato firmado + tabla descargable, igual que voluntarios
 - Sidebar: entre Visitas y Turnos
 
@@ -274,7 +274,7 @@ app/
       list.html       — Tarjetas resumen + filtro por tipo + tabla con acciones
     familias/
       list.html       — Lista con filtro por tipo + botón "Contratos"
-      detail.html     — Ficha + botón generar contrato adopción (activo si tiene perro) + botón acogida (disabled) + tarjeta contrato firmado
+      detail.html     — Ficha + botones generar contrato acogida/pre-adopción/adopción (activos si tiene perro) + tarjeta contrato firmado
       form.html       — Create/edit con dropdown de perros (no fallecidos)
       contratos.html  — Resumen con/sin contrato firmado + tabla descargable (igual que voluntarios/contratos_firmados.html)
     consulta/
@@ -377,7 +377,11 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 27. **Economía oculta a veteranos:** `MovimientoEconomico` solo accesible a junta/admin. Tipos: ingreso, gasto, deuda. Las deudas tienen campo `pagado` (toggle). Categoría es texto libre.
 28. **Fórmula saldo turnos:** `sum(valores_semana) - 1` por semana (no `sum(valores_semana)`). 1 turno = neutro (0), no +1. Aplica igual en Python (`calcular_saldo`) y dbt (`mart_saldo_turnos_semanal`). La semana actual nunca penaliza.
 29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin.
-33. **Contrato adopción (DOCX→PDF):** Igual que el contrato de voluntario. Template en `app/contracts/contrato_adopcion.docx`. Lógica en `app/utils/contrato_adopcion.py`. Conversión compartida en `app/utils/pdf_utils.py` (`docx_a_pdf`): Word COM en local (Windows), LibreOffice en Render. Devuelve PDF si la conversión tiene éxito, DOCX como fallback. El campo "Capa" del DOCX se rellena con `perro.color`. Contrato acogida pendiente de plantilla de Lucía.
+33. **Contratos familia (DOCX→PDF):** Tres tipos implementados, todos en `app/contracts/` y `app/utils/`. Conversión compartida en `app/utils/pdf_utils.py` (`docx_a_pdf`): Word COM en local, LibreOffice en Render. Devuelve PDF si tiene éxito, DOCX como fallback.
+    - **Adopción** (`contrato_adopcion.docx` / `contrato_adopcion.py`): incluye tasa. Endpoint: `GET /familias/{id}/contrato-adopcion/{perro_id}`.
+    - **Acogida** (`contrato_acogida.docx` / `contrato_acogida.py`): sin tasa. Fecha con 8 runs (day=run[1], month=run[4], year=run[5]). Endpoint: `GET /familias/{id}/contrato-acogida/{perro_id}`.
+    - **Pre-adopción** (`contrato_preadopcion.docx` / `contrato_preadopcion.py`): sin tasa. Fecha con 8 runs distintos (day=run[2], month=run[5], year=run[6]). Endpoint: `GET /familias/{id}/contrato-preadopcion/{perro_id}`.
+    - Orden de botones en detalle: acogida (azul) → pre-adopción (amarillo) → adopción (verde). Modal de advertencia de campos faltantes compartido por los tres.
 34. **Vínculo familia al cambiar a casa_adoptiva:** Al cambiar la ubicación de un perro a `casa_adoptiva`, el formulario muestra un select con las familias de tipo='adopcion'. Si se selecciona una, se actualiza `Familia.perro_id`. El select aparece/desaparece con JS según el tipo elegido.
 30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
 31. **AntonIA (Text-to-SQL):** Asistente IA en `/consulta/` solo para junta/admin. Flujo: pregunta en lenguaje natural → Groq genera SQL → validación estricta (solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE/CREATE) → ejecuta en Neon → Groq formatea respuesta. Modelo: `llama-3.3-70b-versatile`. Requiere `GROQ_API_KEY` en env vars. El tiempo en la protectora usa `COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada` para perros ya adoptados.
