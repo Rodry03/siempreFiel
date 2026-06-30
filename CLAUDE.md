@@ -379,7 +379,7 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 29. **Familias ocultas a veteranos:** `Familia` solo accesible a junta/admin.
 33. **Contratos familia (DOCX→PDF):** Tres tipos implementados, todos en `app/contracts/` y `app/utils/`. Conversión compartida en `app/utils/pdf_utils.py` (`docx_a_pdf`): Word COM en local, LibreOffice en Render. Devuelve PDF si tiene éxito, DOCX como fallback.
     - **Adopción** (`contrato_adopcion.docx` / `contrato_adopcion.py`): incluye tasa. Endpoint: `GET /familias/{id}/contrato-adopcion/{perro_id}`.
-    - **Acogida** (`contrato_acogida.docx` / `contrato_acogida.py`): sin tasa. Fecha con 8 runs (day=run[1], month=run[4], year=run[5]). Endpoint: `GET /familias/{id}/contrato-acogida/{perro_id}`.
+    - **Acogida** (`contrato_acogida.docx` / `contrato_acogida.py`): sin tasa. Fecha en run único con espacios como marcador (detecta "En Salamanca" sin "XX"). Endpoint: `GET /familias/{id}/contrato-acogida/{perro_id}`.
     - **Pre-adopción** (`contrato_preadopcion.docx` / `contrato_preadopcion.py`): sin tasa. Fecha con 8 runs distintos (day=run[2], month=run[5], year=run[6]). Endpoint: `GET /familias/{id}/contrato-preadopcion/{perro_id}`.
     - Orden de botones en detalle: acogida (azul) → pre-adopción (amarillo) → adopción (verde). Modal de advertencia de campos faltantes compartido por los tres.
 34. **Vínculo familia al cambiar a casa_adoptiva:** Al cambiar la ubicación de un perro a `casa_adoptiva`, el formulario muestra un select con las familias de tipo='adopcion'. Si se selecciona una, se actualiza `Familia.perro_id`. El select aparece/desaparece con JS según el tipo elegido.

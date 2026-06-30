@@ -41,18 +41,22 @@ def _append_run(para, value: str):
 def _fill_fecha(doc):
     hoy = date.today()
     for p in doc.paragraphs:
-        if "En Salamanca" in p.text and "XX" in p.text:
+        if "En Salamanca" in p.text:
             runs = p.runs
-            # runs: ['  En Salamanca, a ', 'XX', ' ', 'de ', 'XXXXXX', ' del 2026', ...]
-            if len(runs) > 1:
+            if "XX" in p.text and len(runs) > 1:
+                # Plantilla con marcadores XX y múltiples runs
                 runs[1].text = str(hoy.day)
                 _apply_font(runs[1])
-            if len(runs) > 4:
-                runs[4].text = _MESES[hoy.month - 1]
-                _apply_font(runs[4])
-            if len(runs) > 5:
-                runs[5].text = f" de {hoy.year}"
-                _apply_font(runs[5])
+                if len(runs) > 4:
+                    runs[4].text = _MESES[hoy.month - 1]
+                    _apply_font(runs[4])
+                if len(runs) > 5:
+                    runs[5].text = f" de {hoy.year}"
+                    _apply_font(runs[5])
+            elif runs:
+                # Plantilla con run único y espacios como marcador
+                runs[0].text = f"        En Salamanca, a {hoy.day} de {_MESES[hoy.month - 1]} de {hoy.year}            "
+                _apply_font(runs[0])
             break
 
 
