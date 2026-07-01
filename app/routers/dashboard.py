@@ -176,12 +176,21 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
     ]
 
     from app.routers.turnos import PERFILES_SIN_TURNOS
+    hoy_dashboard = date.today()
+    _candidatos = (
+        db.query(Voluntario)
+        .filter(Voluntario.activo == True, Voluntario.perfil.notin_(PERFILES_SIN_TURNOS))
+        .all()
+    )
     top_deudores = sorted(
-        [{"voluntario": v, "saldo": calcular_saldo(v)}
-         for v in db.query(Voluntario)
-             .filter(Voluntario.activo == True, Voluntario.perfil.notin_(PERFILES_SIN_TURNOS))
-             .all()
-         if calcular_saldo(v) < 0],
+        [{"voluntario": v, "saldo": s}
+         for v in _candidatos
+         for s in [calcular_saldo(v)]
+         if s < 0
+         and not any(
+             p.fecha_inicio <= hoy_dashboard and (p.fecha_fin is None or p.fecha_fin >= hoy_dashboard)
+             for p in v.periodos_apoyo
+         )],
         key=lambda x: x["saldo"]
     )[:10]
 

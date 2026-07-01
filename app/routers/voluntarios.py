@@ -112,10 +112,20 @@ def listar_voluntarios(
 
     from app.routers.turnos import calcular_saldo, PERFILES_SIN_TURNOS
     voluntarios = query.all()
+    hoy = date.today()
     saldos = {
         v.id: calcular_saldo(v)
         for v in voluntarios
         if v.perfil not in PERFILES_SIN_TURNOS
+    }
+    en_apoyo_ids = {
+        v.id
+        for v in voluntarios
+        if v.perfil not in PERFILES_SIN_TURNOS
+        and any(
+            p.fecha_inicio <= hoy and (p.fecha_fin is None or p.fecha_fin >= hoy)
+            for p in v.periodos_apoyo
+        )
     }
 
     if sort == "saldo":
@@ -128,6 +138,7 @@ def listar_voluntarios(
     return templates.TemplateResponse(request, "voluntarios/list.html", {
         "voluntarios": voluntarios,
         "saldos": saldos,
+        "en_apoyo_ids": en_apoyo_ids,
         "perfil_filtro": perfiles_filtro,
         "perfil_qs": perfil_qs,
         "perfiles": [p.value for p in PerfilVoluntario],

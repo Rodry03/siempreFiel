@@ -93,7 +93,9 @@
           <td>{{ v.fecha_alta }}</td>
           <td class="text-muted small">{{ v.fecha_veterano.strftime('%d/%m/%Y') if v.fecha_veterano else '—' }}</td>
           <td class="text-center">
-            {% if v.id in saldos %}
+            {% if v.id in en_apoyo_ids %}
+              <span class="badge bg-primary" title="En periodo de apoyo">Apoyo</span>
+            {% elif v.id in saldos %}
               {% set s = saldos[v.id] %}
               {% if s > 0 %}
                 <span class="badge bg-success">+{{ s | int if s == s | int else s | round(1) }}</span>
