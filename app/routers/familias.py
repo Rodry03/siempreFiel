@@ -449,3 +449,75 @@ def eliminar_contrato_firmado(
         db.commit()
         flash(request, "Contrato eliminado.")
     return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+
+
+_DNI_LADOS = {"frontal": "Anverso", "reverso": "Reverso"}
+
+
+def _subir_dni_familia(file: UploadFile, familia_id: int, lado: str) -> str:
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.environ.get("CLOUDINARY_API_KEY"),
+        api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    )
+    contents = file.file.read(_MAX_CONTRATO_BYTES + 1)
+    if len(contents) > _MAX_CONTRATO_BYTES:
+        raise ValueError("El archivo supera el tamaño máximo permitido (10 MB).")
+    result = cloudinary.uploader.upload(
+        contents,
+        resource_type="auto",  # puede llegar como imagen o como PDF (ambas caras en un mismo documento)
+        folder="protectora/dni",
+        public_id=f"dni_{lado}_familia_{familia_id}",
+        overwrite=True,
+    )
+    return result["secure_url"]
+
+
+@router.post("/{familia_id}/dni/{lado}")
+def subir_dni(
+    request: Request,
+    familia_id: int,
+    lado: str,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if lado not in _DNI_LADOS:
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    familia = db.query(Familia).filter(Familia.id == familia_id).first()
+    if not familia:
+        return RedirectResponse("/familias/", status_code=303)
+    try:
+        url = _subir_dni_familia(archivo, familia_id, lado)
+        setattr(familia, f"dni_{lado}_url", url)
+        db.commit()
+        flash(request, f"{_DNI_LADOS[lado]} del DNI subido correctamente.")
+    except Exception as e:
+        logger.error("Error subiendo DNI (%s) familia %s: %s", lado, familia_id, e)
+        flash(request, "Error al subir la imagen.", "danger")
+    return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+
+
+@router.post("/{familia_id}/dni/{lado}/eliminar")
+def eliminar_dni(
+    request: Request,
+    familia_id: int,
+    lado: str,
+    db: Session = Depends(get_db),
+):
+    if lado not in _DNI_LADOS:
+        return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+    familia = db.query(Familia).filter(Familia.id == familia_id).first()
+    if familia and getattr(familia, f"dni_{lado}_url"):
+        try:
+            cloudinary.config(
+                cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.environ.get("CLOUDINARY_API_KEY"),
+                api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+            )
+            cloudinary.uploader.destroy(f"protectora/dni/dni_{lado}_familia_{familia_id}")
+        except Exception as e:
+            logger.warning("Error eliminando DNI (%s) familia de Cloudinary: %s", lado, e)
+        setattr(familia, f"dni_{lado}_url", None)
+        db.commit()
+        flash(request, f"{_DNI_LADOS[lado]} del DNI eliminado.")
+    return RedirectResponse(f"/familias/{familia_id}", status_code=303)

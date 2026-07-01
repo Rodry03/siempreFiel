@@ -152,6 +152,56 @@
   </div>
 </div>
 
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold border-0 pt-3">
+    <i class="bi bi-person-vcard me-2"></i>Documentación DNI
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for lado, etiqueta in [('frontal', 'Cara delantera'), ('reverso', 'Cara trasera')] %}
+      <div class="col-md-6">
+        <div class="fw-semibold small mb-2">{{ etiqueta }}</div>
+        {% set url = familia.dni_frontal_url if lado == 'frontal' else familia.dni_reverso_url %}
+        {% if url %}
+          {% if url.lower().endswith('.pdf') %}
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+            <div class="fw-semibold small">Documento PDF</div>
+          </div>
+          {% else %}
+          <img src="{{ url.replace('/upload/', '/upload/c_fill,w_320,h_200/') }}"
+               class="rounded border mb-2 d-block" style="max-width:100%;object-fit:cover;">
+          {% endif %}
+        <div class="d-flex gap-2">
+          <a href="{{ url }}" target="_blank" class="btn btn-sm btn-outline-primary flex-grow-1">
+            <i class="bi bi-arrows-fullscreen me-1"></i>Ver{{ '' if url.lower().endswith('.pdf') else ' completa' }}
+          </a>
+          <form id="form-del-dni-{{ lado }}" method="post" action="/familias/{{ familia.id }}/dni/{{ lado }}/eliminar" class="d-none"></form>
+          <button type="button" class="btn btn-sm btn-outline-danger"
+                  data-confirm-form="form-del-dni-{{ lado }}"
+                  data-confirm-title="¿Eliminar archivo?"
+                  data-confirm-message="Se eliminará la {{ etiqueta | lower }} del DNI subida. Esta acción no se puede deshacer."
+                  data-confirm-btn-text="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        {% else %}
+        <form method="post" action="/familias/{{ familia.id }}/dni/{{ lado }}" enctype="multipart/form-data">
+          <input type="file" name="archivo" class="form-control form-control-sm mb-2" accept="image/*,.pdf,application/pdf" required>
+          <button type="submit" class="btn btn-sm btn-outline-success w-100">
+            <i class="bi bi-upload me-1"></i>Subir {{ etiqueta | lower }}
+          </button>
+        </form>
+        {% if lado == 'frontal' %}
+        <div class="form-text mt-1">Si el DNI es un único PDF con ambas caras, súbelo aquí y deja la cara trasera vacía.</div>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
 <div class="row g-3">
   <!-- Datos personales -->
   <div class="col-md-6">

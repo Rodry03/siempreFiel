@@ -364,6 +364,8 @@ class Familia(Base):
     contrato_firmado_url   = Column(String(500), nullable=True)
     contrato_firmado_fecha = Column(Date, nullable=True)
     contrato_firmado_nombre = Column(String(200), nullable=True)
+    dni_frontal_url = Column(String(500), nullable=True)
+    dni_reverso_url = Column(String(500), nullable=True)
 
     voluntario_id = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
 
