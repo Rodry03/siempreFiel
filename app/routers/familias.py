@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/familias", dependencies=[Depends(get_current_user), Depends(require_not_veterano)])
 
+PROVINCIAS = [
+    "Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila", "Badajoz", "Baleares",
+    "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria", "Castellón", "Ciudad Real",
+    "Córdoba", "Cuenca", "Girona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca",
+    "Jaén", "A Coruña", "La Rioja", "Las Palmas", "León", "Lleida", "Lugo", "Madrid", "Málaga",
+    "Murcia", "Navarra", "Ourense", "Palencia", "Pontevedra", "Salamanca",
+    "Santa Cruz de Tenerife", "Segovia", "Sevilla", "Soria", "Tarragona", "Teruel", "Toledo",
+    "Valencia", "Valladolid", "Vizcaya", "Zamora", "Zaragoza", "Ceuta", "Melilla",
+]
+
 
 def _voluntarios_activos(db):
     return db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre).all()
@@ -115,6 +125,7 @@ def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
         "voluntarios": _voluntarios_activos(db),
+        "provincias": PROVINCIAS,
     })
 
 
@@ -176,6 +187,7 @@ def crear_familia(
             "tipo_labels": TIPO_LABELS,
             "hoy": fecha_contrato.isoformat(),
             "voluntarios": _voluntarios_activos(db),
+            "provincias": PROVINCIAS,
         })
     return RedirectResponse(f"/familias/{familia.id}", status_code=303)
 
@@ -263,6 +275,7 @@ def editar_familia_form(request: Request, familia_id: int, db: Session = Depends
         "voluntarios": _voluntarios_activos(db),
         "perros": perros,
         "tasas_perros": {p.id: p.tasa for p in perros},
+        "provincias": PROVINCIAS,
     })
 
 

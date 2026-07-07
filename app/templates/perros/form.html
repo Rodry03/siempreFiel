@@ -18,14 +18,17 @@
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Raza *</label>
-          <select name="raza_id" class="form-select" required>
+          <select name="raza_id" id="selectRaza" class="form-select" required onchange="toggleNuevaRaza()">
             <option value="">— Selecciona una raza —</option>
             {% for r in razas %}
             <option value="{{ r.id }}" {% if perro and perro.raza_id == r.id %}selected{% endif %}>
               {{ r.nombre }}
             </option>
             {% endfor %}
+            <option value="__nueva__">+ Añadir nueva raza…</option>
           </select>
+          <input type="text" name="nueva_raza" id="inputNuevaRaza" class="form-control mt-2 d-none"
+                 placeholder="Nombre de la nueva raza">
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">Sexo *</label>
@@ -155,6 +158,14 @@
 function toggleFechaAdopcion() {
   const campo = document.getElementById('campoFechaAdopcion');
   campo.style.display = document.getElementById('selectEstado').value === 'adoptado' ? '' : 'none';
+}
+function toggleNuevaRaza() {
+  const select = document.getElementById('selectRaza');
+  const input = document.getElementById('inputNuevaRaza');
+  const esNueva = select.value === '__nueva__';
+  input.classList.toggle('d-none', !esNueva);
+  input.required = esNueva;
+  if (!esNueva) input.value = '';
 }
 function toggleContactoUb() {
   const vis = document.getElementById('selectUbicacion') && document.getElementById('selectUbicacion').value !== 'refugio';

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc, and_, or_
+from sqlalchemy import asc, desc, and_, or_, func
 from typing import List, Optional
 from app.database import get_db
 from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacion, Raza, PesoPerro, CeloPerro, MedicacionPerro, Familia
@@ -23,6 +23,20 @@ def _toca_hoy(med, hoy: date) -> bool:
     if med.frecuencia_dias:
         return dias % med.frecuencia_dias == 0
     return True
+
+
+def _resolver_raza_id(db: Session, raza_id: str, nueva_raza: Optional[str]) -> int:
+    if raza_id != "__nueva__":
+        return int(raza_id)
+    nombre_raza = (nueva_raza or "").strip()
+    if not nombre_raza:
+        raise ValueError("Debes indicar el nombre de la nueva raza.")
+    raza = db.query(Raza).filter(func.lower(Raza.nombre) == nombre_raza.lower()).first()
+    if not raza:
+        raza = Raza(nombre=nombre_raza)
+        db.add(raza)
+        db.flush()
+    return raza.id
 
 
 def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
@@ -242,7 +256,8 @@ def form_nuevo_perro(request: Request, db: Session = Depends(get_db)):
 def crear_perro(
     request: Request,
     nombre: str = Form(...),
-    raza_id: int = Form(...),
+    raza_id: str = Form(...),
+    nueva_raza: Optional[str] = Form(None),
     sexo: str = Form(...),
     esterilizado: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
@@ -262,13 +277,19 @@ def crear_perro(
     telefono_contacto_ub: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    try:
+        _raza_id = _resolver_raza_id(db, raza_id, nueva_raza)
+    except ValueError as e:
+        flash(request, str(e), "danger")
+        return RedirectResponse("/perros/nuevo", status_code=303)
+
     tipo_ub = TipoUbicacion(ubicacion_tipo)
     estado_efectivo = EstadoPerro.adoptado if tipo_ub == TipoUbicacion.casa_adoptiva else EstadoPerro(estado)
     fecha_adopcion_efectiva = fecha_adopcion if estado_efectivo == EstadoPerro.adoptado else None
 
     perro = Perro(
         nombre=nombre.upper(),
-        raza_id=raza_id,
+        raza_id=_raza_id,
         sexo=Sexo(sexo),
         esterilizado=esterilizado == "on",
         ppp=ppp == "on",
@@ -346,7 +367,8 @@ def editar_perro(
     request: Request,
     perro_id: int,
     nombre: str = Form(...),
-    raza_id: int = Form(...),
+    raza_id: str = Form(...),
+    nueva_raza: Optional[str] = Form(None),
     sexo: str = Form(...),
     esterilizado: Optional[str] = Form(None),
     ppp: Optional[str] = Form(None),
@@ -366,6 +388,12 @@ def editar_perro(
     if not perro:
         return RedirectResponse("/perros/", status_code=303)
 
+    try:
+        _raza_id = _resolver_raza_id(db, raza_id, nueva_raza)
+    except ValueError as e:
+        flash(request, str(e), "danger")
+        return RedirectResponse(f"/perros/{perro_id}/editar", status_code=303)
+
     nuevo_estado = EstadoPerro(estado)
     estado_anterior = perro.estado
     fecha_adopcion_efectiva = fecha_adopcion if estado == "adoptado" else perro.fecha_adopcion
@@ -376,7 +404,7 @@ def editar_perro(
         perro.fecha_reserva = None
 
     perro.nombre = nombre.upper()
-    perro.raza_id = raza_id
+    perro.raza_id = _raza_id
     perro.sexo = Sexo(sexo)
     perro.esterilizado = esterilizado == "on"
     perro.ppp = ppp == "on"
