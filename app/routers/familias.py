@@ -106,7 +106,7 @@ def contratos_familias(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/nueva")
 def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
-    perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
+    perros = db.query(Perro).order_by(Perro.nombre).all()
     tasas_perros = {p.id: p.tasa for p in perros}
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": None,
@@ -127,6 +127,7 @@ def crear_familia(
     tipo: Optional[str] = Form(None),
     perro_id: Optional[int] = Form(None),
     tasa_perro: Optional[float] = Form(None),
+    nombre_nuevo: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
     telefono: Optional[str] = Form(None),
     direccion: Optional[str] = Form(None),
@@ -162,11 +163,12 @@ def crear_familia(
                 perro.familia_id = familia.id
                 if tasa_perro is not None:
                     perro.tasa = tasa_perro
+                perro.nombre_nuevo = nombre_nuevo.strip().upper() if nombre_nuevo and nombre_nuevo.strip() else None
         db.commit()
     except IntegrityError:
         db.rollback()
         flash(request, "Ya existe una familia con ese DNI.", "danger")
-        perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
+        perros = db.query(Perro).order_by(Perro.nombre).all()
         return templates.TemplateResponse(request, "familias/form.html", {
             "familia": None,
             "perros": perros,
@@ -185,7 +187,6 @@ def detalle_familia(request: Request, familia_id: int, db: Session = Depends(get
         return RedirectResponse("/familias/", status_code=303)
     perros_disponibles = db.query(Perro).filter(
         Perro.familia_id.is_(None),
-        Perro.estado != EstadoPerro.fallecido,
     ).order_by(Perro.nombre).all()
     campos_faltantes = {
         p.id: _campos_faltantes_contrato(familia, p)
@@ -215,6 +216,7 @@ def vincular_perro(
     request: Request,
     familia_id: int,
     perro_id: int = Form(...),
+    nombre_nuevo: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
@@ -223,12 +225,28 @@ def vincular_perro(
     perro = db.query(Perro).filter(
         Perro.id == perro_id,
         Perro.familia_id.is_(None),
-        Perro.estado != EstadoPerro.fallecido,
     ).first()
     if perro:
         perro.familia_id = familia_id
+        perro.nombre_nuevo = nombre_nuevo.strip().upper() if nombre_nuevo and nombre_nuevo.strip() else None
         db.commit()
         flash(request, f"{perro.nombre} vinculado a la familia.")
+    return RedirectResponse(f"/familias/{familia_id}", status_code=303)
+
+
+@router.post("/{familia_id}/perro/{perro_id}/nombre-nuevo")
+def editar_nombre_nuevo_perro(
+    request: Request,
+    familia_id: int,
+    perro_id: int,
+    nombre_nuevo: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    perro = db.query(Perro).filter(Perro.id == perro_id, Perro.familia_id == familia_id).first()
+    if perro:
+        perro.nombre_nuevo = nombre_nuevo.strip().upper() if nombre_nuevo and nombre_nuevo.strip() else None
+        db.commit()
+        flash(request, "Nombre actualizado.")
     return RedirectResponse(f"/familias/{familia_id}", status_code=303)
 
 

@@ -100,6 +100,7 @@ class Perro(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
+    nombre_nuevo = Column(String(100), nullable=True)
     raza_id = Column(Integer, ForeignKey("razas.id"), nullable=False)
     fecha_nacimiento = Column(Date, nullable=True)
     sexo = Column(Enum(Sexo), nullable=False)

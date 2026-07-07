@@ -288,11 +288,36 @@
               {% endif %}
               <div>
                 <div class="fw-semibold fs-5">
-                  <a href="/perros/{{ p.id }}" class="text-decoration-none text-dark">{{ p.nombre }}</a>
+                  <a href="/perros/{{ p.id }}" class="text-decoration-none text-dark">{{ p.nombre }}{% if p.nombre_nuevo %} / {{ p.nombre_nuevo }}{% endif %}</a>
+                  <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" data-bs-toggle="modal" data-bs-target="#modalNombreNuevo{{ p.id }}" title="Editar nuevo nombre">
+                    <i class="bi bi-pencil"></i>
+                  </button>
                 </div>
                 {% if p.num_chip %}<div class="text-muted small">Chip: {{ p.num_chip }}</div>{% endif %}
                 <span class="badge bg-secondary mt-1">{{ p.estado.value }}</span>
                 {% if p.tasa is not none %}<span class="badge bg-light text-dark border mt-1">{{ p.tasa | int }}€</span>{% endif %}
+              </div>
+            </div>
+
+            <div class="modal fade" id="modalNombreNuevo{{ p.id }}" tabindex="-1">
+              <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                  <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-semibold">Nuevo nombre de {{ p.nombre }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form method="post" action="/familias/{{ familia.id }}/perro/{{ p.id }}/nombre-nuevo">
+                    <div class="modal-body">
+                      <input type="text" name="nombre_nuevo" class="form-control" value="{{ p.nombre_nuevo or '' }}"
+                             placeholder="Rellenar solo si le cambian el nombre">
+                      <div class="form-text">En el contrato aparecerá como "{{ p.nombre }} / NUEVO NOMBRE".</div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           {% endfor %}
@@ -353,14 +378,18 @@
       </div>
       <form method="post" action="/familias/{{ familia.id }}/vincular-perro">
         <div class="modal-body">
-          <select name="perro_id" class="form-select" required>
+          <select name="perro_id" class="form-select mb-3" required>
             <option value="">— Selecciona un perro —</option>
             {% for p in perros_disponibles %}
             <option value="{{ p.id }}">
-              {{ p.nombre }}{% if p.num_chip %} · {{ p.num_chip }}{% endif %}
+              {{ p.nombre }} ({{ p.estado.value }}){% if p.num_chip %} · {{ p.num_chip }}{% endif %}
             </option>
             {% endfor %}
           </select>
+          {% if familia.tipo == 'adopcion' %}
+          <label class="form-label small text-muted mb-1">Nuevo nombre (si le cambian el nombre)</label>
+          <input type="text" name="nombre_nuevo" class="form-control" placeholder="Opcional">
+          {% endif %}
         </div>
         <div class="modal-footer border-0 pt-0">
           <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>

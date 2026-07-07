@@ -161,7 +161,8 @@ def _generar_docx(familia, perro) -> bytes:
     # Fila 0 (cols 0-1 fusionadas): NOMBRE — run[1] limpiar espacio, run[2] valor
     c = t1.rows[0].cells[0]
     _set_run(c.paragraphs[0], 1, "", cell=c)
-    _set_run(c.paragraphs[0], 2, perro.nombre, cell=c)
+    nombre_perro = f"{perro.nombre} / {perro.nombre_nuevo}" if perro.nombre_nuevo else perro.nombre
+    _set_run(c.paragraphs[0], 2, nombre_perro, cell=c)
 
     # Fila 1 (cols 0-1 fusionadas): MICROCHIP — run[1] limpiar, run[2] valor
     c = t1.rows[1].cells[0]
