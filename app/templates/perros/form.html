@@ -56,7 +56,7 @@
           <label class="form-label fw-semibold">Tamaño</label>
           <select name="tamano" class="form-select">
             <option value="">—</option>
-            {% for opt in ['Pequeño', 'Mediano', 'Grande', 'Gigante'] %}
+            {% for opt in ['Pequeño', 'Mediano', 'Mediano-Grande', 'Grande', 'Gigante'] %}
             <option value="{{ opt }}" {% if perro and perro.tamano == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>

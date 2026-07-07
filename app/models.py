@@ -154,9 +154,11 @@ class Ubicacion(Base):
     telefono_contacto = Column(String(30), nullable=True)
     notas = Column(Text, nullable=True)
     voluntario_id = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
+    familia_id = Column(Integer, ForeignKey("familias.id", ondelete="SET NULL"), nullable=True)
 
     perro = relationship("Perro", back_populates="ubicaciones")
     voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
+    familia = relationship("Familia", foreign_keys=[familia_id])
 
 
 class Voluntario(Base):

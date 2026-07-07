@@ -130,12 +130,18 @@
             data-contacto="{{ ubicacion_actual.nombre_contacto or '' }}"
             data-telefono="{{ ubicacion_actual.telefono_contacto or '' }}"
             data-notas="{{ ubicacion_actual.notas or '' }}"
-            data-voluntario-id="{{ ubicacion_actual.voluntario_id or '' }}">
+            data-familia-id="{{ ubicacion_actual.familia_id or '' }}">
             <i class="bi bi-pencil"></i>
           </button>
           {% endif %}
         </div>
-        {% if ubicacion_actual.voluntario %}
+        {% if ubicacion_actual.familia %}
+        <p class="mb-0 text-muted small">
+          <i class="bi bi-house-heart-fill me-1 text-success"></i>
+          <a href="/familias/{{ ubicacion_actual.familia.id }}" class="text-decoration-none">{{ ubicacion_actual.familia.apellidos }}, {{ ubicacion_actual.familia.nombre }}</a>
+          {% if ubicacion_actual.familia.telefono %} · {{ ubicacion_actual.familia.telefono }}{% endif %}
+        </p>
+        {% elif ubicacion_actual.voluntario %}
         <p class="mb-0 text-muted small">
           <i class="bi bi-person-fill me-1 text-success"></i>
           <a href="/voluntarios/{{ ubicacion_actual.voluntario.id }}" class="text-decoration-none">{{ ubicacion_actual.voluntario.nombre }} {{ ubicacion_actual.voluntario.apellido }}</a>
@@ -174,27 +180,28 @@
                   <option value="">— Sin vincular —</option>
                   {% for f in familias_adopcion %}
                   <option value="{{ f.id }}" {% if familia_actual and familia_actual.id == f.id %}selected{% endif %}>
-                    {{ f.apellidos }}, {{ f.nombre }} {% if f.dni %}({{ f.dni }}){% endif %}
+                    {{ f.apellidos }}, {{ f.nombre }}{% if f.tipo %} · {{ 'Acogida' if f.tipo == 'acogida' else 'Adopción' }}{% endif %} {% if f.dni %}({{ f.dni }}){% endif %}
                   </option>
                   {% endfor %}
                 </select>
               </div>
-              <div class="col-12 d-none" id="rowVoluntarioAcogida">
-                <label class="form-label small fw-semibold">Voluntario en acogida</label>
-                <select name="voluntario_id" id="selectVoluntarioAcogida" class="form-select form-select-sm">
+              <div class="col-12 d-none" id="rowFamiliaAcogida">
+                <label class="form-label small fw-semibold">Familia de acogida</label>
+                <select name="familia_acogida_id" id="selectFamiliaAcogida" class="form-select form-select-sm">
                   <option value="">— Sin vincular —</option>
-                  {% for v in voluntarios_acogida %}
-                  <option value="{{ v.id }}" data-nombre="{{ v.nombre }} {{ v.apellido }}" data-telefono="{{ v.telefono or '' }}">
-                    {{ v.nombre }} {{ v.apellido }}
+                  {% for f in familias_acogida %}
+                  <option value="{{ f.id }}"
+                    {% if familia_actual and familia_actual.id == f.id %}selected{% endif %}>
+                    {{ f.apellidos }}, {{ f.nombre }}{% if f.tipo %} · {{ 'Acogida' if f.tipo == 'acogida' else 'Adopción' }}{% endif %} {% if f.dni %}({{ f.dni }}){% endif %}
                   </option>
                   {% endfor %}
                 </select>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-6" id="rowContactoManual">
                 <label class="form-label small fw-semibold">Nombre contacto</label>
-                <input type="text" name="nombre_contacto" id="inputNombreContacto" class="form-control form-control-sm" placeholder="Opcional (se rellena con el voluntario)">
+                <input type="text" name="nombre_contacto" id="inputNombreContacto" class="form-control form-control-sm" placeholder="Opcional">
               </div>
-              <div class="col-md-6">
+              <div class="col-md-6" id="rowTelefonoManual">
                 <label class="form-label small fw-semibold">Teléfono contacto</label>
                 <input type="text" name="telefono_contacto" id="inputTelefonoContacto" class="form-control form-control-sm" placeholder="Opcional">
               </div>
@@ -225,7 +232,9 @@
               <td>{{ u.fecha_inicio }}</td>
               <td>{{ u.fecha_fin or 'Actual' }}</td>
               <td>
-                {% if u.voluntario %}
+                {% if u.familia %}
+                  <a href="/familias/{{ u.familia.id }}" class="text-decoration-none small">{{ u.familia.apellidos }}, {{ u.familia.nombre }}</a>
+                {% elif u.voluntario %}
                   <a href="/voluntarios/{{ u.voluntario.id }}" class="text-decoration-none small">{{ u.voluntario.nombre }} {{ u.voluntario.apellido }}</a>
                 {% else %}
                   {{ u.nombre_contacto or '—' }}
@@ -242,7 +251,7 @@
                   data-contacto="{{ u.nombre_contacto or '' }}"
                   data-telefono="{{ u.telefono_contacto or '' }}"
                   data-notas="{{ u.notas or '' }}"
-                  data-voluntario-id="{{ u.voluntario_id or '' }}">
+                  data-familia-id="{{ u.familia_id or '' }}">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <form id="form-ubi-{{ u.id }}" method="post" action="/perros/{{ perro.id }}/ubicacion/{{ u.id }}/eliminar" class="d-none"></form>
@@ -847,20 +856,29 @@
               <label class="form-label small fw-semibold">Fecha fin <span class="text-muted">(vacío = actual)</span></label>
               <input type="date" name="fecha_fin" id="editUbicFechaFin" class="form-control form-control-sm">
             </div>
-            <div class="col-12 d-none" id="editRowVoluntarioAcogida">
-              <label class="form-label small fw-semibold">Voluntario en acogida</label>
-              <select name="voluntario_id" id="editUbicVoluntario" class="form-select form-select-sm">
+            <div class="col-12 d-none" id="editRowFamiliaAdopcion">
+              <label class="form-label small fw-semibold">Familia adoptante</label>
+              <select name="familia_id" id="editUbicFamiliaAdopcion" class="form-select form-select-sm">
                 <option value="">— Sin vincular —</option>
-                {% for v in voluntarios_acogida %}
-                <option value="{{ v.id }}">{{ v.nombre }} {{ v.apellido }}</option>
+                {% for f in familias_adopcion %}
+                <option value="{{ f.id }}">{{ f.apellidos }}, {{ f.nombre }}{% if f.tipo %} · {{ 'Acogida' if f.tipo == 'acogida' else 'Adopción' }}{% endif %} {% if f.dni %}({{ f.dni }}){% endif %}</option>
                 {% endfor %}
               </select>
             </div>
-            <div class="col-md-6">
+            <div class="col-12 d-none" id="editRowFamiliaAcogida">
+              <label class="form-label small fw-semibold">Familia de acogida</label>
+              <select name="familia_acogida_id" id="editUbicFamiliaAcogida" class="form-select form-select-sm">
+                <option value="">— Sin vincular —</option>
+                {% for f in familias_acogida %}
+                <option value="{{ f.id }}">{{ f.apellidos }}, {{ f.nombre }}{% if f.tipo %} · {{ 'Acogida' if f.tipo == 'acogida' else 'Adopción' }}{% endif %} {% if f.dni %}({{ f.dni }}){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6" id="editRowContactoManual">
               <label class="form-label small fw-semibold">Nombre contacto</label>
               <input type="text" name="nombre_contacto" id="editUbicContacto" class="form-control form-control-sm">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6" id="editRowTelefonoManual">
               <label class="form-label small fw-semibold">Teléfono contacto</label>
               <input type="text" name="telefono_contacto" id="editUbicTelefono" class="form-control form-control-sm">
             </div>
@@ -883,29 +901,33 @@
   (function () {
     const sel = document.getElementById('selectTipoUbicacion');
     const rowFamilia = document.getElementById('rowFamiliaAdopcion');
-    const rowVol = document.getElementById('rowVoluntarioAcogida');
+    const rowFamiliaAcogida = document.getElementById('rowFamiliaAcogida');
+    const rowContacto = document.getElementById('rowContactoManual');
+    const rowTelefono = document.getElementById('rowTelefonoManual');
     if (sel) {
       function toggleRows() {
+        const conFamilia = sel.value === 'casa_adoptiva' || sel.value === 'acogida';
         if (rowFamilia) rowFamilia.classList.toggle('d-none', sel.value !== 'casa_adoptiva');
-        if (rowVol) rowVol.classList.toggle('d-none', sel.value !== 'acogida');
+        if (rowFamiliaAcogida) rowFamiliaAcogida.classList.toggle('d-none', sel.value !== 'acogida');
+        if (rowContacto) rowContacto.classList.toggle('d-none', conFamilia);
+        if (rowTelefono) rowTelefono.classList.toggle('d-none', conFamilia);
       }
       sel.addEventListener('change', toggleRows);
       toggleRows();
     }
-
-    const selVol = document.getElementById('selectVoluntarioAcogida');
-    const inputNombre = document.getElementById('inputNombreContacto');
-    const inputTel = document.getElementById('inputTelefonoContacto');
-    if (selVol) {
-      selVol.addEventListener('change', function () {
-        const opt = selVol.options[selVol.selectedIndex];
-        if (opt && opt.value) {
-          if (inputNombre && !inputNombre.value) inputNombre.value = opt.dataset.nombre || '';
-          if (inputTel && !inputTel.value) inputTel.value = opt.dataset.telefono || '';
-        }
-      });
-    }
   })();
+
+  function actualizarFilasEditUbicacion(tipo) {
+    const conFamilia = tipo === 'casa_adoptiva' || tipo === 'acogida';
+    const rowEditFamiliaAdopcion = document.getElementById('editRowFamiliaAdopcion');
+    if (rowEditFamiliaAdopcion) rowEditFamiliaAdopcion.classList.toggle('d-none', tipo !== 'casa_adoptiva');
+    const rowEditFamiliaAcogida = document.getElementById('editRowFamiliaAcogida');
+    if (rowEditFamiliaAcogida) rowEditFamiliaAcogida.classList.toggle('d-none', tipo !== 'acogida');
+    const rowEditContacto = document.getElementById('editRowContactoManual');
+    if (rowEditContacto) rowEditContacto.classList.toggle('d-none', conFamilia);
+    const rowEditTelefono = document.getElementById('editRowTelefonoManual');
+    if (rowEditTelefono) rowEditTelefono.classList.toggle('d-none', conFamilia);
+  }
 
   document.getElementById('modalEditUbicacion').addEventListener('show.bs.modal', function (e) {
     const btn = e.relatedTarget;
@@ -918,18 +940,18 @@
     document.getElementById('editUbicContacto').value = btn.dataset.contacto;
     document.getElementById('editUbicTelefono').value = btn.dataset.telefono;
     document.getElementById('editUbicNotas').value = btn.dataset.notas;
-    const rowEditVol = document.getElementById('editRowVoluntarioAcogida');
-    if (rowEditVol) rowEditVol.classList.toggle('d-none', tipo !== 'acogida');
-    const editVol = document.getElementById('editUbicVoluntario');
-    if (editVol) editVol.value = btn.dataset.voluntarioId || '';
+    const editFamiliaAdopcion = document.getElementById('editUbicFamiliaAdopcion');
+    if (editFamiliaAdopcion) editFamiliaAdopcion.value = btn.dataset.familiaId || '';
+    const editFamiliaAcogida = document.getElementById('editUbicFamiliaAcogida');
+    if (editFamiliaAcogida) editFamiliaAcogida.value = btn.dataset.familiaId || '';
+    actualizarFilasEditUbicacion(tipo);
   });
 
   (function () {
     const editTipo = document.getElementById('editUbicTipo');
-    const rowEditVol = document.getElementById('editRowVoluntarioAcogida');
-    if (editTipo && rowEditVol) {
+    if (editTipo) {
       editTipo.addEventListener('change', function () {
-        rowEditVol.classList.toggle('d-none', this.value !== 'acogida');
+        actualizarFilasEditUbicacion(this.value);
       });
     }
   })();
