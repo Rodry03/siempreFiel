@@ -1,8 +1,10 @@
+import io
+import logging
 import os
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_, or_, func
 from typing import List, Optional
@@ -11,6 +13,8 @@ from app.models import Perro, Vacuna, Ubicacion, EstadoPerro, Sexo, TipoUbicacio
 from app.templates_config import templates
 import cloudinary
 import cloudinary.uploader
+
+logger = logging.getLogger(__name__)
 
 
 _MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
@@ -347,6 +351,31 @@ def detalle_perro(request: Request, perro_id: int, error: Optional[str] = None, 
         "familias_acogida": familias,
         "familia_actual": familia_actual,
     })
+
+
+@router.get("/{perro_id}/ficha", dependencies=[Depends(require_not_veterano)])
+def descargar_ficha_perro(perro_id: int, db: Session = Depends(get_db)):
+    perro = db.query(Perro).filter(Perro.id == perro_id).first()
+    if not perro:
+        return RedirectResponse("/perros/", status_code=303)
+    from app.utils.ficha_perro import generar_ficha_perro
+    try:
+        pdf_bytes, docx_bytes = generar_ficha_perro(perro)
+    except Exception as e:
+        logger.error("Error generando ficha del perro %s: %s", perro_id, e)
+        return RedirectResponse(f"/perros/{perro_id}", status_code=303)
+    nombre_base = f"ficha_{perro.nombre.replace(' ', '_')}"
+    if pdf_bytes:
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{nombre_base}.pdf"'},
+        )
+    return StreamingResponse(
+        io.BytesIO(docx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_base}.docx"'},
+    )
 
 
 @router.get("/{perro_id}/editar")

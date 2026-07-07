@@ -20,6 +20,9 @@
   </div>
   {% if request.state.current_user and request.state.current_user.rol.value != 'veterano' %}
   <div class="d-flex gap-2 flex-wrap">
+    <a href="/perros/{{ perro.id }}/ficha" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Descargar ficha
+    </a>
     <a href="/perros/{{ perro.id }}/editar" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-pencil me-1"></i>Editar
     </a>

@@ -71,6 +71,7 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 
 ### Perro
 - `nombre`: always saved in **UPPERCASE** (enforced in create/edit endpoints)
+- `nombre_nuevo` (String, nullable): nuevo nombre que le pone la familia adoptante (ej. familias que adoptan y renombran al perro). Opcional, se guarda en mayúsculas. Editable desde la ficha de familia (al vincular el perro o con el lápiz junto a su nombre en "Perros asociados"). En el contrato de adopción aparece como `NOMBRE_VIEJO / NOMBRE_NUEVO`. También se muestra junto al nombre en `perros/detail.html`.
 - `edad`: calculated (not stored) from `fecha_nacimiento`
 - `num_chip`: microchip number (unique, nullable)
 - `num_pasaporte`: passport number (unique, nullable)
@@ -86,6 +87,8 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - `pesos`: one-to-many `PesoPerro` (ordered by fecha desc)
 - `celos`: one-to-many `CeloPerro` (ordered by fecha_inicio desc)
 - `medicaciones`: one-to-many `MedicacionPerro` (ordered by fecha_inicio desc) — **visible a todos los roles**
+- `tamano`: desplegable con Pequeño, Mediano, Mediano-Grande, Grande, Gigante (`perros/form.html`)
+- `raza_id`: desplegable de `Raza` con opción "+ Añadir nueva raza…" (`value="__nueva__"`) que revela un input de texto; el backend (`_resolver_raza_id` en `perros.py`) crea la `Raza` si no existe (comparación case-insensitive) o reutiliza la existente
 
 ### Auto-adopción de reservados
 - `_auto_adoptar_reservados(db)` en `perros.py`: se llama al cargar `/perros/` (solo junta/admin)
@@ -107,11 +110,15 @@ $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 - `turno`: checkboxes múltiples en el formulario; se guarda como string separado por coma. Badges: Mañana (amarillo), Tarde (azul)
 
 ### Sincronización estado ↔ ubicación
-- Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había; opcionalmente se vincula a una `Familia` (dropdown en el formulario, solo familias tipo='adopcion')
-- Cambiar ubicación a física (refugio/acogida/residencia) estando adoptado → `estado = libre`
+- Cambiar ubicación a `casa_adoptiva` → `estado = adoptado`, `fecha_adopcion` se guarda si no había; se vincula opcionalmente a una `Familia` (dropdown "Familia adoptante")
+- Cambiar ubicación a `acogida` → se vincula opcionalmente a una `Familia` (dropdown "Familia de acogida"); si venía de adoptado, `estado` vuelve a `libre`
+- Cambiar ubicación a física sin familia (refugio/residencia) estando adoptado → `estado = libre`
 - Guardar formulario con `estado = adoptado` y ubicación actual ≠ `casa_adoptiva` → se crea automáticamente registro `casa_adoptiva` (sin datos de contacto, rellenar después)
 - Guardar formulario con `estado ≠ adoptado` viniendo de adoptado con `casa_adoptiva` → se cierra `casa_adoptiva` y se crea `refugio`
-- Vincular familia: el select aparece en el form de cambio de ubicación solo cuando se elige `casa_adoptiva` (JS). Actualiza `Familia.perro_id = perro_id`.
+- **Familia por ubicación (`Ubicacion.familia_id`):** cada registro de `Ubicacion` de tipo `casa_adoptiva` o `acogida` guarda su propia familia asociada (igual que antes se guardaba `voluntario_id` para acogida). Permite que el historial muestre la familia correcta de cada periodo, no solo la actual del perro. `Perro.familia_id` siempre refleja la familia de la ubicación activa; se limpia a `None` al pasar a refugio/residencia.
+- Los desplegables de familia (adoptante/acogida, tanto al crear como al editar una ubicación) muestran **todas** las familias, no filtradas por `Familia.tipo` — una misma familia puede adoptar un perro y acoger otro. Se etiqueta cada opción con "· Acogida" / "· Adopción" según `Familia.tipo` como pista visual.
+- Los campos "Nombre contacto"/"Teléfono contacto" se ocultan en el formulario cuando el tipo es `casa_adoptiva` o `acogida` (esos datos salen de la familia); solo se muestran para refugio/residencia. La tarjeta "Ubicación actual" muestra el teléfono en vivo de `Familia.telefono` (no una copia guardada).
+- El `voluntario_id` de `Ubicacion` ya **no se usa** para nuevas entradas (se sustituyó por `familia_id` en acogida); se conserva solo para mostrar el histórico de registros antiguos.
 
 ### PesoPerro
 - `perro_id`, `fecha`, `peso_kg` (Float), `notas` (nullable)
@@ -184,9 +191,10 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 ### Familia
 - Representa familias adoptantes o acogedoras de perros.
 - Campos obligatorios: `nombre`, `apellidos`, `dni` (unique, guardado en mayúsculas)
-- `tipo`: String nullable — `'adopcion'` | `'acogida'`
-- `perro_id`: FK nullable a `perros.id` — se vincula al cambiar ubicación del perro a `casa_adoptiva`
-- Campos opcionales: `email`, `telefono`, `direccion`, `municipio`, `provincia`, `codigo_postal`, `notas`
+- `tipo`: String nullable — `'adopcion'` | `'acogida'`. Es solo una etiqueta/pista (mostrada en los desplegables como "· Acogida"/"· Adopción") — **no filtra** qué familias pueden vincularse a un perro, porque una misma familia puede adoptar un perro y acoger otro.
+- `perros`: relación uno-a-muchos vía `Perro.familia_id` (no hay `Familia.perro_id`) — se vincula al cambiar la ubicación de un perro a `casa_adoptiva` o `acogida`, o desde la ficha de familia ("Vincular perro" / perro inicial al crear la familia)
+- Campos opcionales: `email`, `telefono`, `direccion`, `municipio`, `codigo_postal`, `notas`
+- `provincia`: desplegable con las 50 provincias españolas + Ceuta y Melilla (`PROVINCIAS` en `app/routers/familias.py`), no texto libre
 - `fecha_contrato`: Date (obligatoria, default hoy) — fecha de firma del contrato
 - `contrato_firmado_url`, `contrato_firmado_fecha`, `contrato_firmado_nombre`: upload del contrato firmado a Cloudinary (`protectora/contratos/contrato_familia_{id}`, resource_type=raw)
 - `dni_frontal_url`, `dni_reverso_url` (String, nullable): fotos/documento del DNI subidas a Cloudinary (`protectora/dni/dni_{lado}_familia_{id}`, `resource_type=auto`). Cada hueco acepta imagen **o** PDF, porque el DNI a veces llega como una sola imagen por cara y otras como un único PDF con ambas caras — en ese caso se sube solo en `frontal` y `reverso` se deja vacío. El template detecta si la URL termina en `.pdf` para mostrar icono de documento en vez de miniatura. Endpoints: `POST /familias/{id}/dni/{lado}` y `POST /familias/{id}/dni/{lado}/eliminar` (`lado` = `frontal`|`reverso`).
@@ -194,6 +202,8 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - Detalle: tres botones de contrato (acogida azul, pre-adopción amarillo, adopción verde) activos si tiene perro asignado; tarjeta upload contrato firmado igual que voluntarios; tarjeta "Documentación DNI" con dos huecos (delantera/trasera)
 - Vista `/familias/contratos`: resumen con/sin contrato firmado + tabla descargable, igual que voluntarios
 - Sidebar: entre Visitas y Turnos
+- El desplegable de perro (al crear una familia o en "Vincular perro") muestra **todos** los perros, sin filtrar por `estado` — antes excluía fallecidos/adoptados.
+- Renombrado al adoptar: al vincular un perro (crear familia, "Vincular perro", o con el lápiz en "Perros asociados") hay un campo opcional "Nuevo nombre" que guarda `Perro.nombre_nuevo` (ver sección Perro).
 
 ---
 
@@ -250,8 +260,8 @@ app/
     dashboard.html    — Stat cards (incl. widget próximo evento) + charts + dbt button. Drill-down en entradas/adopciones y conversión visitantes. Gráficos: entradas/salidas, conversión visitantes, cobertura semanal (20 semanas), evolución saldo (20 semanas), tiempo adopción, tiempo acogida.
     perros/
       list.html       — Tabs: En refugio / En acogida / Reservados / Adoptados / Todos. 35 por página. Contador. Ordenación preservada al paginar.
-      detail.html     — Photo, edit/delete, pesos, celos, medicaciones (visible a todos), vacunas (ocultas a veterano). Ubicaciones: cambio + edición individual. Botón atrás usa history.back().
-      form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado)
+      detail.html     — Photo, edit/delete, pesos, celos, medicaciones (visible a todos), vacunas (ocultas a veterano). Ubicaciones: cambio + edición individual, con select de familia (adoptante/acogida) según tipo. Botón atrás usa history.back().
+      form.html       — Create/edit, name uppercase, photo upload, fecha_adopcion (visible si estado=adoptado), raza con opción "+ Añadir nueva raza…", tamaño incluye "Mediano-Grande"
     voluntarios/
       list.html       — Active volunteers. Columnas: Saldo app (automático) + Saldo efectivo (manual).
       detail.html     — Profile + historial turnos (desde 04/08/2025, semanas vacías en rojo con -1, apoyo en azul). Tarjetas paralelas: Saldo de turnos (automático) + Saldo efectivo (manual, editable por junta/admin). Widget próximo evento con botón "Apuntarme" (solo veterano).
@@ -276,7 +286,7 @@ app/
     familias/
       list.html       — Lista con filtro por tipo + botón "Contratos"
       detail.html     — Ficha + botones generar contrato acogida/pre-adopción/adopción (activos si tiene perro) + tarjeta contrato firmado
-      form.html       — Create/edit con dropdown de perros (no fallecidos)
+      form.html       — Create/edit con dropdown de todos los perros, campo "Nuevo nombre" opcional, provincia como desplegable
       contratos.html  — Resumen con/sin contrato firmado + tabla descargable (igual que voluntarios/contratos_firmados.html)
     consulta/
       chat.html       — UI de chat: burbujas, typing dots, chips de sugerencias, autoexpand textarea
@@ -307,6 +317,7 @@ dbt_protectora/
 ## Common Tasks
 
 ### Add a Raza
+Desde la UI: en el formulario de perro, seleccionar "+ Añadir nueva raza…" en el desplegable de raza y escribir el nombre (se crea automáticamente al guardar). También por SQL directo si hace falta:
 ```sql
 INSERT INTO razas (nombre) VALUES ('Nueva Raza');
 ```
@@ -321,6 +332,12 @@ ALTER TYPE nombre_enum ADD VALUE 'new_value';
 ```sql
 ALTER TABLE evento_voluntarios ADD COLUMN hora_llegada VARCHAR(5);
 ALTER TABLE evento_voluntarios ADD COLUMN hora_salida VARCHAR(5);
+```
+
+### Renombrado al adoptar + familia por ubicación (comprobar si ya se ejecutó en Neon)
+```sql
+ALTER TABLE perros ADD COLUMN nombre_nuevo VARCHAR(100);
+ALTER TABLE ubicaciones ADD COLUMN familia_id INTEGER REFERENCES familias(id) ON DELETE SET NULL;
 ```
 
 ### Run dbt (prod/Neon)
@@ -386,7 +403,7 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
     - **Email siempre en minúsculas:** en `contrato_acogida.py` y `contrato_adopcion.py`, el campo correo se rellena con `_set_run(..., upper=False)`. El resto de campos van en mayúsculas (`upper=True`, por defecto).
     - **Auto-ajuste de tamaño de letra sin mover la tabla:** ambos ficheros tienen `_fit_font_size()` + una tabla estática `_CHAR_WIDTH_EM` (anchos de carácter de Times New Roman Negrita, medidos una vez con la fuente real para no depender de tenerla instalada en Render). Las tablas de las plantillas usan `tblLayout type="fixed"` (ancho de columna fijo), así que si un valor no cabe en una línea se reduce el tamaño de letra (mínimo 6pt, pasos de 0.5pt) en vez de dejar que Word ensanche la fila/tabla. El tamaño base para reducir se toma del tamaño original de cada campo en la plantilla (no un valor fijo — `contrato_adopcion.docx` mezcla 10pt en la tabla de familia y 9pt en la de perro).
     - **contrato_adopcion.py — punto 21 (tasa) y fecha final:** la plantilla actual divide "la cantidad de ____ €" y "__ de ______ de ____." en varios runs distintos de Word. `_fill_tasa` busca el run que contiene literalmente `"____"` y lo sustituye (ya no busca la frase completa "la cantidad de  €", que dejó de existir tras editar la plantilla). `_fill_fecha` localiza con regex los runs que son solo guiones bajos (día/mes/año) y rellena cada uno con la fecha actual, en vez de reemplazar un único run con la frase entera.
-34. **Vínculo familia al cambiar a casa_adoptiva:** Al cambiar la ubicación de un perro a `casa_adoptiva`, el formulario muestra un select con las familias de tipo='adopcion'. Si se selecciona una, se actualiza `Familia.perro_id`. El select aparece/desaparece con JS según el tipo elegido.
+34. **Vínculo familia al cambiar ubicación (casa_adoptiva o acogida):** El formulario de cambio de ubicación muestra un select de familia ("Familia adoptante" para `casa_adoptiva`, "Familia de acogida" para `acogida`), con **todas** las familias (no filtradas por `tipo`). Al seleccionar una, se actualiza `Perro.familia_id` y también `Ubicacion.familia_id` de esa entrada concreta (para que el historial recuerde la familia de cada periodo). Los selects aparecen/desaparecen con JS según el tipo elegido, tanto al crear como al editar una ubicación existente.
 30. **MedicacionPerro.turno multi-valor:** se guardan como string separado por coma (`"manana,tarde"`). En el formulario son checkboxes independientes; FastAPI recibe `List[str]` y los une con `","`.  En la plantilla se hace `m.turno.split(',')` para mostrar los badges correspondientes.
 31. **AntonIA (Text-to-SQL):** Asistente IA en `/consulta/` solo para junta/admin. Flujo: pregunta en lenguaje natural → Groq genera SQL → validación estricta (solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/TRUNCATE/CREATE) → ejecuta en Neon → Groq formatea respuesta. Modelo: `llama-3.3-70b-versatile`. Requiere `GROQ_API_KEY` en env vars. El tiempo en la protectora usa `COALESCE(fecha_adopcion, CURRENT_DATE) - fecha_entrada` para perros ya adoptados.
 32. **Gestión de errores HTTP:** Handler para 404 (`404.html`) y 500 (`500.html`). Handler global para excepciones Python no controladas (`Exception`) → loguea el traceback y muestra `500.html`. Endpoint `/health` (GET+HEAD) para el health check de Render.
@@ -396,6 +413,12 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 38. **Widget próximo evento en perfil veterano:** En `voluntarios/detail.html`, los veteranos ven un widget del próximo evento con botón "Apuntarme" que abre un modal para indicar hora de llegada/salida. Endpoint: `POST /eventos/{id}/apuntarme` (accesible a todos los roles).
 39. **Saldo efectivo paralelo al saldo automático:** `Voluntario.saldo_manual` (Float, nullable) y `Voluntario.notas_saldo_manual` (Text, nullable) almacenan el saldo anotado manualmente por el gestor. Nunca se combina con `calcular_saldo()` — son dos sistemas paralelos independientes. Visibles en lista (columna "Saldo efectivo") y perfil (tarjeta con mismo estilo que "Saldo de turnos"). Editable solo por junta/admin.
 40. **Documentación DNI de Familia:** dos campos independientes `dni_frontal_url`/`dni_reverso_url`, subida a Cloudinary con `resource_type="auto"` (deja que Cloudinary detecte imagen vs PDF; ambos casos se guardan como resource_type "image", por lo que `destroy()` sin parámetro explícito sigue sirviendo para borrar cualquiera de los dos). En la práctica el DNI llega unas veces como dos fotos (delante/detrás) y otras como un único PDF con ambas caras — en ese segundo caso se sube solo en el hueco `frontal` y `reverso` queda vacío. El template decide si mostrar miniatura de imagen o icono de PDF mirando si la URL termina en `.pdf`. No hay gating entre los dos huecos (se pueden rellenar en cualquier orden), simplemente se listan en el formulario primero delantera y después trasera.
+41. **Perro.nombre_nuevo (renombrado al adoptar):** campo opcional en `Perro`, editable desde la ficha de familia (no desde el formulario de perro). Si tiene valor, se muestra como `NOMBRE / NOMBRE_NUEVO` en el contrato de adopción (`contrato_adopcion.py`, tabla del perro) y junto al nombre en `perros/detail.html` y en "Perros asociados" de la familia.
+42. **Desplegables de perro/familia sin filtrar por estado o tipo:** el selector de perro al crear una familia (o "Vincular perro") muestra todos los perros sin filtrar por `estado`. Los selectores de familia en el cambio de ubicación del perro muestran todas las familias sin filtrar por `tipo`. Razón: una familia puede adoptar un perro y acoger otro; un perro puede necesitar re-vincularse aunque ya esté adoptado/fallecido en casos excepcionales.
+43. **Ubicacion.familia_id (histórico por tipo de ubicación):** además de `Perro.familia_id` (familia actual), cada `Ubicacion` de tipo `casa_adoptiva`/`acogida` guarda su propia `familia_id`. Al editar una ubicación pasada, cambiar la familia solo afecta a esa entrada; si la ubicación editada es la activa (`fecha_fin is None`), también se sincroniza `Perro.familia_id`. El campo `Ubicacion.voluntario_id` (usado antes para acogida) se conserva solo para mostrar histórico antiguo, ya no se rellena en formularios nuevos.
+44. **Contacto de ubicación oculto cuando hay familia:** "Nombre contacto"/"Teléfono contacto" del formulario de ubicación se ocultan por JS cuando el tipo es `casa_adoptiva` o `acogida` (el teléfono se toma en vivo de `Familia.telefono` al mostrarlo). Solo quedan visibles para refugio/residencia.
+45. **Raza "Añadir nueva" en el formulario de perro:** el desplegable de raza incluye la opción `__nueva__` que revela un input de texto; `_resolver_raza_id()` en `perros.py` crea la `Raza` (o reutiliza una existente con el mismo nombre, comparación case-insensitive) antes de guardar el perro.
+46. **Provincia de Familia como desplegable:** `PROVINCIAS` (lista fija de las 50 provincias + Ceuta y Melilla) en `app/routers/familias.py`, usada en `familias/form.html` en vez de texto libre. Registros antiguos con grafía distinta no quedan preseleccionados.
 
 ---
 
