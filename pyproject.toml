@@ -6,3 +6,9 @@ extend-exclude = ["venv", "dbt_protectora"]
 # Sin reglas de estilo (E/W) para no generar ruido sobre patrones ya asentados
 # en el proyecto (p.ej. filtros SQLAlchemy `== True`).
 select = ["F"]
+
+[tool.pytest.ini_options]
+# Sin esto, invocar el script `pytest` directamente (en vez de `python -m
+# pytest`) no añade la raíz del repo a sys.path y falla con
+# "ModuleNotFoundError: No module named 'app'".
+pythonpath = ["."]

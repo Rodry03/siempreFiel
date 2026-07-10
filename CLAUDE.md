@@ -23,6 +23,13 @@ $env:DBT_PASSWORD="rodrymolamucho"; dbt run --target dev
 $env:DBT_NEON_...; dbt run --select mart_cobertura_semanal
 ```
 
+**CI local** (lint + smoke tests, antes de hacer push):
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+pytest tests/ -v
+```
+
 ---
 
 ## Stack
@@ -294,6 +301,12 @@ app/
       detail.html     — Ficha + tarjeta contrato firmado (upload/descarga/eliminar) + dos botones disabled para generar contratos
       form.html       — Create/edit con dropdown de perros (no fallecidos)
 
+tests/
+  conftest.py         — Fixture `client` (TestClient con SQLite en memoria). Mockea langfuse.get_client (auth_check en main.py haría una llamada de red real) y sobreescribe get_db + app.database.SessionLocal/engine para no tocar nunca Neon.
+  test_smoke.py       — 4 smoke tests: /health, /login, / y /consulta/ sin sesión (solo comprueban que no hay 500, no lógica de negocio)
+
+.github/workflows/ci.yml — Job único en push/PR a main: ruff check . (solo reglas F de pyflakes) + pytest tests/. No requiere secrets (ver Design Decision 47).
+
 dbt_protectora/
   profiles.yml        — Default target: prod (points to Neon)
   models/
@@ -360,7 +373,7 @@ Convenciones del parser (`app/estadillo_parser.py`):
 - Lista vacía en un slot = sin cubrir, no se inserta nada
 
 ### Deploy to Render
-GitHub Actions runs on push to `main`. Render pulls and restarts.
+Render tiene su propia integración nativa con GitHub (no es un GitHub Action) y hace auto-deploy en cada push a `main`. En paralelo, `.github/workflows/ci.yml` corre ruff + smoke tests en push/PR a `main` — ambos son independientes, un fallo del CI no bloquea automáticamente el deploy de Render (es responsabilidad del equipo no mergear con el check en rojo).
 
 ---
 
@@ -419,6 +432,7 @@ GitHub Actions runs on push to `main`. Render pulls and restarts.
 44. **Contacto de ubicación oculto cuando hay familia:** "Nombre contacto"/"Teléfono contacto" del formulario de ubicación se ocultan por JS cuando el tipo es `casa_adoptiva` o `acogida` (el teléfono se toma en vivo de `Familia.telefono` al mostrarlo). Solo quedan visibles para refugio/residencia.
 45. **Raza "Añadir nueva" en el formulario de perro:** el desplegable de raza incluye la opción `__nueva__` que revela un input de texto; `_resolver_raza_id()` en `perros.py` crea la `Raza` (o reutiliza una existente con el mismo nombre, comparación case-insensitive) antes de guardar el perro.
 46. **Provincia de Familia como desplegable:** `PROVINCIAS` (lista fija de las 50 provincias + Ceuta y Melilla) en `app/routers/familias.py`, usada en `familias/form.html` en vez de texto libre. Registros antiguos con grafía distinta no quedan preseleccionados.
+47. **CI (ruff + smoke tests), sin secrets:** `.github/workflows/ci.yml` corre `ruff check .` (solo reglas `F` de pyflakes — imports rotos, variables no usadas, nombres indefinidos; sin reglas de estilo `E` para no generar ruido sobre patrones ya asentados como `Columna == True`) y 4 smoke tests con pytest. Los tests usan SQLite en memoria (`tests/conftest.py` sobreescribe `get_db` y también `app.database.SessionLocal`/`engine`, porque `CurrentUserMiddleware` abre su propia sesión sin pasar por la dependencia) — nunca tocan Neon ni requieren credenciales. `langfuse.get_client` se mockea en el import porque `app/main.py` hace `assert langfuse.auth_check()` a nivel de módulo (llamada de red real). `app/database.py:init_db()` salta el `CREATE SCHEMA analytics` cuando el dialect no es Postgres, para que el `startup` event funcione contra SQLite en CI.
 
 ---
 
