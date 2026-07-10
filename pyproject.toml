@@ -1,0 +1,8 @@
+[tool.ruff]
+extend-exclude = ["venv", "dbt_protectora"]
+
+[tool.ruff.lint]
+# Solo pyflakes: imports rotos, variables no usadas, nombres indefinidos.
+# Sin reglas de estilo (E/W) para no generar ruido sobre patrones ya asentados
+# en el proyecto (p.ej. filtros SQLAlchemy `== True`).
+select = ["F"]

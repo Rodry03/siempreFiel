@@ -7,12 +7,12 @@ import cloudinary
 import cloudinary.uploader
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from app.auth import get_current_user, require_not_veterano, flash
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from app.database import get_db
-from app.models import Familia, Perro, EstadoPerro, Voluntario, PerfilVoluntario
+from app.models import Familia, Perro, EstadoPerro, Voluntario
 from app.templates_config import templates
 
 logger = logging.getLogger(__name__)

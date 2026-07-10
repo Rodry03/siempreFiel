@@ -34,12 +34,12 @@ RAZAS_DEFAULT = [
 
 
 def init_db():
-    from app import models
     from app.models import Raza
     Base.metadata.create_all(bind=engine)
-    with engine.connect() as conn:
-        conn.execute(text("CREATE SCHEMA IF NOT EXISTS analytics"))
-        conn.commit()
+    if engine.dialect.name != "sqlite":
+        with engine.connect() as conn:
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS analytics"))
+            conn.commit()
     # Poblar razas si la tabla está vacía
     with SessionLocal() as session:
         if session.query(Raza).count() == 0:

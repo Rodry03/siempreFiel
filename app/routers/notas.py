@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_directiva, flash
+from app.auth import get_current_user, require_directiva
 from app.database import get_db
 from app.models import NotaGestion, Voluntario, PerfilVoluntario
 from app.templates_config import templates

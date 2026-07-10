@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_not_veterano, flash
+from app.auth import get_current_user, flash
 from app.database import get_db
 from app.models import Voluntario, PerfilVoluntario, EstadoTurno, Ubicacion, TipoUbicacion, Familia
 from app.routers.voluntarios import CONTRATO_LABELS, CONTRATO_COLORS

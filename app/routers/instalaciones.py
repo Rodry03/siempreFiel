@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.auth import get_current_user, require_not_veterano, NotAuthorized, flash
+from app.auth import get_current_user, NotAuthorized, flash
 from app.database import get_db
 from app.models import IncidenciaInstalacion, PrioridadIncidencia, EstadoIncidencia, Voluntario
 from app.templates_config import templates

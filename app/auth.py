@@ -1,6 +1,5 @@
 from passlib.context import CryptContext
-from fastapi import Depends, Request
-from typing import Optional
+from fastapi import Request
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

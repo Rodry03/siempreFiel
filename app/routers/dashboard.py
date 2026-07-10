@@ -11,7 +11,7 @@ from datetime import date
 from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text, extract, func
+from sqlalchemy import text, extract
 from app.database import get_db
 from app.templates_config import templates
 from app.auth import get_current_user, require_not_veterano, require_admin
@@ -138,7 +138,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    from app.models import Perro, EstadoPerro, Voluntario, TipoUbicacion, Ubicacion, Evento
+    from app.models import Perro, EstadoPerro, Voluntario, Evento
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()

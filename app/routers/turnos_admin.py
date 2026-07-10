@@ -281,7 +281,6 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
     fecha_inicio, slots = parse_estadillo(texto)
     todos = db.query(Voluntario).all()
 
-    PERFILES_VET = {PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta}
     insertados = 0
     omitidos = 0
 
