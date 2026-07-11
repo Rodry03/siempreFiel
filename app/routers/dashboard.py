@@ -138,7 +138,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    from app.models import Perro, EstadoPerro, Voluntario, Evento
+    from app.models import Perro, EstadoPerro, Voluntario, Evento, Ubicacion, TipoUbicacion
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
@@ -158,6 +158,30 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
             dist_ubicacion["sin_ubicacion"] += 1
 
     hoy = date.today()
+
+    acogidas_abiertas_raw = (
+        db.query(Ubicacion)
+        .filter(Ubicacion.tipo == TipoUbicacion.acogida, Ubicacion.fecha_fin.is_(None))
+        .all()
+    )
+    acogidas_abiertas = sorted(
+        [
+            {
+                "perro_id": u.perro_id,
+                "nombre": u.perro.nombre,
+                "fecha_inicio": u.fecha_inicio,
+                "dias": (hoy - u.fecha_inicio).days,
+                "con_quien": (
+                    f"{u.familia.nombre} {u.familia.apellidos}" if u.familia
+                    else (u.nombre_contacto or None)
+                ),
+            }
+            for u in acogidas_abiertas_raw
+        ],
+        key=lambda x: x["dias"],
+        reverse=True,
+    )
+
     proximos_eventos = (
         db.query(Evento)
         .filter(Evento.fecha >= hoy)
@@ -232,6 +256,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "patrones_dificultad": patrones_dificultad,
         "cobertura_mensual": cobertura_mensual,
         "tiempo_acogida": tiempo_acogida,
+        "acogidas_abiertas": acogidas_abiertas,
         "conversion_visitantes": conversion_visitantes,
         "evolucion_saldo_mensual": evolucion_saldo_mensual,
         "dist_ubicacion": dist_ubicacion,

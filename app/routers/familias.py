@@ -148,6 +148,7 @@ def crear_familia(
     notas: Optional[str] = Form(None),
     fecha_contrato: date = Form(...),
     voluntario_id: Optional[int] = Form(None),
+    voluntario_id_2: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     familia = Familia(
@@ -164,6 +165,7 @@ def crear_familia(
         notas=notas or None,
         fecha_contrato=fecha_contrato,
         voluntario_id=voluntario_id or None,
+        voluntario_id_2=voluntario_id_2 or None,
     )
     db.add(familia)
     try:
@@ -296,6 +298,7 @@ def editar_familia(
     notas: Optional[str] = Form(None),
     fecha_contrato: date = Form(...),
     voluntario_id: Optional[int] = Form(None),
+    voluntario_id_2: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     familia = db.query(Familia).filter(Familia.id == familia_id).first()
@@ -314,6 +317,7 @@ def editar_familia(
     familia.notas = notas or None
     familia.fecha_contrato = fecha_contrato
     familia.voluntario_id = voluntario_id or None
+    familia.voluntario_id_2 = voluntario_id_2 or None
     try:
         db.commit()
     except IntegrityError:

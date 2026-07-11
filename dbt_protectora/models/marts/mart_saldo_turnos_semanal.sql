@@ -70,6 +70,7 @@ resultado as (
         g.perfil,
         g.semana,
         coalesce(t.valor, 0)                                        as turnos_semana,
+        coalesce(ap.en_apoyo, false)                                as en_apoyo,
         case
             when coalesce(ap.en_apoyo, false) then 0.0
             when g.semana >= date_trunc('week', current_date)::date then 0.0

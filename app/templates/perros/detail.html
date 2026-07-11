@@ -202,7 +202,7 @@
               </div>
               <div class="col-md-6" id="rowContactoManual">
                 <label class="form-label small fw-semibold">Nombre contacto</label>
-                <input type="text" name="nombre_contacto" id="inputNombreContacto" class="form-control form-control-sm" placeholder="Opcional">
+                <input type="text" name="nombre_contacto" id="inputNombreContacto" class="form-control form-control-sm" placeholder="Opcional — usar si aún no está dada de alta la familia">
               </div>
               <div class="col-md-6" id="rowTelefonoManual">
                 <label class="form-label small fw-semibold">Teléfono contacto</label>
@@ -905,15 +905,10 @@
     const sel = document.getElementById('selectTipoUbicacion');
     const rowFamilia = document.getElementById('rowFamiliaAdopcion');
     const rowFamiliaAcogida = document.getElementById('rowFamiliaAcogida');
-    const rowContacto = document.getElementById('rowContactoManual');
-    const rowTelefono = document.getElementById('rowTelefonoManual');
     if (sel) {
       function toggleRows() {
-        const conFamilia = sel.value === 'casa_adoptiva' || sel.value === 'acogida';
         if (rowFamilia) rowFamilia.classList.toggle('d-none', sel.value !== 'casa_adoptiva');
         if (rowFamiliaAcogida) rowFamiliaAcogida.classList.toggle('d-none', sel.value !== 'acogida');
-        if (rowContacto) rowContacto.classList.toggle('d-none', conFamilia);
-        if (rowTelefono) rowTelefono.classList.toggle('d-none', conFamilia);
       }
       sel.addEventListener('change', toggleRows);
       toggleRows();
@@ -921,15 +916,10 @@
   })();
 
   function actualizarFilasEditUbicacion(tipo) {
-    const conFamilia = tipo === 'casa_adoptiva' || tipo === 'acogida';
     const rowEditFamiliaAdopcion = document.getElementById('editRowFamiliaAdopcion');
     if (rowEditFamiliaAdopcion) rowEditFamiliaAdopcion.classList.toggle('d-none', tipo !== 'casa_adoptiva');
     const rowEditFamiliaAcogida = document.getElementById('editRowFamiliaAcogida');
     if (rowEditFamiliaAcogida) rowEditFamiliaAcogida.classList.toggle('d-none', tipo !== 'acogida');
-    const rowEditContacto = document.getElementById('editRowContactoManual');
-    if (rowEditContacto) rowEditContacto.classList.toggle('d-none', conFamilia);
-    const rowEditTelefono = document.getElementById('editRowTelefonoManual');
-    if (rowEditTelefono) rowEditTelefono.classList.toggle('d-none', conFamilia);
   }
 
   document.getElementById('modalEditUbicacion').addEventListener('show.bs.modal', function (e) {

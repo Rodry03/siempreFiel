@@ -74,7 +74,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-8">
+        <div class="col-md-4">
           <label class="form-label fw-semibold">Voluntario vinculado</label>
           <select name="voluntario_id" class="form-select">
             <option value="">— Sin vincular —</option>
@@ -85,6 +85,18 @@
             {% endfor %}
           </select>
           <div class="form-text">Si la familia es a la vez voluntaria, vincúlala aquí.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">2º voluntario vinculado</label>
+          <select name="voluntario_id_2" class="form-select">
+            <option value="">— Sin vincular —</option>
+            {% for v in voluntarios %}
+            <option value="{{ v.id }}" {% if familia and familia.voluntario_id_2 == v.id %}selected{% endif %}>
+              {{ v.nombre }} {{ v.apellido }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Pareja/conviviente que también sea voluntario, si aplica.</div>
         </div>
         {% if not familia %}
         <div class="col-md-8">

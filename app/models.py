@@ -371,9 +371,11 @@ class Familia(Base):
     dni_reverso_url = Column(String(500), nullable=True)
 
     voluntario_id = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
+    voluntario_id_2 = Column(Integer, ForeignKey("voluntarios.id", ondelete="SET NULL"), nullable=True)
 
     perros = relationship("Perro", back_populates="familia", foreign_keys="Perro.familia_id")
     voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
+    voluntario_2 = relationship("Voluntario", foreign_keys=[voluntario_id_2])
 
 
 class SaldoMensual(Base):

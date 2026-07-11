@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -205,15 +206,18 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
         EventoVoluntario.voluntario_id == voluntario_id,
     ).first() is not None
 
+    familia_vinculada = db.query(Familia).filter(
+        or_(Familia.voluntario_id == voluntario_id, Familia.voluntario_id_2 == voluntario_id)
+    ).first()
+
+    _condicion_acogedor = Ubicacion.voluntario_id == voluntario_id
+    if familia_vinculada:
+        _condicion_acogedor = or_(_condicion_acogedor, Ubicacion.familia_id == familia_vinculada.id)
     perros_acogida = db.query(Ubicacion).filter(
-        Ubicacion.voluntario_id == voluntario_id,
+        _condicion_acogedor,
         Ubicacion.fecha_fin.is_(None),
         Ubicacion.tipo == TipoUbicacion.acogida,
     ).all()
-
-    familia_vinculada = db.query(Familia).filter(
-        Familia.voluntario_id == voluntario_id
-    ).first()
 
     return templates.TemplateResponse(request, "voluntarios/detail.html", {
         "voluntario": voluntario,

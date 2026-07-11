@@ -7,5 +7,6 @@ select
 from {{ ref('mart_saldo_turnos_semanal') }}
 where perfil not in ('directiva', 'guagua', 'eventos', 'colaboradores')
   and semana >= (current_date - interval '20 weeks')::date
+  and not en_apoyo
 group by semana
 order by semana
