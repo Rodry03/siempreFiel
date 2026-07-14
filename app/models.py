@@ -193,6 +193,7 @@ class Voluntario(Base):
     recuperar_turnos_urgentes = Column(Float, default=0.0, nullable=False)
     saldo_manual = Column(Float, nullable=True)
     notas_saldo_manual = Column(Text, nullable=True)
+    en_redes = Column(Boolean, default=False, nullable=False, server_default="false")
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
     turnos_mensuales = relationship("TurnoMensual", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoMensual.mes.desc()")
@@ -474,3 +475,30 @@ class EventoVoluntario(Base):
     voluntario = relationship("Voluntario")
 
     __table_args__ = (UniqueConstraint("evento_id", "voluntario_id", name="uq_evento_voluntario"),)
+
+
+class PerroRedes(Base):
+    __tablename__ = "perros_redes"
+
+    id       = Column(Integer, primary_key=True, index=True)
+    nombre   = Column(String(100), nullable=False)
+    perro_id = Column(Integer, ForeignKey("perros.id", ondelete="SET NULL"), nullable=True)
+    origen   = Column(String(20), nullable=False)   # 'refugio' | 'acogida' | 'otro'
+    activo   = Column(Boolean, default=True, nullable=False)
+    notas    = Column(Text, nullable=True)
+
+    perro = relationship("Perro")
+    publicaciones = relationship("PublicacionRedes", back_populates="perro_redes",
+                                  cascade="all, delete-orphan",
+                                  order_by="PublicacionRedes.fecha.desc()")
+
+
+class PublicacionRedes(Base):
+    __tablename__ = "publicaciones_redes"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    perro_redes_id = Column(Integer, ForeignKey("perros_redes.id", ondelete="CASCADE"), nullable=False)
+    fecha          = Column(Date, nullable=False, default=date.today)
+    plataforma     = Column(String(20), nullable=False)   # 'instagram' | 'tiktok'
+
+    perro_redes = relationship("PerroRedes", back_populates="publicaciones")

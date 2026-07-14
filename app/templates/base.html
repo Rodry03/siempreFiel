@@ -125,6 +125,12 @@
   <a class="nav-link {% if '/tareas' in request.url.path %}active{% endif %}" href="/tareas/">
     <i class="bi bi-clipboard-check me-2"></i>Grupos de tareas
   </a>
+  {% set _u_redes = request.state.current_user %}
+  {% if _u_redes and (_u_redes.rol.value in ('admin', 'junta') or (_u_redes.voluntario and _u_redes.voluntario.en_redes)) %}
+  <a class="nav-link {% if '/redes' in request.url.path %}active{% endif %}" href="/redes/">
+    <i class="bi bi-instagram me-2"></i>Redes
+  </a>
+  {% endif %}
   {% set _u = request.state.current_user %}
   {% if _u and (_u.rol.value == 'admin' or (_u.voluntario and _u.voluntario.perfil.value in ('directiva', 'apoyo_en_junta'))) %}
   <a class="nav-link {% if '/notas' in request.url.path %}active{% endif %}" href="/notas/">

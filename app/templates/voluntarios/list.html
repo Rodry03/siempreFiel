@@ -81,6 +81,7 @@
             <a href="/voluntarios/{{ v.id }}" class="text-decoration-none text-dark">
               {{ v.nombre }}
             </a>
+            {% if v.en_redes %}<i class="bi bi-instagram text-muted ms-1" title="Equipo de redes"></i>{% endif %}
           </td>
           <td>{{ v.apellido }}</td>
           <td>{{ v.email }}</td>

@@ -47,6 +47,18 @@ def require_not_veterano(request: Request):
     return user
 
 
+def require_redes_access(request: Request):
+    user = getattr(request.state, "current_user", None)
+    if not user:
+        raise NotAuthenticated()
+    from app.models import RolUsuario
+    if user.rol in (RolUsuario.admin, RolUsuario.junta):
+        return user
+    if user.rol == RolUsuario.veterano and user.voluntario and user.voluntario.en_redes:
+        return user
+    raise NotAuthorized()
+
+
 def require_directiva(request: Request):
     user = getattr(request.state, "current_user", None)
     if not user:

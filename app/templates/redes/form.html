@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Nuevo perro en redes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 gap-3">
+  <a href="/redes/" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h2 class="fw-bold mb-0">Nuevo perro en redes</h2>
+</div>
+
+<div class="card" style="max-width:650px;">
+  <div class="card-body">
+    <form method="post" action="/redes/nuevo">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" name="nombre" id="nombre" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Origen *</label>
+          <select name="origen" class="form-select" required>
+            {% for o in origenes %}
+            <option value="{{ o }}">{{ origen_labels[o] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 position-relative">
+          <label class="form-label fw-semibold">Vincular a perro existente</label>
+          <input type="text" id="perro_search" class="form-control" autocomplete="off"
+                 placeholder="Buscar perro por nombre…">
+          <input type="hidden" name="perro_id" id="perro_id_input">
+          <div id="perro_results" class="list-group position-absolute w-100 shadow-sm"
+               style="z-index:1000; max-height:250px; overflow-y:auto; display:none;"></div>
+          <div class="form-text">
+            Solo se muestran perros en refugio o acogida (no adoptados ni fallecidos). Déjalo vacío para casos externos, residencias o perros que aún no han entrado en el sistema.
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold">Notas</label>
+          <textarea name="notas" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>Añadir
+        </button>
+        <a href="/redes/" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const PERROS = {{ perros_json | tojson }};
+const searchInput = document.getElementById('perro_search');
+const hiddenInput = document.getElementById('perro_id_input');
+const resultsBox = document.getElementById('perro_results');
+const nombreInput = document.getElementById('nombre');
+
+function renderResultados(lista) {
+  resultsBox.innerHTML = '';
+  if (!lista.length) { resultsBox.style.display = 'none'; return; }
+  lista.slice(0, 20).forEach(function(p) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'list-group-item list-group-item-action';
+    item.textContent = p.nombre;
+    item.addEventListener('click', function() {
+      hiddenInput.value = p.id;
+      searchInput.value = p.nombre;
+      if (!nombreInput.value) nombreInput.value = p.nombre;
+      resultsBox.style.display = 'none';
+    });
+    resultsBox.appendChild(item);
+  });
+  resultsBox.style.display = '';
+}
+
+searchInput.addEventListener('input', function() {
+  hiddenInput.value = '';
+  const term = searchInput.value.trim().toUpperCase();
+  if (!term) { resultsBox.style.display = 'none'; return; }
+  renderResultados(PERROS.filter(function(p) { return p.nombre.includes(term); }));
+});
+searchInput.addEventListener('focus', function() {
+  if (searchInput.value.trim()) searchInput.dispatchEvent(new Event('input'));
+});
+document.addEventListener('click', function(e) {
+  if (!resultsBox.contains(e.target) && e.target !== searchInput) resultsBox.style.display = 'none';
+});
+</script>
+{% endblock %}

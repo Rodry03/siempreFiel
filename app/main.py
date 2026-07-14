@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from app.templates_config import templates
 from app.database import init_db
-from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias, consulta
+from app.routers import dashboard, perros, voluntarios, turnos, turnos_admin, visitas, usuarios, tareas, notas, instalaciones, search, eventos, economia, familias, consulta, redes
 from app.routers import login as login_router
 from app.auth import NotAuthenticated, NotAuthorized, CurrentUserMiddleware
 from openinference.instrumentation.groq import GroqInstrumentor
@@ -60,6 +60,7 @@ app.include_router(search.router)
 app.include_router(eventos.router)
 app.include_router(economia.router)
 app.include_router(familias.router)
+app.include_router(redes.router)
 app.include_router(consulta.router)
 
 

@@ -205,6 +205,7 @@ def crear_voluntario(
     fecha_contrato: Optional[date] = Form(None),
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
+    en_redes: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_veterano: Optional[date] = Form(None),
     fecha_fin_veterano: Optional[date] = Form(None),
@@ -230,6 +231,7 @@ def crear_voluntario(
         fecha_contrato=fecha_contrato,
         contrato_estado=EstadoContrato(contrato_estado) if contrato_estado else None,
         teaming=teaming == "on",
+        en_redes=en_redes == "on",
         notas=notas or None,
         fecha_veterano=fecha_veterano,
         fecha_fin_veterano=fecha_fin_veterano,
@@ -274,6 +276,7 @@ def editar_voluntario(
     fecha_contrato: Optional[date] = Form(None),
     contrato_estado: Optional[str] = Form(None),
     teaming: Optional[str] = Form(None),
+    en_redes: Optional[str] = Form(None),
     notas: Optional[str] = Form(None),
     fecha_veterano: Optional[date] = Form(None),
     fecha_fin_veterano: Optional[date] = Form(None),
@@ -298,6 +301,7 @@ def editar_voluntario(
     voluntario.fecha_contrato = fecha_contrato
     voluntario.contrato_estado = EstadoContrato(contrato_estado) if contrato_estado else None
     voluntario.teaming = teaming == "on"
+    voluntario.en_redes = en_redes == "on"
     voluntario.notas = notas or None
     if fecha_fin_veterano:
         perfil = PerfilVoluntario.voluntario.value
