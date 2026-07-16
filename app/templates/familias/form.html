@@ -99,16 +99,13 @@
           <div class="form-text">Pareja/conviviente que también sea voluntario, si aplica.</div>
         </div>
         {% if not familia %}
-        <div class="col-md-8">
+        <div class="col-md-8 position-relative">
           <label class="form-label fw-semibold">Perro inicial</label>
-          <select name="perro_id" class="form-select">
-            <option value="">— Sin asignar —</option>
-            {% for p in perros %}
-            <option value="{{ p.id }}">
-              {{ p.nombre }} ({{ p.estado.value }}){% if p.num_chip %} · chip {{ p.num_chip }}{% endif %}
-            </option>
-            {% endfor %}
-          </select>
+          <input type="text" id="perro_search" class="form-control" autocomplete="off"
+                 placeholder="Buscar perro por nombre…">
+          <input type="hidden" name="perro_id" id="perro_id_input">
+          <div id="perro_results" class="list-group position-absolute w-100 shadow-sm"
+               style="z-index:1000; max-height:250px; overflow-y:auto; display:none;"></div>
           <div class="form-text">Los perros adicionales se vinculan desde la ficha de cada perro.</div>
         </div>
         <div class="col-md-4">
@@ -154,6 +151,42 @@
 {% if not familia %}
 <script>
 const tasasPerros = {{ tasas_perros | tojson }};
+const PERROS = {{ perros_json | tojson }};
+const perroSearch = document.getElementById('perro_search');
+const perroIdInput = document.getElementById('perro_id_input');
+const perroResults = document.getElementById('perro_results');
+
+function renderPerroResultados(lista) {
+  perroResults.innerHTML = '';
+  if (!lista.length) { perroResults.style.display = 'none'; return; }
+  lista.slice(0, 20).forEach(function(p) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'list-group-item list-group-item-action';
+    item.textContent = p.label;
+    item.addEventListener('click', function() {
+      perroIdInput.value = p.id;
+      perroSearch.value = p.label;
+      perroResults.style.display = 'none';
+      perroIdInput.dispatchEvent(new Event('change'));
+    });
+    perroResults.appendChild(item);
+  });
+  perroResults.style.display = '';
+}
+
+perroSearch.addEventListener('input', function() {
+  perroIdInput.value = '';
+  const term = perroSearch.value.trim().toUpperCase();
+  if (!term) { perroResults.style.display = 'none'; perroIdInput.dispatchEvent(new Event('change')); return; }
+  renderPerroResultados(PERROS.filter(function(p) { return p.nombre.includes(term); }));
+});
+perroSearch.addEventListener('focus', function() {
+  if (perroSearch.value.trim()) perroSearch.dispatchEvent(new Event('input'));
+});
+document.addEventListener('click', function(e) {
+  if (!perroResults.contains(e.target) && e.target !== perroSearch) perroResults.style.display = 'none';
+});
 
 function actualizarTasa() {
   const tipo = document.querySelector('[name="tipo"]').value;

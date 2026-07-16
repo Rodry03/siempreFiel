@@ -17,9 +17,9 @@
 <!-- Filtro por tipo -->
 <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
   <span class="text-muted small me-1">Tipo:</span>
-  <a href="/familias/" class="btn btn-sm {{ 'btn-secondary' if not tipo_filtro else 'btn-outline-secondary' }}">Todos</a>
+  <a href="/familias/?sort={{ sort }}&order={{ order }}" class="btn btn-sm {{ 'btn-secondary' if not tipo_filtro else 'btn-outline-secondary' }}">Todos</a>
   {% for t, label in tipo_labels.items() %}
-  <a href="/familias/?tipo={{ t }}"
+  <a href="/familias/?tipo={{ t }}&sort={{ sort }}&order={{ order }}"
      class="btn btn-sm {{ ('btn-' ~ tipo_colors[t]) if tipo_filtro == t else ('btn-outline-' ~ tipo_colors[t]) }}">
     {{ label }}
   </a>
@@ -32,13 +32,19 @@
     <table class="table table-hover align-middle mb-0" style="min-width:650px;">
       <thead class="table-light">
         <tr>
-          <th>Nombre</th>
-          <th>Apellidos</th>
+          {% set base = "/familias/?tipo=" ~ tipo_filtro %}
+          {% macro th(col, label) %}
+            {% set next_order = "desc" if (sort == col and order == "asc") else "asc" %}
+            {% set icon = " ↑" if (sort == col and order == "asc") else (" ↓" if (sort == col and order == "desc") else "") %}
+            <th><a href="{{ base }}&sort={{ col }}&order={{ next_order }}" class="text-decoration-none text-dark">{{ label }}{{ icon }}</a></th>
+          {% endmacro %}
+          {{ th("nombre", "Nombre") }}
+          {{ th("apellidos", "Apellidos") }}
           <th>DNI</th>
           <th>Tipo</th>
-          <th>Perro</th>
+          {{ th("perro", "Perro") }}
           <th>Teléfono</th>
-          <th>Contrato</th>
+          {{ th("contrato", "Contrato") }}
           <th></th>
         </tr>
       </thead>

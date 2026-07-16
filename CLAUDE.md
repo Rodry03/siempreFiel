@@ -155,6 +155,7 @@ pytest tests/ -v
 - `notas_saldo_manual` (Text, nullable): contexto del saldo efectivo (ej. "Deuda temporada anterior").
 - Turnos: one-to-many `TurnoVoluntario`
 - Periodos de apoyo: one-to-many `PeriodoApoyo` (`fecha_inicio`, `fecha_fin` nullable). Las semanas cubiertas por un periodo de apoyo se neutralizan en el saldo (no suman ni restan).
+- `en_redes` (Boolean, default false): marca si el voluntario pertenece al equipo de redes sociales. Un veterano con este flag tiene acceso a la sección `/redes/` aunque su rol siga siendo de solo lectura para el resto de la app (ver `require_redes_access` y sección PerroRedes).
 
 ### Visitante
 Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programada → visita_realizada → se_convirtio / descartado
@@ -213,6 +214,17 @@ Pipeline de adopción/acogida. `EstadoVisitante`: interesado → visita_programa
 - El desplegable de perro (al crear una familia o en "Vincular perro") muestra **todos** los perros, sin filtrar por `estado` — antes excluía fallecidos/adoptados.
 - Renombrado al adoptar: al vincular un perro (crear familia, "Vincular perro", o con el lápiz en "Perros asociados") hay un campo opcional "Nuevo nombre" que guarda `Perro.nombre_nuevo` (ver sección Perro).
 
+### PerroRedes / PublicacionRedes
+Sustituye el Excel manual del equipo de redes sociales (nombre del perro, última publicación, refugio/acogida/otro).
+- `PerroRedes`: `nombre` (propio, mayúsculas), `perro_id` (FK `Perro`, nullable, `ON DELETE SET NULL`), `origen` (`'refugio'`|`'acogida'`|`'otro'`, String libre no enum), `activo` (Boolean, para archivar), `notas`
+  - `perro_id` es opcional a propósito: puede ser un caso externo, una residencia o un perro que aún no ha entrado en el sistema
+  - El desplegable "Vincular a perro existente" es un buscador cliente (input + lista JSON embebida vía `_perros_json()`, sin librería ni endpoint nuevo) que solo muestra perros `libre`/`reservado` (excluye adoptados/fallecidos)
+- `PublicacionRedes`: `perro_redes_id` (FK, `ON DELETE CASCADE`), `fecha`, `plataforma` (`'instagram'`|`'tiktok'`, una plataforma por fila, no multi-select)
+- CRUD en `app/routers/redes.py` (prefix `/redes/`). Página `/redes/{id}` combina en una sola vista: edición de campos, ficha resumida del `Perro` vinculado (si existe, con link a la ficha completa) e historial de publicaciones con alta/baja — no hay ruta `/editar` separada
+- `/redes/` (listado): tarjetas resumen (últimos 3 publicados, top 5 sin publicarse hace más tiempo, top 5 más publicados) + tabla con nº publicaciones últimos 3 meses y total histórico. Tabs Activos/Archivados
+- Acceso: admin, junta, o veterano con `Voluntario.en_redes=True` (`require_redes_access` en `auth.py`) — primer caso de acceso "por flag" en vez de solo por rol
+- Tablas nuevas (`perros_redes`, `publicaciones_redes`) se crean solas vía `Base.metadata.create_all` en `init_db()`, sin SQL manual
+
 ---
 
 ## Cloudinary Image Upload
@@ -244,8 +256,8 @@ def _subir_foto(file: UploadFile, perro_id: int) -> Optional[str]:
 
 ```
 app/
-  models.py           — SQLAlchemy models (Perro, Voluntario, TurnoVoluntario, MedicacionPerro, MovimientoEconomico, Evento, EventoVoluntario, etc.)
-  auth.py             — get_current_user, require_not_veterano, require_admin
+  models.py           — SQLAlchemy models (Perro, Voluntario, TurnoVoluntario, MedicacionPerro, MovimientoEconomico, Evento, EventoVoluntario, PerroRedes, PublicacionRedes, etc.)
+  auth.py             — get_current_user, require_not_veterano, require_admin, require_redes_access
   database.py         — Session factory
   templates_config.py — Jinja2 setup
   main.py             — FastAPI app, NotAuthorized redirect to /voluntarios/{id} para veteranos con voluntario_id, else /perros/
@@ -262,6 +274,7 @@ app/
     economia.py       — CRUD movimientos económicos (ingreso/gasto/deuda). Prefix: /economia/
     familias.py       — CRUD familias + upload contrato firmado (Cloudinary) + GET /contratos. Prefix: /familias/
     consulta.py       — Asistente AntonIA: Text-to-SQL con Groq. GET /consulta/ (UI chat), POST /consulta/preguntar (AJAX). Solo junta/admin. Requiere GROQ_API_KEY.
+    redes.py          — CRUD PerroRedes + PublicacionRedes. Prefix: /redes/. Admin/junta + veterano con en_redes=True.
   templates/
     base.html         — Sidebar desktop + offcanvas móvil. Colores marca verde #31ae90→#1d8a6e. Nunito en headings. Fondo #eef4f2
     login.html        — Login form (with logo). Fondo gradiente verde marca
@@ -301,6 +314,10 @@ app/
       list.html       — Lista con filtro por tipo (adopcion/acogida), columnas: nombre, apellidos, DNI, tipo, perro, teléfono, fecha contrato
       detail.html     — Ficha + tarjeta contrato firmado (upload/descarga/eliminar) + dos botones disabled para generar contratos
       form.html       — Create/edit con dropdown de perros (no fallecidos)
+    redes/
+      list.html       — Tarjetas resumen (últimos publicados, sin publicarse hace más tiempo, más publicados) + tabla + tabs Activos/Archivados
+      detail.html     — Página única: edición de PerroRedes + ficha resumida del Perro vinculado + historial de publicaciones (alta/baja)
+      form.html       — Solo alta de PerroRedes nuevo; buscador cliente de perro (libre/reservado) en vez de <select>
 
 tests/
   conftest.py         — Fixture `client` (TestClient con SQLite en memoria). Mockea langfuse.get_client (auth_check en main.py haría una llamada de red real) y sobreescribe get_db + app.database.SessionLocal/engine para no tocar nunca Neon.
@@ -358,6 +375,12 @@ ALTER TABLE ubicaciones ADD COLUMN familia_id INTEGER REFERENCES familias(id) ON
 ```sql
 ALTER TABLE familias ADD COLUMN voluntario_id_2 INTEGER REFERENCES voluntarios(id) ON DELETE SET NULL;
 ```
+
+### Flag en_redes en Voluntario (comprobar si ya se ejecutó en Neon)
+```sql
+ALTER TABLE voluntarios ADD COLUMN en_redes BOOLEAN NOT NULL DEFAULT false;
+```
+Las tablas `perros_redes` y `publicaciones_redes` no necesitan SQL manual: se crean solas al arrancar la app (`create_all`).
 
 ### Run dbt (prod/Neon)
 ```bash
@@ -439,6 +462,11 @@ Render tiene su propia integración nativa con GitHub (no es un GitHub Action) y
 45. **Raza "Añadir nueva" en el formulario de perro:** el desplegable de raza incluye la opción `__nueva__` que revela un input de texto; `_resolver_raza_id()` en `perros.py` crea la `Raza` (o reutiliza una existente con el mismo nombre, comparación case-insensitive) antes de guardar el perro.
 46. **Provincia de Familia como desplegable:** `PROVINCIAS` (lista fija de las 50 provincias + Ceuta y Melilla) en `app/routers/familias.py`, usada en `familias/form.html` en vez de texto libre. Registros antiguos con grafía distinta no quedan preseleccionados.
 47. **CI (ruff + smoke tests), sin secrets:** `.github/workflows/ci.yml` corre `ruff check .` (solo reglas `F` de pyflakes — imports rotos, variables no usadas, nombres indefinidos; sin reglas de estilo `E` para no generar ruido sobre patrones ya asentados como `Columna == True`) y 4 smoke tests con pytest. Los tests usan SQLite en memoria (`tests/conftest.py` sobreescribe `get_db` y también `app.database.SessionLocal`/`engine`, porque `CurrentUserMiddleware` abre su propia sesión sin pasar por la dependencia) — nunca tocan Neon ni requieren credenciales. `langfuse.get_client` se mockea en el import porque `app/main.py` hace `assert langfuse.auth_check()` a nivel de módulo (llamada de red real). `app/database.py:init_db()` salta el `CREATE SCHEMA analytics` cuando el dialect no es Postgres, para que el `startup` event funcione contra SQLite en CI.
+48. **Redes (PerroRedes/PublicacionRedes):** Sustituye el Excel manual del equipo de redes. `PerroRedes` no es un alias de `Perro`: tiene `nombre` propio y `perro_id` opcional (`ON DELETE SET NULL`), porque puede ser un caso externo, una residencia o un perro que aún no ha entrado en el sistema. `origen` (`refugio`|`acogida`|`otro`) y `PublicacionRedes.plataforma` (`instagram`|`tiktok`) son `String` con listas de constantes en `redes.py`, no enums de Postgres (mismo criterio que `Evento.tipo`, decisión 35). Una publicación = una fila (fecha + una sola plataforma).
+49. **Acceso a Redes por flag, no solo por rol:** `Voluntario.en_redes` (Boolean) marca quién pertenece al equipo de redes. `require_redes_access` (`auth.py`) permite admin, junta, o veterano con `voluntario.en_redes=True` — primer caso de acceso que depende de un flag además del rol. El enlace del sidebar usa la misma condición; el resto de restricciones de veterano no cambian.
+50. **Redes: página única editar+historial:** `/redes/{id}` combina edición de `PerroRedes`, ficha resumida del `Perro` vinculado (con link a la ficha completa) e historial de publicaciones (alta/baja) en una sola vista — no existe una ruta `/editar` separada. Mismo criterio que `perros/detail.html` (info + sub-registros como pesos/celos en una sola página).
+51. **Buscador de perro en vez de `<select>`:** el campo "Vincular a perro existente" en Redes es un buscador cliente (input + JSON embebido vía `_perros_json()`, sin librería ni endpoint AJAX nuevo) porque un `<select>` con cientos de perros era inmanejable. Solo lista perros `libre`/`reservado`.
+52. **Fuentes MS reales en Docker (contratos):** el `Dockerfile` instala `ttf-mscorefonts-installer` (Times New Roman auténtica) además de `fonts-liberation`, para que la conversión DOCX→PDF con LibreOffice en Render use la misma fuente que Word COM en local. Sin esto, LibreOffice sustituía Times New Roman por Liberation Serif (metric-compatible pero no idéntica), lo que desajustaba `_fit_font_size()` (calculado con el `timesbd.ttf` real) y descuadraba tablas/párrafos en los contratos generados desde Render/móvil.
 
 ---
 
@@ -473,3 +501,5 @@ Render tiene su propia integración nativa con GitHub (no es un GitHub Action) y
 **Acento en nombre no encuentra voluntario:** `func.lower()` de SQLAlchemy es accent-sensitive en PostgreSQL. `insertar_turnos.py` usa `unicodedata.normalize("NFD", ...)` en Python para comparar sin tildes — si se añaden búsquedas similares en otros sitios, aplicar el mismo patrón.
 
 **Redirect loop al arrancar con columna nueva:** Si SQLAlchemy incluye en SELECT una columna que no existe en la BD (ej: `fecha_fin_veterano`), el middleware de auth falla en cada request → bucle de redirect. Solución: ejecutar el `ALTER TABLE` correspondiente antes de arrancar.
+
+**Contrato PDF descuadrado solo desde Render/móvil (no en local):** En local, `docx_a_pdf()` usa Word COM con la Times New Roman real instalada en Windows. En Render (y por tanto desde el móvil) usa el fallback de LibreOffice, que sin `ttf-mscorefonts-installer` sustituía Times New Roman por Liberation Serif — métricas parecidas pero no idénticas, que desajustaban el cálculo de `_fit_font_size()` (medido con el `timesbd.ttf` real) y descuadraban tablas/párrafos. Solucionado instalando fuentes MS reales en el `Dockerfile` (decisión 52).

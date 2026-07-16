@@ -10,6 +10,7 @@ from app.auth import get_current_user, require_not_veterano, flash
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import asc, desc, func
 from typing import Optional
 from app.database import get_db
 from app.models import Familia, Perro, EstadoPerro, Voluntario
@@ -32,6 +33,16 @@ PROVINCIAS = [
 
 def _voluntarios_activos(db):
     return db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre).all()
+
+
+def _perros_json(perros) -> list:
+    out = []
+    for p in perros:
+        label = f"{p.nombre} ({p.estado.value})"
+        if p.num_chip:
+            label += f" · chip {p.num_chip}"
+        out.append({"id": p.id, "nombre": p.nombre, "label": label})
+    return out
 
 
 def _campos_faltantes_contrato(familia, perro) -> list[str]:
@@ -89,18 +100,47 @@ def _campos_faltantes_contrato_acogida(familia, perro) -> list[str]:
 TIPO_LABELS = {"adopcion": "Adopción", "acogida": "Acogida"}
 TIPO_COLORS = {"adopcion": "success", "acogida": "primary"}
 
+COLUMNAS_ORDEN_FAMILIAS = {
+    "nombre": Familia.nombre,
+    "apellidos": Familia.apellidos,
+    "contrato": Familia.fecha_contrato,
+}
+
 
 @router.get("/")
-def listar_familias(request: Request, tipo: Optional[str] = None, db: Session = Depends(get_db)):
+def listar_familias(
+    request: Request,
+    tipo: Optional[str] = None,
+    sort: str = "nombre",
+    order: str = "asc",
+    db: Session = Depends(get_db),
+):
     query = db.query(Familia)
     if tipo in TIPO_LABELS:
         query = query.filter(Familia.tipo == tipo)
-    familias = query.order_by(Familia.apellidos.asc(), Familia.nombre.asc()).all()
+
+    if sort == "perro":
+        perro_sq = (
+            db.query(Perro.familia_id, func.min(Perro.nombre).label("nombre_perro"))
+            .filter(Perro.familia_id.isnot(None))
+            .group_by(Perro.familia_id)
+            .subquery("perro_por_familia")
+        )
+        query = query.outerjoin(perro_sq, perro_sq.c.familia_id == Familia.id)
+        columna = perro_sq.c.nombre_perro
+    else:
+        columna = COLUMNAS_ORDEN_FAMILIAS.get(sort, Familia.nombre)
+    dir_fn = desc if order == "desc" else asc
+    query = query.order_by(dir_fn(columna))
+
+    familias = query.all()
     return templates.TemplateResponse(request, "familias/list.html", {
         "familias": familias,
         "tipo_filtro": tipo or "",
         "tipo_labels": TIPO_LABELS,
         "tipo_colors": TIPO_COLORS,
+        "sort": sort,
+        "order": order,
     })
 
 
@@ -121,6 +161,7 @@ def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": None,
         "perros": perros,
+        "perros_json": _perros_json(perros),
         "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
@@ -185,6 +226,7 @@ def crear_familia(
         return templates.TemplateResponse(request, "familias/form.html", {
             "familia": None,
             "perros": perros,
+            "perros_json": _perros_json(perros),
             "tasas_perros": {p.id: p.tasa for p in perros},
             "tipo_labels": TIPO_LABELS,
             "hoy": fecha_contrato.isoformat(),
