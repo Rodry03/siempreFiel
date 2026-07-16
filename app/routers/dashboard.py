@@ -138,7 +138,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
          "tasa_conversion": float(r["tasa_conversion"]) if r.get("tasa_conversion") is not None else None}
         for r in _query_analytics(db, "mart_conversion_visitantes")
     ]
-    from app.models import Perro, EstadoPerro, Voluntario, Evento, Ubicacion, TipoUbicacion
+    from app.models import Perro, EstadoPerro, Voluntario, Evento, Ubicacion, TipoUbicacion, PerroRedes, PublicacionRedes
     from app.routers.turnos import calcular_saldo
     ESTADOS_ACTIVOS = [EstadoPerro.libre, EstadoPerro.reservado]
     total_activos = db.query(Perro).filter(Perro.estado.in_(ESTADOS_ACTIVOS)).count()
@@ -242,6 +242,41 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         for r in evolucion_raw
     ]
 
+    # Redes: publicaciones por mes (últimos 6 meses, comparativa Instagram/TikTok) y perros
+    # sin publicarse hace más tiempo. Instagram es la red principal: el resto de métricas de
+    # seguimiento (aquí y en /redes/) solo cuentan sus publicaciones.
+    _MESES_ABR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    def _mes_hace(n: int) -> date:
+        m = hoy.month - n
+        y = hoy.year + (m - 1) // 12
+        m = (m - 1) % 12 + 1
+        return date(y, m, 1)
+
+    meses_redes = [_mes_hace(n) for n in range(5, -1, -1)]
+    publicaciones_redes_raw = db.query(PublicacionRedes).filter(PublicacionRedes.fecha >= meses_redes[0]).all()
+    publicaciones_redes_mes = [
+        {
+            "mes_label": f"{_MESES_ABR[m.month - 1]} {m.year}",
+            "instagram": sum(1 for p in publicaciones_redes_raw if p.fecha.year == m.year and p.fecha.month == m.month and p.plataforma == "instagram"),
+            "tiktok": sum(1 for p in publicaciones_redes_raw if p.fecha.year == m.year and p.fecha.month == m.month and p.plataforma == "tiktok"),
+        }
+        for m in meses_redes
+    ]
+
+    perros_redes_activos = db.query(PerroRedes).filter(PerroRedes.activo == True).all()
+    redes_sin_publicar = sorted(
+        [
+            {
+                "id": pr.id,
+                "nombre": pr.nombre,
+                "ultima": max((p.fecha for p in pr.publicaciones if p.plataforma == "instagram"), default=None),
+            }
+            for pr in perros_redes_activos
+        ],
+        key=lambda x: x["ultima"] or date.min,
+    )[:5]
+
     return templates.TemplateResponse(request, "dashboard.html", {
         "vacunas_proximas": vacunas_proximas,
         "no_esterilizados": no_esterilizados,
@@ -261,6 +296,9 @@ def dashboard(request: Request, db: Session = Depends(get_db), dbt: str = ""):
         "evolucion_saldo_mensual": evolucion_saldo_mensual,
         "dist_ubicacion": dist_ubicacion,
         "proximos_eventos": proximos_eventos,
+        "publicaciones_redes_mes": publicaciones_redes_mes,
+        "redes_sin_publicar": redes_sin_publicar,
+        "hay_redes": bool(perros_redes_activos),
         "dbt_status": dbt,
     })
 

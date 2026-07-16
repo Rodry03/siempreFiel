@@ -62,7 +62,8 @@ def _calcular_edad(fecha_nacimiento) -> Optional[str]:
 
 
 def _stats(pr: PerroRedes, hoy: date) -> dict:
-    fechas = [p.fecha for p in pr.publicaciones]
+    # Instagram es la red principal: las métricas de seguimiento solo cuentan sus publicaciones.
+    fechas = [p.fecha for p in pr.publicaciones if p.plataforma == "instagram"]
     limite = hoy - timedelta(days=VENTANA_DIAS)
     return {
         "ultima": max(fechas) if fechas else None,

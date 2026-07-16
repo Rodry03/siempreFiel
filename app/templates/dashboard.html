@@ -104,6 +104,53 @@
 </div>
 {% endif %}
 
+<!-- Redes: publicaciones por mes + perros sin publicarse hace tiempo -->
+{% if hay_redes %}
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <a href="/redes/" class="text-decoration-none text-dark fw-semibold"><i class="bi bi-instagram text-danger me-2"></i>Publicaciones en redes por mes</a>
+      </div>
+      <div class="card-body">
+        <canvas id="chartPublicacionesRedes" style="min-height:180px; max-height:260px;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-megaphone text-danger me-2"></i>Sin publicarse hace más tiempo (Instagram)</span>
+        <span class="badge bg-secondary">{{ redes_sin_publicar | length }}</span>
+      </div>
+      <div class="card-body p-0">
+        {% if redes_sin_publicar %}
+        <div style="max-height:280px; overflow-y:auto;">
+          <table class="table table-hover table-sm mb-0">
+            <thead class="table-light sticky-top">
+              <tr><th>Perro</th><th>Última publicación</th></tr>
+            </thead>
+            <tbody>
+              {% for f in redes_sin_publicar %}
+              <tr>
+                <td><a href="/redes/{{ f.id }}" class="text-decoration-none fw-semibold">{{ f.nombre }}</a></td>
+                <td>
+                  {% if f.ultima %}{{ f.ultima.strftime('%d/%m/%Y') }}{% else %}<span class="badge bg-danger">Nunca</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">No hay perros activos en seguimiento.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Evolución saldo mensual -->
 {% if evolucion_saldo_mensual %}
 <div class="row g-4 mb-4">
@@ -583,7 +630,7 @@
   </div>
 </div>
 
-{% if entradas_salidas or tiempo_adopcion or cobertura_mensual or tiempo_acogida or conversion_visitantes or evolucion_saldo_mensual or total_activos > 0 %}
+{% if entradas_salidas or tiempo_adopcion or cobertura_mensual or tiempo_acogida or conversion_visitantes or evolucion_saldo_mensual or hay_redes or total_activos > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 {% if cobertura_mensual %}
@@ -939,6 +986,34 @@ new Chart(document.getElementById('chartEvolucionSaldo'), {
       y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false },
              ticks: { stepSize: 1 }, title: { display: true, text: 'Nº voluntarios' } }
     }
+  }
+});
+{% endif %}
+
+{% if hay_redes %}
+new Chart(document.getElementById('chartPublicacionesRedes'), {
+  type: 'bar',
+  data: {
+    labels: {{ publicaciones_redes_mes | map(attribute='mes_label') | list | tojson }},
+    datasets: [
+      {
+        label: 'Instagram',
+        data: {{ publicaciones_redes_mes | map(attribute='instagram') | list | tojson }},
+        backgroundColor: 'rgba(214, 42, 121, 0.75)',
+        borderRadius: 4,
+      },
+      {
+        label: 'TikTok',
+        data: {{ publicaciones_redes_mes | map(attribute='tiktok') | list | tojson }},
+        backgroundColor: 'rgba(37, 41, 46, 0.75)',
+        borderRadius: 4,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
   }
 });
 {% endif %}
