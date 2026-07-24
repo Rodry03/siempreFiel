@@ -64,16 +64,36 @@ def _calcular_edad(fecha_nacimiento) -> Optional[str]:
 def _stats(pr: PerroRedes, hoy: date) -> dict:
     # Instagram es la red principal: las métricas de seguimiento solo cuentan sus publicaciones.
     fechas = [p.fecha for p in pr.publicaciones if p.plataforma == "instagram"]
+    fechas_tiktok = [p.fecha for p in pr.publicaciones if p.plataforma == "tiktok"]
     limite = hoy - timedelta(days=VENTANA_DIAS)
     return {
         "ultima": max(fechas) if fechas else None,
         "ultimos_3_meses": sum(1 for f in fechas if f >= limite),
         "total": len(fechas),
+        "ultima_tiktok": max(fechas_tiktok) if fechas_tiktok else None,
+        "total_tiktok": len(fechas_tiktok),
     }
 
 
+SORT_KEYS = {
+    "nombre": lambda f: f["pr"].nombre or "",
+    "origen": lambda f: f["pr"].origen or "",
+    "ultima": lambda f: f["ultima"] or date.min,
+    "ultimos_3_meses": lambda f: f["ultimos_3_meses"],
+    "total": lambda f: f["total"],
+    "ultima_tiktok": lambda f: f["ultima_tiktok"] or date.min,
+    "total_tiktok": lambda f: f["total_tiktok"],
+}
+
+
 @router.get("/")
-def listar(request: Request, ver: Optional[str] = None, db: Session = Depends(get_db)):
+def listar(
+    request: Request,
+    ver: Optional[str] = None,
+    sort: str = "nombre",
+    order: str = "asc",
+    db: Session = Depends(get_db),
+):
     hoy = date.today()
     mostrar_archivados = ver == "archivados"
     perros_redes = (
@@ -94,6 +114,9 @@ def listar(request: Request, ver: Optional[str] = None, db: Session = Depends(ge
 
     mas_publicados = sorted(publicados, key=lambda f: f["total"], reverse=True)[:5]
 
+    sort_key = SORT_KEYS.get(sort, SORT_KEYS["nombre"])
+    filas = sorted(filas, key=sort_key, reverse=(order == "desc"))
+
     return templates.TemplateResponse(request, "redes/list.html", {
         "filas": filas,
         "ultimos_publicados": ultimos_publicados,
@@ -101,6 +124,8 @@ def listar(request: Request, ver: Optional[str] = None, db: Session = Depends(ge
         "mas_publicados": mas_publicados,
         "origen_labels": ORIGEN_LABELS,
         "mostrar_archivados": mostrar_archivados,
+        "sort": sort,
+        "order": order,
     })
 
 
