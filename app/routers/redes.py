@@ -107,12 +107,12 @@ def listar(
     filas = [{"pr": pr, **_stats(pr, hoy)} for pr in perros_redes]
 
     publicados = [f for f in filas if f["ultima"]]
-    ultimos_publicados = sorted(publicados, key=lambda f: f["ultima"], reverse=True)[:3]
+    ultimos_publicados = sorted(publicados, key=lambda f: f["ultima"], reverse=True)[:10]
 
     nunca_publicados = [f for f in filas if not f["ultima"]]
-    sin_publicar_hace_tiempo = (nunca_publicados + sorted(publicados, key=lambda f: f["ultima"]))[:5]
+    sin_publicar_hace_tiempo = (nunca_publicados + sorted(publicados, key=lambda f: f["ultima"]))[:10]
 
-    mas_publicados = sorted(publicados, key=lambda f: f["total"], reverse=True)[:5]
+    mas_publicados = sorted(publicados, key=lambda f: f["total"], reverse=True)[:10]
 
     sort_key = SORT_KEYS.get(sort, SORT_KEYS["nombre"])
     filas = sorted(filas, key=sort_key, reverse=(order == "desc"))

@@ -35,6 +35,24 @@ def _voluntarios_activos(db):
     return db.query(Voluntario).filter(Voluntario.activo == True).order_by(Voluntario.nombre).all()
 
 
+def _voluntarios_json(voluntarios) -> list:
+    return [
+        {
+            "id": v.id,
+            "nombre": v.nombre or "",
+            "apellidos": v.apellido or "",
+            "dni": v.dni or "",
+            "email": v.email or "",
+            "telefono": v.telefono or "",
+            "direccion": v.direccion or "",
+            "municipio": v.ciudad or "",
+            "provincia": v.provincia or "",
+            "codigo_postal": v.codigo_postal or "",
+        }
+        for v in voluntarios
+    ]
+
+
 def _perros_json(perros) -> list:
     out = []
     for p in perros:
@@ -158,6 +176,7 @@ def contratos_familias(request: Request, db: Session = Depends(get_db)):
 def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
     perros = db.query(Perro).order_by(Perro.nombre).all()
     tasas_perros = {p.id: p.tasa for p in perros}
+    voluntarios = _voluntarios_activos(db)
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": None,
         "perros": perros,
@@ -165,7 +184,8 @@ def nueva_familia_form(request: Request, db: Session = Depends(get_db)):
         "tasas_perros": tasas_perros,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
-        "voluntarios": _voluntarios_activos(db),
+        "voluntarios": voluntarios,
+        "voluntarios_json": _voluntarios_json(voluntarios),
         "provincias": PROVINCIAS,
     })
 
@@ -223,6 +243,7 @@ def crear_familia(
         db.rollback()
         flash(request, "Ya existe una familia con ese DNI.", "danger")
         perros = db.query(Perro).order_by(Perro.nombre).all()
+        voluntarios = _voluntarios_activos(db)
         return templates.TemplateResponse(request, "familias/form.html", {
             "familia": None,
             "perros": perros,
@@ -230,7 +251,8 @@ def crear_familia(
             "tasas_perros": {p.id: p.tasa for p in perros},
             "tipo_labels": TIPO_LABELS,
             "hoy": fecha_contrato.isoformat(),
-            "voluntarios": _voluntarios_activos(db),
+            "voluntarios": voluntarios,
+            "voluntarios_json": _voluntarios_json(voluntarios),
             "provincias": PROVINCIAS,
         })
     return RedirectResponse(f"/familias/{familia.id}", status_code=303)
@@ -312,11 +334,13 @@ def editar_familia_form(request: Request, familia_id: int, db: Session = Depends
     if not familia:
         return RedirectResponse("/familias/", status_code=303)
     perros = db.query(Perro).filter(Perro.estado.notin_([EstadoPerro.fallecido, EstadoPerro.adoptado])).order_by(Perro.nombre).all()
+    voluntarios = _voluntarios_activos(db)
     return templates.TemplateResponse(request, "familias/form.html", {
         "familia": familia,
         "tipo_labels": TIPO_LABELS,
         "hoy": date.today().isoformat(),
-        "voluntarios": _voluntarios_activos(db),
+        "voluntarios": voluntarios,
+        "voluntarios_json": _voluntarios_json(voluntarios),
         "perros": perros,
         "tasas_perros": {p.id: p.tasa for p in perros},
         "provincias": PROVINCIAS,

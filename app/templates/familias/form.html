@@ -14,6 +14,45 @@
     <form method="post" action="{{ '/familias/' ~ familia.id ~ '/editar' if familia else '/familias/nueva' }}">
 
       <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:0.75rem; letter-spacing:.05em;">
+        Relación con la protectora
+      </h6>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="">— Sin especificar —</option>
+            {% for t, label in tipo_labels.items() %}
+            <option value="{{ t }}" {% if familia and familia.tipo == t %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Voluntario vinculado</label>
+          <select name="voluntario_id" id="voluntario_id" class="form-select">
+            <option value="">— Sin vincular —</option>
+            {% for v in voluntarios %}
+            <option value="{{ v.id }}" {% if familia and familia.voluntario_id == v.id %}selected{% endif %}>
+              {{ v.nombre }} {{ v.apellido }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Si la familia es a la vez voluntaria, vincúlala aquí. Rellena automáticamente los datos vacíos de abajo.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">2º voluntario vinculado</label>
+          <select name="voluntario_id_2" id="voluntario_id_2" class="form-select">
+            <option value="">— Sin vincular —</option>
+            {% for v in voluntarios %}
+            <option value="{{ v.id }}" {% if familia and familia.voluntario_id_2 == v.id %}selected{% endif %}>
+              {{ v.nombre }} {{ v.apellido }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Pareja/conviviente que también sea voluntario, si aplica.</div>
+        </div>
+      </div>
+
+      <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:0.75rem; letter-spacing:.05em;">
         Datos personales
       </h6>
       <div class="row g-3 mb-4">
@@ -61,43 +100,7 @@
         </div>
       </div>
 
-      <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:0.75rem; letter-spacing:.05em;">
-        Relación con la protectora
-      </h6>
       <div class="row g-3 mb-4">
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Tipo</label>
-          <select name="tipo" class="form-select">
-            <option value="">— Sin especificar —</option>
-            {% for t, label in tipo_labels.items() %}
-            <option value="{{ t }}" {% if familia and familia.tipo == t %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Voluntario vinculado</label>
-          <select name="voluntario_id" class="form-select">
-            <option value="">— Sin vincular —</option>
-            {% for v in voluntarios %}
-            <option value="{{ v.id }}" {% if familia and familia.voluntario_id == v.id %}selected{% endif %}>
-              {{ v.nombre }} {{ v.apellido }}
-            </option>
-            {% endfor %}
-          </select>
-          <div class="form-text">Si la familia es a la vez voluntaria, vincúlala aquí.</div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">2º voluntario vinculado</label>
-          <select name="voluntario_id_2" class="form-select">
-            <option value="">— Sin vincular —</option>
-            {% for v in voluntarios %}
-            <option value="{{ v.id }}" {% if familia and familia.voluntario_id_2 == v.id %}selected{% endif %}>
-              {{ v.nombre }} {{ v.apellido }}
-            </option>
-            {% endfor %}
-          </select>
-          <div class="form-text">Pareja/conviviente que también sea voluntario, si aplica.</div>
-        </div>
         {% if not familia %}
         <div class="col-md-8 position-relative">
           <label class="form-label fw-semibold">Perro inicial</label>
@@ -147,6 +150,31 @@
     </form>
   </div>
 </div>
+
+<script>
+const VOLUNTARIOS_FAMILIA = {{ voluntarios_json | tojson }};
+const CAMPOS_AUTOCOMPLETAR = ['nombre', 'apellidos', 'dni', 'email', 'telefono', 'direccion', 'municipio', 'provincia', 'codigo_postal'];
+
+function autocompletarDesdeVoluntario(voluntarioId) {
+  const v = VOLUNTARIOS_FAMILIA.find(function(x) { return x.id === parseInt(voluntarioId); });
+  if (!v) return;
+  CAMPOS_AUTOCOMPLETAR.forEach(function(campo) {
+    const input = document.querySelector('[name="' + campo + '"]');
+    if (input && !input.value.trim() && v[campo]) {
+      input.value = v[campo];
+    }
+  });
+}
+
+['voluntario_id', 'voluntario_id_2'].forEach(function(id) {
+  const select = document.getElementById(id);
+  if (select) {
+    select.addEventListener('change', function() {
+      if (this.value) autocompletarDesdeVoluntario(this.value);
+    });
+  }
+});
+</script>
 
 {% if not familia %}
 <script>
