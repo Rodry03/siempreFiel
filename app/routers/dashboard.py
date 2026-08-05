@@ -58,6 +58,13 @@ async def _run_dbt_model(job_id: str, model: str):
     dbt_dir = os.path.join(os.getcwd(), "dbt_protectora")
     env = {**os.environ}
     try:
+        deps = await asyncio.to_thread(_dbt_subprocess, [_DBT_BIN, "deps"], dbt_dir, env, 60)
+        if deps.returncode != 0:
+            output = (deps.stderr or deps.stdout or "").strip()
+            logger.error("dbt deps FAILED:\n%s", output)
+            _dbt_jobs[job_id] = {"status": "error", "output": f"Error en dbt deps:\n{output[-500:]}"}
+            return
+
         result = await asyncio.to_thread(
             _dbt_subprocess, [_DBT_BIN, "run", "--select", model], dbt_dir, env, 60
         )
