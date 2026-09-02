@@ -17,6 +17,15 @@ turnos as (
         count(*) filter (where estado = 'no_apuntado')        as n_no_apuntados
     from {{ ref('stg_turnos_voluntarios') }}
     group by voluntario_id
+),
+
+-- saldo real: última semana calculada en mart_saldo_turnos_semanal (respeta apoyo y regla de verano)
+saldo_actual as (
+    select distinct on (voluntario_id)
+        voluntario_id,
+        saldo_acumulado
+    from {{ ref('mart_saldo_turnos_semanal') }}
+    order by voluntario_id, semana desc
 )
 
 select
@@ -26,9 +35,9 @@ select
     v.perfil,
     v.fecha_alta,
     v.activo,
-    (current_date - GREATEST(v.fecha_alta, DATE '{{ var("fecha_inicio_turnos") }}')) / 7                        as semanas_activo,
+    (current_date - GREATEST(v.fecha_alta, DATE '{{ var("fecha_inicio_turnos") }}')) / 7 as semanas_activo,
     coalesce(t.turnos_acumulados, 0)                                                      as turnos_acumulados,
-    coalesce(t.turnos_acumulados, 0) - (current_date - GREATEST(v.fecha_alta, DATE '{{ var("fecha_inicio_turnos") }}')) / 7 as saldo,
+    coalesce(sa.saldo_acumulado, 0)                                                       as saldo,
     coalesce(t.n_realizados, 0)                                   as n_realizados,
     coalesce(t.n_medios, 0)                                       as n_medios,
     coalesce(t.n_faltas_justificadas, 0)                          as n_faltas_justificadas,
@@ -36,4 +45,5 @@ select
     coalesce(t.n_no_apuntados, 0)                                 as n_no_apuntados
 from voluntarios v
 left join turnos t on v.id = t.voluntario_id
+left join saldo_actual sa on sa.voluntario_id = v.id
 order by saldo asc

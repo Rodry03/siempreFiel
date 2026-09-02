@@ -189,14 +189,9 @@ class Voluntario(Base):
     teaming = Column(Boolean, default=False, nullable=False)
     notas = Column(Text, nullable=True)
 
-    deuda_inicial = Column(Float, default=0.0, nullable=False)
-    recuperar_turnos_urgentes = Column(Float, default=0.0, nullable=False)
-    saldo_manual = Column(Float, nullable=True)
-    notas_saldo_manual = Column(Text, nullable=True)
     en_redes = Column(Boolean, default=False, nullable=False, server_default="false")
 
     turnos = relationship("TurnoVoluntario", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoVoluntario.fecha.desc()")
-    turnos_mensuales = relationship("TurnoMensual", back_populates="voluntario", cascade="all, delete-orphan", order_by="TurnoMensual.mes.desc()")
     periodos_apoyo = relationship("PeriodoApoyo", back_populates="voluntario", cascade="all, delete-orphan", order_by="PeriodoApoyo.fecha_inicio.desc()")
 
 
@@ -278,19 +273,6 @@ class TurnoVoluntario(Base):
     notas = Column(Text, nullable=True)
 
     voluntario = relationship("Voluntario", back_populates="turnos")
-
-
-class TurnoMensual(Base):
-    __tablename__ = "turnos_mensuales"
-
-    id            = Column(Integer, primary_key=True, index=True)
-    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
-    mes           = Column(Date, nullable=False)
-    turnos        = Column(Float, nullable=False, default=0.0)
-
-    voluntario = relationship("Voluntario", back_populates="turnos_mensuales")
-
-    __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_turno_mensual"),)
 
 
 class NotaGestion(Base):
@@ -377,19 +359,6 @@ class Familia(Base):
     perros = relationship("Perro", back_populates="familia", foreign_keys="Perro.familia_id")
     voluntario = relationship("Voluntario", foreign_keys=[voluntario_id])
     voluntario_2 = relationship("Voluntario", foreign_keys=[voluntario_id_2])
-
-
-class SaldoMensual(Base):
-    __tablename__ = "saldos_mensuales"
-
-    id            = Column(Integer, primary_key=True, index=True)
-    voluntario_id = Column(Integer, ForeignKey("voluntarios.id"), nullable=False)
-    mes           = Column(Date, nullable=False)
-    saldo         = Column(Float, nullable=False)
-
-    voluntario = relationship("Voluntario")
-
-    __table_args__ = (UniqueConstraint("voluntario_id", "mes", name="uq_saldo_mensual"),)
 
 
 class SesionUsuario(Base):

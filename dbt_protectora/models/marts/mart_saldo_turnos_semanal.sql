@@ -62,7 +62,7 @@ grid as (
     )
 ),
 
-resultado as (
+resultado_base as (
     select
         g.voluntario_id,
         g.nombre,
@@ -74,17 +74,12 @@ resultado as (
         case
             when coalesce(ap.en_apoyo, false) then 0.0
             when g.semana >= date_trunc('week', current_date)::date then 0.0
+            -- semana de verano (15/06-15/09): si no hizo turno, no penaliza
+            when coalesce(t.valor, 0) = 0
+                 and to_char(g.semana, 'MM-DD') between '06-15' and '09-15'
+            then 0.0
             else coalesce(t.valor, 0) - 1.0
-        end                                                         as saldo_semana,
-        sum(case
-            when coalesce(ap.en_apoyo, false) then 0.0
-            when g.semana >= date_trunc('week', current_date)::date then 0.0
-            else coalesce(t.valor, 0) - 1.0
-        end) over (
-            partition by g.voluntario_id
-            order by g.semana
-            rows between unbounded preceding and current row
-        )                                                           as saldo_acumulado
+        end                                                         as saldo_semana
     from grid g
     left join turnos_por_semana t
         on t.voluntario_id = g.voluntario_id
@@ -92,6 +87,17 @@ resultado as (
     left join apoyo_semanas ap
         on ap.voluntario_id = g.voluntario_id
        and ap.semana = g.semana
+),
+
+resultado as (
+    select
+        *,
+        sum(saldo_semana) over (
+            partition by voluntario_id
+            order by semana
+            rows between unbounded preceding and current row
+        ) as saldo_acumulado
+    from resultado_base
 )
 
 select * from resultado

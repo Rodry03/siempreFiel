@@ -49,7 +49,17 @@ MESES_ES = {
 DIAS_ES = {0: "Lun", 1: "Mar", 2: "Mié", 3: "Jue", 4: "Vie", 5: "Sáb", 6: "Dom"}
 FRANJA_LABELS = {"manana": "Mañana", "tarde": "Tarde"}
 
-FECHA_INICIO_SALDO = date(2025, 8, 4)
+FECHA_INICIO_SALDO = date(2026, 6, 15)
+
+VERANO_INICIO_MD = (6, 15)
+VERANO_FIN_MD = (9, 15)
+
+
+def _es_semana_verano(lunes: date) -> bool:
+    """Una semana es 'de verano' si su lunes cae entre el 15/06 y el 15/09 de ese año."""
+    inicio = date(lunes.year, *VERANO_INICIO_MD)
+    fin = date(lunes.year, *VERANO_FIN_MD)
+    return inicio <= lunes <= fin
 
 
 def _mes_semana(lunes: date) -> tuple:
@@ -94,7 +104,8 @@ def calcular_saldo(voluntario: Voluntario) -> float:
                 for t in week_turns
                 if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
             )
-            saldo += week_value - 1.0
+            if not (week_value == 0 and _es_semana_verano(week_start)):
+                saldo += week_value - 1.0
         week_start += timedelta(days=7)
 
     return saldo
@@ -116,7 +127,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
     total_turnos = len(voluntario.turnos) if hace_turnos else 0
     tiempo_voluntario = calcular_tiempo_voluntario(voluntario.fecha_alta)
 
-    FECHA_HISTORIAL = date(2025, 8, 4)
+    FECHA_HISTORIAL = FECHA_INICIO_SALDO
     turnos_recientes = []
     if hace_turnos:
         hoy_turnos = date.today()
@@ -141,6 +152,7 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 for p in voluntario.periodos_apoyo
             )
             es_actual = lunes == semana_hoy_lunes
+            es_verano = _es_semana_verano(lunes)
             if en_apoyo or es_actual:
                 saldo_semana = None
             else:
@@ -149,7 +161,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                     for t in turnos
                     if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
                 )
-                saldo_semana = wv - 1.0
+                saldo_semana = 0.0 if (wv == 0 and es_verano) else wv - 1.0
+            sin_turno = not turnos and not en_apoyo and not es_actual
             mes_key = _mes_semana(lunes)
             mes_label = f"{MESES_ES[mes_key[1]]} {mes_key[0]}"
             turnos_recientes.append({
@@ -157,7 +170,8 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
                 "semana_fin": lunes_fin,
                 "turnos": turnos,
                 "en_apoyo": en_apoyo,
-                "sin_turno": not turnos and not en_apoyo and not es_actual,
+                "sin_turno": sin_turno,
+                "es_verano_no_penaliza": sin_turno and es_verano,
                 "es_actual": es_actual,
                 "saldo_semana": saldo_semana,
                 "mes": mes_key,

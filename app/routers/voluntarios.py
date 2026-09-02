@@ -481,23 +481,6 @@ def reactivar(request: Request, voluntario_id: int, db: Session = Depends(get_db
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
-@router.post("/{voluntario_id}/saldo-gestor", dependencies=[Depends(require_not_veterano)])
-def guardar_saldo_gestor(
-    request: Request,
-    voluntario_id: int,
-    saldo_manual: Optional[float] = Form(None),
-    notas_saldo_manual: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
-):
-    voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
-    if voluntario:
-        voluntario.saldo_manual = saldo_manual
-        voluntario.notas_saldo_manual = notas_saldo_manual.strip() if notas_saldo_manual else None
-        db.commit()
-        flash(request, "Saldo del gestor actualizado.", "success")
-    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
-
-
 @router.post("/{voluntario_id}/cambiar-perfil")
 def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = Depends(get_db)):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
@@ -556,7 +539,7 @@ def eliminar_periodo_apoyo(
 
 @router.post("/{voluntario_id}/eliminar")
 def eliminar_voluntario(voluntario_id: int, request: Request, db: Session = Depends(get_db)):
-    from app.models import EjecucionGrupoTarea, Usuario, NotaGestion, SaldoMensual
+    from app.models import EjecucionGrupoTarea, Usuario, NotaGestion
     v = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if not v:
         return RedirectResponse("/voluntarios/", status_code=303)
@@ -566,7 +549,6 @@ def eliminar_voluntario(voluntario_id: int, request: Request, db: Session = Depe
     db.query(Usuario).filter(Usuario.voluntario_id == voluntario_id).update({"voluntario_id": None})
     db.query(NotaGestion).filter(NotaGestion.encargado_id == voluntario_id).update({"encargado_id": None})
     db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
-    db.query(SaldoMensual).filter(SaldoMensual.voluntario_id == voluntario_id).delete()
     db.delete(v)
     db.commit()
     flash(request, f"{nombre} eliminado/a.", "success")
