@@ -42,7 +42,12 @@ turnos_por_semana as (
             when estado = 'realizado'   then 1.0
             when estado = 'medio_turno' then 0.5
             else 0.0
-        end) as valor
+        end) as valor,
+        -- aporte al saldo en semana de verano: turno completo = 0.5, medio turno no cuenta
+        sum(case
+            when estado = 'realizado' then 0.5
+            else 0.0
+        end) as valor_verano
     from turnos
     group by voluntario_id, semana
 ),
@@ -74,10 +79,9 @@ resultado_base as (
         case
             when coalesce(ap.en_apoyo, false) then 0.0
             when g.semana >= date_trunc('week', current_date)::date then 0.0
-            -- semana de verano (15/06-15/09): si no hizo turno, no penaliza
-            when coalesce(t.valor, 0) = 0
-                 and to_char(g.semana, 'MM-DD') between '06-15' and '09-15'
-            then 0.0
+            -- semana de verano (15/06-15/09): turno completo=0.5, medio turno no cuenta, sin restar 1
+            when to_char(g.semana, 'MM-DD') between '06-15' and '09-15'
+            then coalesce(t.valor_verano, 0)
             else coalesce(t.valor, 0) - 1.0
         end                                                         as saldo_semana
     from grid g

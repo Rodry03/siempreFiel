@@ -14,6 +14,11 @@ DIAS_OFFSET = {
     "viernes": 4, "sabado": 5, "domingo": 6,
 }
 
+# Cabecera de día, con o sin el número del mes pegado: "LUNES", "LUNES 24"
+_DIA_HEADER_RE = re.compile(
+    r'^(lunes|martes|miercoles|jueves|viernes|sabado|domingo)(?:\s+\d{1,2})?$'
+)
+
 # Strip annotation emojis and any other non-ASCII emoji
 _STRIP_EMOJI = re.compile(
     r'[❌‼️]'
@@ -131,10 +136,11 @@ def parse_estadillo(text: str) -> tuple[Optional[date], list]:
         if not line:
             continue
 
-        # Day header: "LUNES:", "MIÉRCOLES:", etc.
+        # Day header: "LUNES:", "MIÉRCOLES:", "LUNES 24:", etc.
         line_norm = _norm(line.rstrip(":").strip())
-        if line_norm in DIAS_OFFSET:
-            current_offset = DIAS_OFFSET[line_norm]
+        m_dia = _DIA_HEADER_RE.match(line_norm)
+        if m_dia:
+            current_offset = DIAS_OFFSET[m_dia.group(1)]
             continue
 
         # Shift line: "- Mañana: ..." or "- Tarde: ..."
@@ -149,6 +155,11 @@ def parse_estadillo(text: str) -> tuple[Optional[date], list]:
     return fecha_inicio, slots
 
 
+def _iniciales_palabras(apellido: str) -> str:
+    """'Hervalejo Pérez' -> 'hp' (una inicial por palabra del apellido)."""
+    return "".join(_norm(w)[0] for w in apellido.split() if w)
+
+
 def buscar_voluntario(todos, nombre_raw: str):
     """Fuzzy lookup: exact name first, then prefix match for nicknames (Esme → Esmeralda)."""
     partes = nombre_raw.strip().split()
@@ -158,6 +169,17 @@ def buscar_voluntario(todos, nombre_raw: str):
     def _por_inicial(candidatos):
         if not inicial:
             return candidatos
+        inicial_n = _norm(inicial)
+
+        # Iniciales por palabra del apellido: "HP" -> Hervalejo Pérez
+        filtrados = [
+            v for v in candidatos
+            if v.apellido and _iniciales_palabras(v.apellido) == inicial_n
+        ]
+        if len(filtrados) == 1:
+            return filtrados
+
+        # Prefijo del apellido completo: "Go" -> Gómez
         for longitud in (len(inicial), 1):
             filtrados = [
                 v for v in candidatos

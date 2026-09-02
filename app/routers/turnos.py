@@ -99,12 +99,16 @@ def calcular_saldo(voluntario: Voluntario) -> float:
             for p in voluntario.periodos_apoyo
         )
         if not en_apoyo:
-            week_value = sum(
-                0.5 if t.estado == EstadoTurno.medio_turno else 1.0
-                for t in week_turns
-                if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
-            )
-            if not (week_value == 0 and _es_semana_verano(week_start)):
+            if _es_semana_verano(week_start):
+                # En verano un turno completo suma 0.5; el medio turno no cuenta.
+                week_value = sum(0.5 for t in week_turns if t.estado == EstadoTurno.realizado)
+                saldo += week_value
+            else:
+                week_value = sum(
+                    0.5 if t.estado == EstadoTurno.medio_turno else 1.0
+                    for t in week_turns
+                    if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
+                )
                 saldo += week_value - 1.0
         week_start += timedelta(days=7)
 
@@ -155,13 +159,16 @@ def detalle_voluntario(request: Request, voluntario_id: int, db: Session = Depen
             es_verano = _es_semana_verano(lunes)
             if en_apoyo or es_actual:
                 saldo_semana = None
+            elif es_verano:
+                # En verano un turno completo suma 0.5; el medio turno no cuenta.
+                saldo_semana = sum(0.5 for t in turnos if t.estado == EstadoTurno.realizado)
             else:
                 wv = sum(
                     0.5 if t.estado == EstadoTurno.medio_turno else 1.0
                     for t in turnos
                     if t.estado in (EstadoTurno.realizado, EstadoTurno.medio_turno)
                 )
-                saldo_semana = 0.0 if (wv == 0 and es_verano) else wv - 1.0
+                saldo_semana = wv - 1.0
             sin_turno = not turnos and not en_apoyo and not es_actual
             mes_key = _mes_semana(lunes)
             mes_label = f"{MESES_ES[mes_key[1]]} {mes_key[0]}"
