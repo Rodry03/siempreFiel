@@ -39,7 +39,7 @@
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold">Teléfono *</label>
-          <input type="tel" name="telefono" class="form-control" required
+          <input type="tel" inputmode="numeric" name="telefono" class="form-control" required
             value="{{ voluntario.telefono if voluntario and voluntario.telefono else (prefill.telefono if prefill else '') }}">
         </div>
         <div class="col-md-6">
