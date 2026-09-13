@@ -189,19 +189,38 @@
         </table>
         {% if not es_veterano %}
         <hr class="my-2">
-        <form method="post" action="/voluntarios/{{ voluntario.id }}/cambiar-perfil" class="d-flex gap-2 align-items-center">
+        <form method="post" action="/voluntarios/{{ voluntario.id }}/cambiar-perfil" class="d-flex gap-2 align-items-center flex-wrap" id="form-cambiar-perfil">
           <label class="small text-muted mb-0 text-nowrap">Cambiar perfil:</label>
-          <select name="perfil" class="form-select form-select-sm">
+          <select name="perfil" class="form-select form-select-sm" id="cambiar-perfil-select" style="width:auto;">
             {% for p in perfiles %}
             <option value="{{ p }}" {% if voluntario.perfil.value == p %}selected{% endif %}>
               {{ perfil_labels[p] }}
             </option>
             {% endfor %}
           </select>
+          <input type="date" name="fecha_veterano" class="form-control form-control-sm" id="cambiar-perfil-fecha-veterano"
+            style="display:none; width:auto;"
+            value="{{ voluntario.fecha_veterano.isoformat() if voluntario.fecha_veterano else '' }}">
           <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">
             <i class="bi bi-arrow-repeat me-1"></i>Aplicar
           </button>
         </form>
+        <script>
+        (function () {
+          var sel = document.getElementById('cambiar-perfil-select');
+          var fecha = document.getElementById('cambiar-perfil-fecha-veterano');
+          function toggle() {
+            var esVet = ['veterano', 'apoyo_en_junta'].includes(sel.value);
+            fecha.style.display = esVet ? 'inline-block' : 'none';
+            fecha.required = esVet;
+            if (esVet && !fecha.value) {
+              fecha.value = new Date().toISOString().slice(0, 10);
+            }
+          }
+          sel.addEventListener('change', toggle);
+          toggle();
+        })();
+        </script>
         {% endif %}
       </div>
     </div>

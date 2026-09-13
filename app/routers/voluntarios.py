@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from app.database import get_db
-from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea, PeriodoApoyo
+from app.models import Voluntario, PerfilVoluntario, EstadoContrato, GrupoTarea, MiembroGrupoTarea, PeriodoApoyo, Usuario
 from app.templates_config import templates
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "contracts", "contrato_voluntario.docx")
@@ -465,6 +465,7 @@ def dar_de_baja(request: Request, voluntario_id: int, db: Session = Depends(get_
         voluntario.fecha_baja = date.today()
         db.query(GrupoTarea).filter(GrupoTarea.capitan_id == voluntario_id).update({"capitan_id": None})
         db.query(MiembroGrupoTarea).filter(MiembroGrupoTarea.voluntario_id == voluntario_id).delete()
+        db.query(Usuario).filter(Usuario.voluntario_id == voluntario_id).update({"activo": False})
         db.commit()
         flash(request, f"{voluntario.nombre} {voluntario.apellido} dado/a de baja.", "warning")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
@@ -476,17 +477,25 @@ def reactivar(request: Request, voluntario_id: int, db: Session = Depends(get_db
     if voluntario:
         voluntario.activo = True
         voluntario.fecha_baja = None
+        db.query(Usuario).filter(Usuario.voluntario_id == voluntario_id).update({"activo": True})
         db.commit()
         flash(request, f"{voluntario.nombre} {voluntario.apellido} reactivado/a.")
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
 @router.post("/{voluntario_id}/cambiar-perfil")
-def cambiar_perfil(voluntario_id: int, perfil: str = Form(...), db: Session = Depends(get_db)):
+def cambiar_perfil(
+    voluntario_id: int,
+    perfil: str = Form(...),
+    fecha_veterano: Optional[date] = Form(None),
+    db: Session = Depends(get_db),
+):
     voluntario = db.query(Voluntario).filter(Voluntario.id == voluntario_id).first()
     if voluntario:
         try:
             voluntario.perfil = PerfilVoluntario(perfil)
+            if perfil in ("veterano", "apoyo_en_junta") and fecha_veterano and not voluntario.fecha_veterano:
+                voluntario.fecha_veterano = fecha_veterano
             db.commit()
         except ValueError:
             pass
