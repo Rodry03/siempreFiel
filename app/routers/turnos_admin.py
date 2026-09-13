@@ -52,26 +52,31 @@ def listar_turnos(
 
     semana_fin = semana_date + timedelta(days=6)
 
-    q = (
-        db.query(Voluntario)
-        .filter(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
-    )
-    if perfil == "todos":
-        pass
-    elif perfil:
-        try:
-            q = q.filter(Voluntario.perfil == PerfilVoluntario(perfil))
-        except ValueError:
-            perfil = None
-    else:
-        q = q.filter(Voluntario.perfil.in_([PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta]))
-    voluntarios = q.order_by(Voluntario.nombre, Voluntario.apellido).all()
-
     turnos_semana = (
         db.query(TurnoVoluntario)
         .filter(TurnoVoluntario.fecha >= semana_date, TurnoVoluntario.fecha <= semana_fin)
         .all()
     )
+    ids_con_turno = {t.voluntario_id for t in turnos_semana}
+
+    filtro_normal = and_(Voluntario.activo == True, Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS)))
+    if perfil == "todos":
+        condicion_perfil = filtro_normal
+    elif perfil:
+        try:
+            condicion_perfil = and_(filtro_normal, Voluntario.perfil == PerfilVoluntario(perfil))
+        except ValueError:
+            perfil = None
+            condicion_perfil = and_(filtro_normal, Voluntario.perfil.in_([PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta]))
+    else:
+        condicion_perfil = and_(filtro_normal, Voluntario.perfil.in_([PerfilVoluntario.veterano, PerfilVoluntario.apoyo_en_junta]))
+
+    # Además de la condición normal, siempre se muestra a quien tenga un turno
+    # registrado esta semana (aunque su perfil no haga turnos o esté de baja),
+    # para poder localizarlo y corregirlo/eliminarlo desde este listado.
+    condicion_final = or_(condicion_perfil, Voluntario.id.in_(ids_con_turno)) if ids_con_turno else condicion_perfil
+    q = db.query(Voluntario).filter(condicion_final)
+    voluntarios = q.order_by(Voluntario.nombre, Voluntario.apellido).all()
 
     turnos_por_vol = {}
     for t in turnos_semana:
@@ -91,7 +96,7 @@ def listar_turnos(
     voluntarios_data = [
         {
             "voluntario": v,
-            "saldo": calcular_saldo(v),
+            "saldo": calcular_saldo(v) if v.perfil not in PERFILES_SIN_TURNOS else None,
             "turnos": turnos_por_vol.get(v.id, []),
             "total_valor": sum(_valor(t) for t in turnos_por_vol.get(v.id, [])),
             "en_apoyo": _en_apoyo(v),
@@ -116,6 +121,53 @@ def listar_turnos(
         "franja_labels": FRANJA_LABELS,
         "perfil_filtro": perfil or "",
         "perfiles_con_turnos": perfiles_con_turnos,
+    })
+
+
+@router.get("/semana")
+def ver_semana(
+    request: Request,
+    semana: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    hoy = date.today()
+    if semana:
+        try:
+            semana_date = _semana_lunes(date.fromisoformat(semana))
+        except ValueError:
+            semana_date = _semana_lunes(hoy)
+    else:
+        semana_date = _semana_lunes(hoy)
+
+    semana_fin = semana_date + timedelta(days=6)
+
+    turnos_semana = (
+        db.query(TurnoVoluntario)
+        .join(Voluntario, TurnoVoluntario.voluntario_id == Voluntario.id)
+        .filter(TurnoVoluntario.fecha >= semana_date, TurnoVoluntario.fecha <= semana_fin)
+        .order_by(Voluntario.nombre, Voluntario.apellido)
+        .all()
+    )
+
+    grid = {}
+    for t in turnos_semana:
+        grid.setdefault((t.fecha, t.franja.value), []).append(t)
+
+    dias = [semana_date + timedelta(days=i) for i in range(7)]
+
+    return templates.TemplateResponse(request, "turnos/semana.html", {
+        "semana": semana_date,
+        "semana_fin": semana_fin,
+        "semana_label": f"{semana_date.strftime('%d/%m')} – {semana_fin.strftime('%d/%m/%Y')}",
+        "semana_anterior": (semana_date - timedelta(days=7)).isoformat(),
+        "semana_siguiente": (semana_date + timedelta(days=7)).isoformat(),
+        "dias": dias,
+        "hoy": hoy,
+        "grid": grid,
+        "perfil_labels": PERFIL_LABELS,
+        "perfil_colors": PERFIL_COLORS,
+        "dias_labels": DIAS_ES,
+        "franja_labels": FRANJA_LABELS,
     })
 
 
@@ -240,7 +292,7 @@ async def estadillo_previsualizar(request: Request, db: Session = Depends(get_db
         flash(request, "No se detectó la fecha. Asegúrate de que el texto incluye el encabezado (ej: ESTADILLO 28 JULIO - 3 AGOSTO).", "danger")
         return templates.TemplateResponse(request, "turnos/estadillo_form.html", {"texto": texto})
 
-    todos = db.query(Voluntario).all()
+    todos = db.query(Voluntario).filter(Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS))).all()
     slots_preview = []
     no_encontrados = []
     total_insertar = 0
@@ -279,7 +331,7 @@ async def estadillo_insertar(request: Request, db: Session = Depends(get_db)):
     texto = form.get("texto", "")
 
     fecha_inicio, slots = parse_estadillo(texto)
-    todos = db.query(Voluntario).all()
+    todos = db.query(Voluntario).filter(Voluntario.perfil.notin_(list(PERFILES_SIN_TURNOS))).all()
 
     insertados = 0
     omitidos = 0

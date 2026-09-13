@@ -401,6 +401,10 @@
       </div>
       <div class="card-body p-0">
         {% if voluntario.periodos_apoyo %}
+        {% for p in voluntario.periodos_apoyo %}
+        <form method="post" action="/voluntarios/{{ voluntario.id }}/apoyo/{{ p.id }}/editar"
+              id="form-editar-apoyo-{{ p.id }}" style="display:none;"></form>
+        {% endfor %}
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
             <tr><th>Desde</th><th>Hasta</th><th></th></tr>
@@ -408,17 +412,27 @@
           <tbody>
             {% for p in voluntario.periodos_apoyo %}
             <tr>
-              <td class="small">{{ p.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+              <td class="small">
+                <input type="date" name="fecha_inicio" form="form-editar-apoyo-{{ p.id }}"
+                       class="form-control form-control-sm" style="width:140px;"
+                       value="{{ p.fecha_inicio.isoformat() }}" required>
+              </td>
               <td class="small text-muted">
-                {% if p.fecha_fin %}{{ p.fecha_fin.strftime('%d/%m/%Y') }}
-                {% else %}<em>Indefinido</em>{% endif %}
+                <input type="date" name="fecha_fin" form="form-editar-apoyo-{{ p.id }}"
+                       class="form-control form-control-sm" style="width:140px;"
+                       value="{{ p.fecha_fin.isoformat() if p.fecha_fin else '' }}"
+                       placeholder="Indefinido">
               </td>
               <td class="text-end pe-3">
+                <button type="submit" form="form-editar-apoyo-{{ p.id }}"
+                        class="btn btn-xs btn-outline-secondary" style="font-size:0.75rem;padding:1px 6px;">
+                  Guardar
+                </button>
                 {% if not p.fecha_fin %}
                 <form method="post" action="/voluntarios/{{ voluntario.id }}/apoyo/{{ p.id }}/cerrar"
                       class="d-inline">
                   <input type="hidden" name="fecha_fin" value="{{ semana_actual.isoformat() }}">
-                  <button type="submit" class="btn btn-xs btn-outline-secondary"
+                  <button type="submit" class="btn btn-xs btn-outline-secondary ms-1"
                           style="font-size:0.75rem;padding:1px 6px;">Cerrar hoy</button>
                 </form>
                 {% endif %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0"><i class="bi bi-calendar-week me-2"></i>Vista semanal de turnos</h2>
+  <a href="/turnos/?semana={{ semana.isoformat() }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver a gestión de turnos
+  </a>
+</div>
+
+<!-- Navegación semana -->
+<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+  <a href="/turnos/semana?semana={{ semana_anterior }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <input type="date" class="form-control form-control-sm" style="width:auto;"
+         value="{{ semana.isoformat() }}"
+         onchange="window.location.href='/turnos/semana?semana='+this.value">
+  <span class="text-muted small">{{ semana_label }}</span>
+  <a href="/turnos/semana?semana={{ semana_siguiente }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+  <a href="/turnos/semana" class="btn btn-sm btn-outline-secondary ms-2">Hoy</a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle mb-0" style="min-width:900px;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:100px;">Turno</th>
+          {% for dia in dias %}
+          <th class="text-center {% if dia == hoy %}table-active{% endif %}">
+            {{ dias_labels[dia.weekday()] }}<br>
+            <span class="text-muted small">{{ dia.strftime('%d/%m') }}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for franja_key, franja_nombre in franja_labels.items() %}
+        <tr>
+          <th class="table-light">{{ franja_nombre }}</th>
+          {% for dia in dias %}
+          <td style="min-width:150px; vertical-align:top;">
+            <div class="d-flex flex-column gap-1">
+              {% for t in grid.get((dia, franja_key), []) %}
+              {% set v = t.voluntario %}
+              {% set es_medio = t.estado.value == 'medio_turno' %}
+              <a href="/voluntarios/{{ v.id }}" class="badge bg-{{ perfil_colors[v.perfil.value] }} text-decoration-none text-wrap"
+                 title="{{ perfil_labels[v.perfil.value] }}">
+                {{ v.nombre }} {{ v.apellido }}{% if es_medio %} ½{% endif %}
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endfor %}
+            </div>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -532,6 +532,24 @@ def cerrar_periodo_apoyo(
     return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
 
 
+@router.post("/{voluntario_id}/apoyo/{periodo_id}/editar")
+def editar_periodo_apoyo(
+    request: Request,
+    voluntario_id: int,
+    periodo_id: int,
+    fecha_inicio: date = Form(...),
+    fecha_fin: Optional[date] = Form(None),
+    db: Session = Depends(get_db),
+):
+    p = db.query(PeriodoApoyo).filter(PeriodoApoyo.id == periodo_id).first()
+    if p:
+        p.fecha_inicio = fecha_inicio
+        p.fecha_fin = fecha_fin
+        db.commit()
+        flash(request, "Periodo de apoyo actualizado.")
+    return RedirectResponse(f"/voluntarios/{voluntario_id}", status_code=303)
+
+
 @router.post("/{voluntario_id}/apoyo/{periodo_id}/eliminar")
 def eliminar_periodo_apoyo(
     request: Request,

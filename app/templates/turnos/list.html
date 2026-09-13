@@ -3,8 +3,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="fw-bold mb-0"><i class="bi bi-calendar-check me-2"></i>Gestión de turnos</h2>
-  {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
   <div class="d-flex gap-2">
+    <a href="/turnos/semana?semana={{ semana.isoformat() }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-calendar-week me-1"></i>Ver semana
+    </a>
+    {% if request.state.current_user and request.state.current_user.rol.value == 'admin' %}
     <form id="form-limpiar-semana" method="post" action="/turnos/limpiar-semana" class="d-none">
       <input type="hidden" name="semana" value="{{ semana.isoformat() }}">
     </form>
@@ -18,8 +21,8 @@
     <a href="/turnos/estadillo" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-clipboard-data me-1"></i>Cargar estadillo
     </a>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {% set pqs = '&perfil=' ~ perfil_filtro if perfil_filtro else '' %}
@@ -114,9 +117,13 @@
           <td class="text-center text-muted">{{ item.total_valor }}</td>
           <td class="text-center">
             {% set s = item.saldo %}
+            {% if s is not none %}
             <span class="fw-bold {% if s > 0 %}text-success{% elif s < 0 %}text-danger{% else %}text-secondary{% endif %}">
               {% if s > 0 %}+{% endif %}{{ "%.1f"|format(s) }}
             </span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
